@@ -1,0 +1,1166 @@
+/* ============================================================
+   WhatsApp Simples   GLPI Plugin
+   CSS reescrito: visual limpo, moderno e coeso
+   ============================================================ */
+
+:root {
+    --wapp-green:        #25d366;
+    --wapp-green-dim:    rgba(37, 211, 102, 0.12);
+    --wapp-green-hover:  rgba(37, 211, 102, 0.22);
+    --wapp-green-dark:   #1aad54;
+
+    --wapp-bg-base:      #f0f2f5;
+    --wapp-bg-sidebar:   #ffffff;
+    --wapp-bg-main:      #efeae2;
+    --wapp-bg-header:    #ffffff;
+    --wapp-bg-input:     #ffffff;
+    --wapp-bg-msg-me:    #d9fdd3;
+    --wapp-bg-msg-them:  #ffffff;
+
+    --wapp-border:       #e9edef;
+    --wapp-border-focus: var(--wapp-green);
+
+    --wapp-text:         #111b21;
+    --wapp-text-muted:   #667781;
+    --wapp-text-time:    #8696a0;
+
+    --wapp-shadow-sm:    0 1px 3px rgba(0,0,0,0.08);
+    --wapp-shadow-md:    0 4px 16px rgba(0,0,0,0.12);
+    --wapp-radius:       10px;
+    --wapp-radius-sm:    6px;
+    --wapp-radius-msg:   8px;
+
+    /* Modais */
+    --wapp-modal-bg:     #ffffff;
+    --wapp-modal-border: #e9edef;
+
+    /* Ticket (azul- ndigo) */
+    --wapp-indigo:       #4f46e5;
+    --wapp-indigo-dim:   rgba(79, 70, 229, 0.1);
+    --wapp-indigo-hover: rgba(79, 70, 229, 0.18);
+
+    /* Danger */
+    --wapp-red:          #ef4444;
+    --wapp-red-dim:      rgba(239, 68, 68, 0.1);
+}
+
+/* -- Layout raiz -------------------------------------------- */
+#wapp-root {
+    display: flex;
+    height: calc(100vh - 130px);
+    border-radius: var(--wapp-radius);
+    overflow: hidden;
+    border: 1px solid var(--wapp-border);
+    box-shadow: var(--wapp-shadow-sm);
+    background: var(--wapp-bg-base);
+}
+
+/* -- Sidebar ------------------------------------------------ */
+#wapp-sidebar {
+    width: 270px;
+    min-width: 220px;
+    background: var(--wapp-bg-sidebar);
+    border-right: 1px solid var(--wapp-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+#wapp-sidebar-header {
+    padding: 13px 16px;
+    font-weight: 600;
+    font-size: .92rem;
+    color: var(--wapp-green);
+    border-bottom: 1px solid var(--wapp-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--wapp-bg-header);
+    flex-shrink: 0;
+}
+
+#wapp-open-chats {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+
+#wapp-open-chats::-webkit-scrollbar { width: 4px; }
+#wapp-open-chats::-webkit-scrollbar-track { background: transparent; }
+#wapp-open-chats::-webkit-scrollbar-thumb { background: var(--wapp-border); border-radius: 4px; }
+
+.wapp-chat-item {
+    padding: 9px 14px;
+    cursor: pointer;
+    border-radius: var(--wapp-radius-sm);
+    margin: 2px 6px;
+    font-size: .84rem;
+    color: var(--wapp-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .15s;
+    position: relative;
+}
+.wapp-chat-item:hover { background: var(--wapp-bg-base); }
+.wapp-chat-item.active {
+    background: var(--wapp-green-dim);
+    color: var(--wapp-green-dark);
+    font-weight: 500;
+}
+
+.wapp-chat-item-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.wapp-chat-item-close,
+.wapp-chat-item-clear {
+    background: none;
+    border: none;
+    color: var(--wapp-text-muted);
+    cursor: pointer;
+    opacity: 0;
+    padding: 3px 5px;
+    border-radius: 4px;
+    font-size: .73rem;
+    flex-shrink: 0;
+    transition: opacity .15s, background .15s, color .15s;
+    line-height: 1;
+}
+.wapp-chat-item:hover .wapp-chat-item-close,
+.wapp-chat-item:hover .wapp-chat-item-clear { opacity: .6; }
+.wapp-chat-item-close:hover {
+    opacity: 1 !important;
+    background: var(--wapp-red-dim);
+    color: var(--wapp-red);
+}
+.wapp-chat-item-clear:hover {
+    opacity: 1 !important;
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+}
+
+/* Badge de n o lido */
+.wapp-unread-badge {
+    background: var(--wapp-green);
+    color: #fff;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: .62rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    animation: wapp-pulse .7s ease-in-out infinite alternate;
+}
+@keyframes wapp-pulse {
+    from { transform: scale(1); }
+    to   { transform: scale(1.18); }
+}
+
+/* -- Novo chat (rodap  da sidebar) -------------------------- */
+#wapp-new-chat {
+    padding: 10px;
+    border-top: 1px solid var(--wapp-border);
+    display: flex;
+    gap: 6px;
+    background: var(--wapp-bg-sidebar);
+    flex-shrink: 0;
+}
+
+#wapp-number-input {
+    flex: 1;
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    padding: 7px 10px;
+    font-size: .82rem;
+    color: var(--wapp-text);
+    outline: none;
+    min-width: 0;
+    transition: border-color .15s;
+}
+#wapp-number-input:focus { border-color: var(--wapp-green); }
+#wapp-number-input::placeholder { color: var(--wapp-text-muted); }
+
+#wapp-start-btn {
+    background: var(--wapp-green);
+    border: none;
+    border-radius: var(--wapp-radius-sm);
+    color: #fff;
+    padding: 7px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+    display: flex;
+    align-items: center;
+}
+#wapp-start-btn:hover { background: var(--wapp-green-dark); }
+
+#wapp-contacts-btn {
+    background: none;
+    border: none;
+    color: var(--wapp-green);
+    cursor: pointer;
+    padding: 5px 7px;
+    border-radius: var(--wapp-radius-sm);
+    font-size: .95rem;
+    opacity: .75;
+    flex-shrink: 0;
+    transition: opacity .15s, background .15s;
+    display: flex;
+    align-items: center;
+}
+#wapp-contacts-btn:hover {
+    opacity: 1;
+    background: var(--wapp-green-dim);
+}
+
+/* --  rea principal ----------------------------------------- */
+#wapp-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--wapp-bg-main);  
+}
+
+/* Estado vazio */
+#wapp-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: .35;
+    gap: 12px;
+    font-size: .95rem;
+    color: var(--wapp-text-muted);
+}
+#wapp-empty-state i { font-size: 3.2rem; }
+
+/* --  rea de chat ------------------------------------------- */
+#wapp-chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#wapp-chat-header {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--wapp-border);
+    background: var(--wapp-bg-header);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: .92rem;
+    color: var(--wapp-text);
+    flex-shrink: 0;
+    gap: 10px;
+    height: 56px;
+}
+
+#wapp-close-chat {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--wapp-text-muted);
+    opacity: .6;
+    padding: 4px;
+    border-radius: var(--wapp-radius-sm);
+    transition: opacity .15s, background .15s;
+    display: flex;
+    align-items: center;
+}
+#wapp-close-chat:hover {
+    opacity: 1;
+    background: var(--wapp-bg-base);
+}
+
+/* Bot es do header do chat */
+#wapp-save-btn {
+    background: var(--wapp-indigo-dim);
+    border: 1px solid rgba(79, 70, 229, 0.2);
+    border-radius: var(--wapp-radius-sm);
+    color: var(--wapp-indigo);
+    padding: 5px 11px;
+    font-size: .79rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 500;
+}
+#wapp-save-btn:hover {
+    background: var(--wapp-indigo-hover);
+    border-color: var(--wapp-indigo);
+}
+
+#wapp-new-ticket-btn {
+    background: var(--wapp-green-dim);
+    border: 1px solid rgba(37, 211, 102, 0.25);
+    border-radius: var(--wapp-radius-sm);
+    color: var(--wapp-green-dark);
+    padding: 5px 11px;
+    font-size: .79rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 500;
+}
+#wapp-new-ticket-btn:hover {
+    background: var(--wapp-green-hover);
+    border-color: var(--wapp-green);
+}
+
+/* -- Mensagens ---------------------------------------------- */
+#wapp-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-height: 0;
+}
+#wapp-messages::-webkit-scrollbar { width: 5px; }
+#wapp-messages::-webkit-scrollbar-track { background: transparent; }
+#wapp-messages::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 4px; }
+
+.wapp-msg {
+    max-width: 65%;
+    padding: 7px 11px;
+    border-radius: var(--wapp-radius-msg);
+    font-size: .84rem;
+    line-height: 1.48;
+    word-break: break-word;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07);
+    position: relative;
+}
+.wapp-msg.me {
+    align-self: flex-end;
+    background: var(--wapp-bg-msg-me);
+    border-bottom-right-radius: 2px;
+    color: var(--wapp-text);
+}
+.wapp-msg.them {
+    align-self: flex-start;
+    background: var(--wapp-bg-msg-them);
+    border-bottom-left-radius: 2px;
+    color: var(--wapp-text);
+}
+.wapp-msg-time {
+    font-size: .67rem;
+    color: var(--wapp-text-time);
+    margin-top: 3px;
+    text-align: right;
+}
+
+/* -- Input bar ---------------------------------------------- */
+#wapp-input-bar {
+    padding: 10px 12px;
+    border-top: 1px solid var(--wapp-border);
+    background: var(--wapp-bg-input);
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    align-items: center;
+    height: 56px;
+}
+
+#wapp-msg-input {
+    flex: 1;
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: .86rem;
+    color: var(--wapp-text);
+    outline: none;
+    min-width: 0;
+    transition: border-color .15s;
+    line-height: 1.4;
+}
+#wapp-msg-input:focus { border-color: var(--wapp-green); }
+#wapp-msg-input::placeholder { color: var(--wapp-text-muted); }
+
+#wapp-send-btn {
+    background: var(--wapp-green);
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    width: 38px;
+    height: 38px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    transition: background .15s, transform .1s;
+}
+#wapp-send-btn:hover { background: var(--wapp-green-dark); transform: scale(1.05); }
+
+/* -- M dia -------------------------------------------------- */
+.wapp-media-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 100%;
+    overflow: hidden;
+}
+.wapp-media-img {
+    max-width: 220px;
+    max-height: 220px;
+    border-radius: var(--wapp-radius-sm);
+    cursor: pointer;
+    object-fit: cover;
+    transition: opacity .15s;
+    display: block;
+}
+.wapp-media-img:hover { opacity: .88; }
+.wapp-media-audio { max-width: 220px; width: 100%; }
+.wapp-media-doc {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.04);
+    padding: 8px 12px;
+    border-radius: var(--wapp-radius-sm);
+    font-size: .82rem;
+    overflow: hidden;
+}
+.wapp-media-doc i { font-size: 1.2rem; opacity: .6; flex-shrink: 0; }
+.wapp-media-doc span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.wapp-media-dl {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: .74rem;
+    color: var(--wapp-green-dark);
+    text-decoration: none;
+    padding: 3px 9px;
+    border-radius: 5px;
+    background: var(--wapp-green-dim);
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-weight: 500;
+    transition: background .15s;
+}
+.wapp-media-dl:hover { background: var(--wapp-green-hover); }
+.wapp-sticker { font-size: 3rem; line-height: 1; }
+
+/* -- Modais base -------------------------------------------- */
+#wapp-modal,
+#wapp-contacts-modal,
+#wapp-new-ticket-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.45);
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(2px);
+}
+
+/* -- Modal Salvar Ticket ------------------------------------ */
+#wapp-modal-box {
+    background: var(--wapp-modal-bg);
+    border: 1px solid var(--wapp-modal-border);
+    border-radius: 14px;
+    width: 440px;
+    max-width: 95vw;
+    max-height: 88vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--wapp-shadow-md);
+    color: var(--wapp-text);
+}
+
+#wapp-modal-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--wapp-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: .92rem;
+    color: var(--wapp-indigo);
+    flex-shrink: 0;
+}
+#wapp-modal-header button {
+    background: none;
+    border: none;
+    color: var(--wapp-text-muted);
+    cursor: pointer;
+    opacity: .55;
+    padding: 3px;
+    border-radius: 4px;
+    transition: opacity .15s;
+}
+#wapp-modal-header button:hover { opacity: 1; }
+
+#wapp-modal-body {
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+#wapp-modal-body label {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--wapp-text-muted);
+    display: block;
+    margin-bottom: 5px;
+}
+#wapp-modal-body input[type=number] {
+    width: 100%;
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    padding: 8px 11px;
+    font-size: .88rem;
+    color: var(--wapp-text);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color .15s;
+}
+#wapp-modal-body input[type=number]:focus { border-color: var(--wapp-green); }
+
+.wapp-ticket-found {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .83rem;
+    color: var(--wapp-green-dark);
+    background: var(--wapp-green-dim);
+    padding: 7px 11px;
+    border-radius: var(--wapp-radius-sm);
+}
+.wapp-ticket-notfound {
+    font-size: .83rem;
+    color: var(--wapp-red);
+    background: var(--wapp-red-dim);
+    padding: 7px 11px;
+    border-radius: var(--wapp-radius-sm);
+    display: block;
+}
+
+#wapp-modal-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--wapp-border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+#wapp-modal-cancel {
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    color: var(--wapp-text-muted);
+    padding: 7px 16px;
+    font-size: .84rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+#wapp-modal-cancel:hover { background: var(--wapp-border); }
+#wapp-modal-save {
+    background: var(--wapp-indigo);
+    border: none;
+    border-radius: var(--wapp-radius-sm);
+    color: #fff;
+    padding: 7px 16px;
+    font-size: .84rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .15s;
+}
+#wapp-modal-save:hover { background: #4338ca; }
+#wapp-modal-save:disabled { opacity: .55; cursor: not-allowed; }
+
+/* -- Modal Contatos ----------------------------------------- */
+#wapp-contacts-box {
+    background: var(--wapp-modal-bg);
+    border: 1px solid var(--wapp-modal-border);
+    border-radius: 14px;
+    width: 460px;
+    max-width: 95vw;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--wapp-shadow-md);
+    color: var(--wapp-text);
+}
+
+#wapp-contacts-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--wapp-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: .92rem;
+    color: var(--wapp-green-dark);
+    flex-shrink: 0;
+}
+#wapp-contacts-header button {
+    background: none;
+    border: none;
+    color: var(--wapp-text-muted);
+    cursor: pointer;
+    opacity: .55;
+    padding: 3px;
+    border-radius: 4px;
+    transition: opacity .15s;
+}
+#wapp-contacts-header button:hover { opacity: 1; }
+
+#wapp-contacts-search-wrap {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--wapp-border);
+    flex-shrink: 0;
+}
+#wapp-contacts-search {
+    width: 100%;
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: .86rem;
+    color: var(--wapp-text);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color .15s;
+}
+#wapp-contacts-search:focus { border-color: var(--wapp-green); }
+#wapp-contacts-search::placeholder { color: var(--wapp-text-muted); }
+
+#wapp-contacts-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 0;
+}
+#wapp-contacts-list::-webkit-scrollbar { width: 4px; }
+#wapp-contacts-list::-webkit-scrollbar-thumb { background: var(--wapp-border); border-radius: 4px; }
+
+.wapp-contacts-loading,
+.wapp-contacts-empty {
+    padding: 28px;
+    text-align: center;
+    opacity: .45;
+    font-size: .84rem;
+    color: var(--wapp-text-muted);
+}
+
+.wapp-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 16px;
+    cursor: default;
+    transition: background .12s;
+}
+.wapp-contact-item:hover { background: var(--wapp-bg-base); }
+
+.wapp-contact-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--wapp-green-dim);
+    color: var(--wapp-green-dark);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.wapp-contact-info { flex: 1; min-width: 0; }
+.wapp-contact-name {
+    font-size: .88rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--wapp-text);
+}
+.wapp-contact-number {
+    font-size: .77rem;
+    color: var(--wapp-text-muted);
+    margin-top: 2px;
+}
+
+.wapp-contact-start {
+    background: var(--wapp-green-dim);
+    border: none;
+    border-radius: var(--wapp-radius-sm);
+    color: var(--wapp-green-dark);
+    padding: 7px 10px;
+    cursor: pointer;
+    transition: background .15s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+.wapp-contact-start:hover { background: var(--wapp-green-hover); }
+
+/* -- Modal Novo Chamado ------------------------------------- */
+#wapp-new-ticket-box {
+    background: var(--wapp-modal-bg);
+    border: 1px solid var(--wapp-modal-border);
+    border-radius: 14px;
+    width: 580px;
+    max-width: 96vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--wapp-shadow-md);
+    color: var(--wapp-text);
+}
+
+#wapp-new-ticket-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--wapp-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: .92rem;
+    color: var(--wapp-indigo);
+    flex-shrink: 0;
+}
+#wapp-new-ticket-header button {
+    background: none;
+    border: none;
+    color: var(--wapp-text-muted);
+    cursor: pointer;
+    opacity: .55;
+    padding: 3px;
+    border-radius: 4px;
+    transition: opacity .15s;
+}
+#wapp-new-ticket-header button:hover { opacity: 1; }
+
+#wapp-new-ticket-body {
+    padding: 18px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+}
+#wapp-new-ticket-body::-webkit-scrollbar { width: 4px; }
+#wapp-new-ticket-body::-webkit-scrollbar-thumb { background: var(--wapp-border); border-radius: 4px; }
+
+#wapp-new-ticket-footer {
+    padding: 12px 18px;
+    border-top: 1px solid var(--wapp-border);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+#wnt-cancel {
+    background: var(--wapp-red-dim);
+    border: 1px solid rgba(239,68,68,.2);
+    border-radius: var(--wapp-radius-sm);
+    color: var(--wapp-red);
+    padding: 7px 16px;
+    font-size: .84rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .15s;
+}
+#wnt-cancel:hover { background: rgba(239,68,68,.18); }
+
+#wnt-submit {
+    background: var(--wapp-indigo);
+    border: none;
+    border-radius: var(--wapp-radius-sm);
+    color: #fff;
+    padding: 7px 16px;
+    font-size: .84rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .15s;
+}
+#wnt-submit:hover { background: #4338ca; }
+#wnt-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+#wnt-result { font-size: .83rem; min-height: 20px; flex: 1; }
+
+/* -- Form groups (modais) ----------------------------------- */
+.wapp-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+.wapp-form-group label {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--wapp-text-muted);
+}
+.wapp-form-group input,
+.wapp-form-group select,
+.wapp-form-group textarea {
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    padding: 8px 11px;
+    font-size: .87rem;
+    color: var(--wapp-text);
+    outline: none;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color .15s;
+}
+.wapp-form-group input:focus,
+.wapp-form-group select:focus,
+.wapp-form-group textarea:focus { border-color: var(--wapp-indigo); }
+.wapp-form-group select option { background: #fff; color: var(--wapp-text); }
+.wapp-form-group textarea { resize: vertical; min-height: 70px; }
+
+.wapp-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+}
+
+#wapp-new-ticket-msg-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+#wapp-new-ticket-msg-header label {
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--wapp-text-muted);
+}
+
+#wnt-msg-list {
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    padding: 6px;
+    background: var(--wapp-bg-base);
+}
+
+/* -- Badges de tipo ----------------------------------------- */
+.wapp-type-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 4px;
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .4px;
+    padding: 2px 7px;
+    line-height: 1.4;
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+.wapp-badge-usuario {
+    background: rgba(22, 163, 74, 0.12);
+    color: #15803d;
+    border: 1px solid rgba(22, 163, 74, 0.28);
+}
+.wapp-badge-contato {
+    background: rgba(37, 99, 235, 0.1);
+    color: #1d4ed8;
+    border: 1px solid rgba(37, 99, 235, 0.22);
+}
+
+/* -- Sele  o de mensagens no modal -------------------------- */
+#wapp-msg-select-wrap {
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+#wapp-msg-select-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .82rem;
+    font-weight: 600;
+    color: var(--wapp-text-muted);
+}
+
+.wapp-sel-btn {
+    background: var(--wapp-bg-base);
+    border: 1px solid var(--wapp-border);
+    border-radius: 5px;
+    color: var(--wapp-text-muted);
+    padding: 3px 10px;
+    font-size: .74rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background .12s, color .12s, border-color .12s;
+}
+.wapp-sel-btn:hover {
+    background: var(--wapp-indigo-dim);
+    border-color: var(--wapp-indigo);
+    color: var(--wapp-indigo);
+}
+
+#wapp-msg-select-list {
+    max-height: 200px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border: 1px solid var(--wapp-border);
+    border-radius: var(--wapp-radius-sm);
+    padding: 6px;
+    background: var(--wapp-bg-base);
+}
+#wapp-msg-select-list::-webkit-scrollbar { width: 4px; }
+#wapp-msg-select-list::-webkit-scrollbar-thumb { background: var(--wapp-border); border-radius: 4px; }
+
+.wapp-msg-select-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background .12s;
+}
+.wapp-msg-select-row:hover { background: rgba(0,0,0,0.04); }
+
+.wapp-msg-select-row input[type=checkbox] {
+    margin-top: 2px;
+    flex-shrink: 0;
+    accent-color: var(--wapp-indigo);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+.wapp-msg-select-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+.wapp-msg-select-who {
+    font-size: .74rem;
+    font-weight: 700;
+}
+.wapp-msg-select-who.me   { color: var(--wapp-indigo); }
+.wapp-msg-select-who.them { color: var(--wapp-green-dark); }
+.wapp-msg-select-text {
+    font-size: .81rem;
+    color: var(--wapp-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.wapp-msg-select-time {
+    font-size: .67rem;
+    color: var(--wapp-text-time);
+}
+
+.wapp-msg-sender {
+    font-size: .68rem;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+.wapp-msg-sender.me { color: #25d366; }
+/* -- Botao Pendentes ---------------------------------------------------- */
+#wapp-pending-btn {
+    background: none;
+    border: none;
+    color: var(--wapp-green);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: var(--wapp-radius-sm);
+    font-size: 1rem;
+    opacity: .8;
+    flex-shrink: 0;
+    position: relative;
+    transition: opacity .15s, background .15s;
+}
+#wapp-pending-btn:hover {
+    opacity: 1;
+    background: var(--wapp-green-dim);
+}
+#wapp-pending-badge {
+    display: none;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: #fff;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    font-size: .6rem;
+    font-weight: 700;
+    align-items: center;
+    justify-content: center;
+    animation: wapp-pulse .6s ease infinite alternate;
+}
+
+/* -- Modal Pendentes ---------------------------------------------------- */
+#wapp-pending-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.4);
+    z-index: 99999;
+    align-items: center;
+    justify-content: center;
+}
+#wapp-pending-box {
+    background: var(--wapp-modal-bg);
+    border: 1px solid var(--wapp-modal-border);
+    border-radius: 14px;
+    width: 420px;
+    max-width: 95vw;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: var(--wapp-shadow-md);
+}
+#wapp-pending-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--wapp-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--wapp-text);
+    flex-shrink: 0;
+}
+#wapp-pending-header button {
+    background: none;
+    border: none;
+    color: var(--wapp-text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+}
+#wapp-pending-header button:hover { color: var(--wapp-text); }
+#wapp-pending-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+.wapp-pending-empty {
+    padding: 32px;
+    text-align: center;
+    color: var(--wapp-text-muted);
+    font-size: .9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+.wapp-pending-empty i { font-size: 2rem; color: var(--wapp-green); }
+.wapp-pending-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    cursor: pointer;
+    transition: background .15s;
+    border-bottom: 1px solid var(--wapp-border);
+}
+.wapp-pending-item:last-child { border-bottom: none; }
+.wapp-pending-item:hover { background: var(--wapp-green-dim); }
+.wapp-pending-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--wapp-green-dim);
+    color: var(--wapp-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+.wapp-pending-info { flex: 1; min-width: 0; }
+.wapp-pending-name {
+    font-weight: 600;
+    font-size: .88rem;
+    color: var(--wapp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.wapp-pending-preview {
+    font-size: .8rem;
+    color: var(--wapp-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+}
+.wapp-pending-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.wapp-pending-time {
+    font-size: .72rem;
+    color: var(--wapp-green);
+}
+.wapp-pending-count {
+    background: var(--wapp-green);
+    color: #fff;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: .68rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
