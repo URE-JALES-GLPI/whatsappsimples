@@ -68,7 +68,7 @@ Caso encontre algum problema ou tenha sugestões de melhoria, abra uma **Issue**
 
 ## 📄 Licença
 
-Este projeto é distribuído sob a licença definida pelo repositório.
+Este projeto é distribuído sob a licença **GPL v2+**.
 
 ---
 
