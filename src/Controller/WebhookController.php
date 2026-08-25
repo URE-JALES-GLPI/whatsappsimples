@@ -8,11 +8,12 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class WebhookController extends AbstractsController
+final class WebhookController extends AbstractController
 {
     #[Route('/ajax/whatsappsimples/webhook', name: 'whatsappsimples_webhook', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
+        global $DB;
         //1 Le o body request JSON enviado pela EvolutionAPI
         $content = $request->getContent();
         $payload = json_decode($content, true);
