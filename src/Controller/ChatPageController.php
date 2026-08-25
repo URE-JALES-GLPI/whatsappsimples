@@ -18,7 +18,7 @@ final class ChatPageController extends AbstractController
         Session::checkLoginUser();
 
         ob_start();
-        Html::header('WhatsApp Live Chat', '/plugins/whatsappsimples/Chat', 'tools', Menu::class);
+        Html::header('WhatsApp', '/plugins/whatsappsimples/Chat', 'tools', Menu::class);
 
         ?>
         <style>
@@ -56,7 +56,7 @@ final class ChatPageController extends AbstractController
             <!-- COLUNA DA ESQUERDA: 3 ABAS DIGISAC -->
             <div class="wa-sidebar">
                 <div class="wa-tabs">
-                    <button class="wa-tab-btn active" onclick="switchTab('mine', this)">💬 Meus Chats</button>
+                    <button class="wa-tab-btn active" onclick="switchTab('mine', this)">💬 Chats</button>
                     <button class="wa-tab-btn" onclick="switchTab('queue', this)">📥 Fila</button>
                     <button class="wa-tab-btn" onclick="switchTab('all', this)">👥 Contatos</button>
                 </div>
