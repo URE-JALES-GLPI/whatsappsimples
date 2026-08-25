@@ -10,6 +10,7 @@ function plugin_whatsappsimples_install(): bool
 function plugin_whatsappsimples_uninstall(): bool
 {
     global $DB;
+    $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_config`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_configs`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_chats`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_messages`");
@@ -39,7 +40,7 @@ function plugin_whatsappsimples_ensureTables(): void
         $DB->insert('glpi_plugin_whatsappsimples_configs', ['name' => 'instance_name', 'value' => 'atendimento']);
     }
 
-    // 2. Tabela de Sessões/Atendimentos (Chats)
+    // 2. Tabela de Sessões/Atendimentos (Chats) - Com first_response_date nativo!
     if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
         $query = "CREATE TABLE `glpi_plugin_whatsappsimples_chats` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -47,6 +48,7 @@ function plugin_whatsappsimples_ensureTables(): void
             `contact_name` varchar(255) DEFAULT '',
             `users_id` int(11) NOT NULL DEFAULT 0,
             `status` varchar(20) NOT NULL DEFAULT 'pending',
+            `first_response_date` datetime DEFAULT NULL,
             `date_creation` datetime NOT NULL,
             `date_mod` datetime DEFAULT NULL,
             PRIMARY KEY (`id`),
