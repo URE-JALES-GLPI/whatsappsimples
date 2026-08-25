@@ -3,6 +3,7 @@
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
 use Glpi\Controller\AbstractController;
+use GlpiPlugin\Whatsappsimples\Menu;
 use Html;
 use Session;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +18,7 @@ final class ChatPageController extends AbstractController
         Session::checkLoginUser();
 
         ob_start();
-        Html::header('WhatsApp Live Chat', '/plugins/whatsappsimples/Chat', 'tools');
+        Html::header('WhatsApp Live Chat', '/plugins/whatsappsimples/Chat', 'tools', Menu::class);
 
         ?>
         <style>
