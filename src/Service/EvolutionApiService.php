@@ -86,7 +86,52 @@ class EvolutionApiService
     }
 
     /**
-     * Busca o QR Code de conexão (Base64) da EvolutionAPI
+     * Cria a instância na EvolutionAPI se ela ainda não existir
+     */
+    public static function createInstance(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['success' => false, 'error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/instance/create";
+        $bodyData = [
+            'instanceName' => $instance,
+            'token'        => $apiToken,
+            'qrcode'       => true
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 15
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data   = json_decode($responseBody, true);
+            $base64 = $data['qrcode']['base64'] ?? $data['base64'] ?? '';
+            return ['success' => true, 'base64' => $base64];
+        }
+
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
+    }
+
+    /**
+     * Busca o QR Code de conexão (Base64) da EvolutionAPI. Se a instância não existir, cria automaticamente!
      */
     public static function getQrCode(): array
     {
@@ -118,6 +163,11 @@ class EvolutionApiService
             $base64 = $data['base64'] ?? $data['qrcode']['base64'] ?? '';
             $code   = $data['code'] ?? $data['qrcode']['code'] ?? '';
             return ['success' => true, 'base64' => $base64, 'code' => $code];
+        }
+
+        // Se a instância não existia (404), tenta criar automaticamente
+        if ($httpCode === 404) {
+            return self::createInstance();
         }
 
         return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
