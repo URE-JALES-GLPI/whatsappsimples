@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class WebhookController extends AbstractController
 {
-    #[Route('/ajax/whatsappsimples/webhook', name: 'whatsappsimples_webhook', methods: ['POST'])]
+    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
         global $DB;

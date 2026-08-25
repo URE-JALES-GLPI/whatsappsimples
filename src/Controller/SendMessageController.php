@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class SendMessageController extends AbstractController
 {
-    #[Route('/ajax/whatsappsimples/send', name: 'whatsappsimples_api_send', methods: ['POST'])]
+    #[Route('/ajax/send', name: 'whatsappsimples_api_send', methods: ['POST'])]
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
