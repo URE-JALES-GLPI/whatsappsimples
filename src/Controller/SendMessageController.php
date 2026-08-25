@@ -18,6 +18,10 @@ final class SendMessageController extends AbstractController
         Session::checkLoginUser();
         global $DB;
 
+        if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
+            return new JsonResponse(['success' => false, 'error' => 'Tabela de chats não existe no banco'], 400);
+        }
+
         $chatId = $request->request->getInt('chat_id');
         $text   = trim($request->request->getString('text'));
 

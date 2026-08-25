@@ -17,23 +17,26 @@ final class GetChatsController extends AbstractController
         Session::checkLoginUser();
         global $DB;
 
+        if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
+            return new JsonResponse(['chats' => []]);
+        }
+
         $tab = $request->query->get('tab', 'mine');
         $currentUserId = (int) Session::getLoginUserID();
 
-        $where = [];
-        if ($tab === 'mine') {
-            $where['users_id'] = $currentUserId;
-        } elseif ($tab === 'queue') {
-            $where['users_id'] = 0;
-            $where['status']   = 'pending';
-        }
-
-        $iterator = $DB->request([
+        $queryParams = [
             'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
             'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => $where,
             'ORDER'  => ['date_mod DESC']
-        ]);
+        ];
+
+        if ($tab === 'mine') {
+            $queryParams['WHERE'] = ['users_id' => $currentUserId];
+        } elseif ($tab === 'queue') {
+            $queryParams['WHERE'] = ['users_id' => 0, 'status' => 'pending'];
+        }
+
+        $iterator = $DB->request($queryParams);
 
         $chats = [];
         foreach ($iterator as $row) {

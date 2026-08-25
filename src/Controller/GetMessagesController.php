@@ -17,6 +17,10 @@ final class GetMessagesController extends AbstractController
         Session::checkLoginUser();
         global $DB;
 
+        if (!$DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
+            return new JsonResponse(['messages' => []]);
+        }
+
         $chatId = $request->query->getInt('chat_id');
         if ($chatId <= 0) {
             return new JsonResponse(['messages' => []]);
