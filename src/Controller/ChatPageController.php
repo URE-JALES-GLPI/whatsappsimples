@@ -88,6 +88,7 @@ final class ChatPageController extends AbstractController
         <script>
             let currentTab = 'mine';
             let activeChatId = 0;
+            const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
 
             function switchTab(tab, btn) {
                 currentTab = tab;
@@ -98,7 +99,7 @@ final class ChatPageController extends AbstractController
 
             async function loadChats() {
                 try {
-                    const res = await fetch(`/ajax/whatsappsimples/chats?tab=${currentTab}`);
+                    const res = await fetch(`${rootDoc}/ajax/whatsappsimples/chats?tab=${currentTab}`);
                     const data = await res.json();
                     const listEl = document.getElementById('chat-list');
 
@@ -135,7 +136,7 @@ final class ChatPageController extends AbstractController
             async function loadMessages() {
                 if (!activeChatId) return;
                 try {
-                    const res = await fetch(`/ajax/whatsappsimples/messages?chat_id=${activeChatId}`);
+                    const res = await fetch(`${rootDoc}/ajax/whatsappsimples/messages?chat_id=${activeChatId}`);
                     const data = await res.json();
                     const box = document.getElementById('messages-box');
 
@@ -169,7 +170,7 @@ final class ChatPageController extends AbstractController
                     formData.append('chat_id', activeChatId);
                     formData.append('text', text);
 
-                    const res = await fetch('/ajax/whatsappsimples/send', {
+                    const res = await fetch(`${rootDoc}/ajax/whatsappsimples/send`, {
                         method: 'POST',
                         body: formData
                     });
