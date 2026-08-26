@@ -34,7 +34,6 @@ final class GetMessagesController extends AbstractController
         $chatsIds = [];
 
         if ($chatId > 0) {
-            $chatsIds = [$chatId];
             $chat = $DB->request([
                 'SELECT' => ['id', 'contact_name', 'phone_number', 'users_id'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -43,27 +42,29 @@ final class GetMessagesController extends AbstractController
             ])->current();
 
             if ($chat) {
-                $contactDisplayName = !empty($chat['contact_name']) ? $chat['contact_name'] : ($chat['phone_number'] ?? 'Contato');
+                $phoneNumber = $chat['phone_number'];
+                $contactDisplayName = !empty($chat['contact_name']) ? $chat['contact_name'] : $phoneNumber;
                 $chatAssignedUserId = (int) ($chat['users_id'] ?? 0);
             }
-        } else {
-            // Busca todas as sessoes associadas ao numero de telefone
-            $chatsIterator = $DB->request([
-                'SELECT' => ['id', 'contact_name', 'phone_number'],
+        }
+
+        if (!empty($phoneNumber)) {
+            $allChats = $DB->request([
+                'SELECT' => ['id', 'contact_name'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => ['phone_number' => $phoneNumber]
             ]);
 
-            foreach ($chatsIterator as $cRow) {
-                $chatsIds[] = (int) $cRow['id'];
-                if (!empty($cRow['contact_name'])) {
-                    $contactDisplayName = $cRow['contact_name'];
+            foreach ($allChats as $c) {
+                $chatsIds[] = (int) $c['id'];
+                if (!empty($c['contact_name'])) {
+                    $contactDisplayName = $c['contact_name'];
                 }
             }
+        }
 
-            if (empty($contactDisplayName) || $contactDisplayName === 'Contato') {
-                $contactDisplayName = $phoneNumber;
-            }
+        if (empty($chatsIds) && $chatId > 0) {
+            $chatsIds = [$chatId];
         }
 
         if (empty($chatsIds)) {

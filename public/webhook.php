@@ -77,27 +77,28 @@ if (empty($phoneNumber) || empty($text)) {
 global $DB;
 $now = date('Y-m-d H:i:s');
 
-// Busca apenas sessoes ATIVAS
+// Busca o unico registro de chat existente para este numero
 $chatIterator = $DB->request([
-    'SELECT' => ['id', 'status'],
+    'SELECT' => ['id', 'status', 'users_id'],
     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-    'WHERE'  => [
-        'phone_number' => $phoneNumber,
-        'status'       => ['pending', 'in_progress']
-    ],
-    'ORDER'  => ['id DESC'],
+    'WHERE'  => ['phone_number' => $phoneNumber],
+    'ORDER'  => ['id ASC'],
     'LIMIT'  => 1
 ]);
 
 $chatId = 0;
 if ($row = $chatIterator->current()) {
     $chatId = (int) $row['id'];
-    $DB->update('glpi_plugin_whatsappsimples_chats', [
+    $updateData = [
         'contact_name' => $contactName,
         'date_mod'     => $now
-    ], ['id' => $chatId]);
+    ];
+    if ($row['status'] === 'closed') {
+        $updateData['status']   = 'pending';
+        $updateData['users_id'] = 0;
+    }
+    $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
 } else {
-    // Cria nova sessao na Fila se a anterior estiver encerrada
     $DB->insert('glpi_plugin_whatsappsimples_chats', [
         'phone_number'  => $phoneNumber,
         'contact_name'  => $contactName,

@@ -89,27 +89,30 @@ final class WebhookController extends AbstractController
 
         $now = date('Y-m-d H:i:s');
 
-        // Busca apenas sessões ATIVAS (pending ou in_progress)
+        // Busca o único registro de chat existente para este número (independente de status)
         $chatIterator = $DB->request([
-            'SELECT' => ['id', 'status'],
+            'SELECT' => ['id', 'status', 'users_id'],
             'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => [
-                'phone_number' => $phoneNumber,
-                'status'       => ['pending', 'in_progress']
-            ],
-            'ORDER'  => ['id DESC'],
+            'WHERE'  => ['phone_number' => $phoneNumber],
+            'ORDER'  => ['id ASC'],
             'LIMIT'  => 1
         ]);
 
         $chatId = 0;
         if ($row = $chatIterator->current()) {
             $chatId = (int) $row['id'];
-            $DB->update('glpi_plugin_whatsappsimples_chats', [
+            $updateData = [
                 'contact_name' => $contactName,
                 'date_mod'     => $now
-            ], ['id' => $chatId]);
+            ];
+            // Se estava encerrado, reabre na Fila para atendimento
+            if ($row['status'] === 'closed') {
+                $updateData['status']   = 'pending';
+                $updateData['users_id'] = 0;
+            }
+            $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
         } else {
-            // Se o atendimento anterior foi ENCERRADO ou nao existe, cria um novo na Fila!
+            // Cria o registro unico de chat na Fila
             $DB->insert('glpi_plugin_whatsappsimples_chats', [
                 'phone_number'  => $phoneNumber,
                 'contact_name'  => $contactName,

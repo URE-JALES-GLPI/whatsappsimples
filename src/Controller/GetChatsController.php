@@ -21,9 +21,7 @@ final class GetChatsController extends AbstractController
             return new JsonResponse(['chats' => []]);
         }
 
-        // Correção de LIDs conhecidos
-        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517997772618'], ['phone_number' => '64703850111065']);
-        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517996454039'], ['phone_number' => '181656010924208']);
+        self::consolidateDuplicateChats();
 
         $tab = $request->query->get('tab', 'mine');
         $currentUserId = (int) Session::getLoginUserID();
@@ -31,7 +29,7 @@ final class GetChatsController extends AbstractController
         $chats = [];
 
         if ($tab === 'mine') {
-            // Meus Atendimentos (Atribuídos ao usuário logado e não encerrados)
+            // Meus Atendimentos Ativos (Atribuídos a mim e não encerrados)
             $iterator = $DB->request([
                 'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -75,17 +73,11 @@ final class GetChatsController extends AbstractController
                 ];
             }
         } elseif ($tab === 'all') {
-            // Lista Única de Contatos (Agrupada por telefone sem violar MySQL strict mode)
+            // Todos os Contatos (1 único registro por número)
             $iterator = $DB->request([
-                'SELECT'  => [
-                    'phone_number',
-                    'MAX(id) AS id',
-                    'MAX(contact_name) AS contact_name',
-                    'MAX(date_mod) AS max_date_mod'
-                ],
-                'FROM'    => 'glpi_plugin_whatsappsimples_chats',
-                'GROUPBY' => 'phone_number',
-                'ORDER'   => 'max_date_mod DESC'
+                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'ORDER'  => ['date_mod DESC']
             ]);
 
             foreach ($iterator as $row) {
@@ -93,13 +85,62 @@ final class GetChatsController extends AbstractController
                     'id'           => (int) $row['id'],
                     'phone_number' => $row['phone_number'],
                     'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
-                    'users_id'     => 0,
-                    'status'       => 'contact',
-                    'date_mod'     => $row['max_date_mod'] ?? date('Y-m-d H:i:s'),
+                    'users_id'     => (int) $row['users_id'],
+                    'status'       => $row['status'],
+                    'date_mod'     => $row['date_mod'],
                 ];
             }
         }
 
         return new JsonResponse(['chats' => $chats]);
+    }
+
+    /**
+     * Mescla e consolida registros duplicados no banco garantindo 1 unico chat por numero de telefone
+     */
+    private static function consolidateDuplicateChats(): void
+    {
+        global $DB;
+        if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
+            return;
+        }
+
+        // 1. Corrige LIDs conhecidos
+        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517997772618'], ['phone_number' => '64703850111065']);
+        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517996454039'], ['phone_number' => '181656010924208']);
+
+        // 2. Busca telefones com múltiplos registros
+        $duplicates = $DB->request([
+            'SELECT'  => ['phone_number', 'COUNT(*) AS total', 'MIN(id) AS keep_id'],
+            'FROM'    => 'glpi_plugin_whatsappsimples_chats',
+            'GROUPBY' => 'phone_number',
+            'HAVING'  => ['total' => ['>', 1]]
+        ]);
+
+        foreach ($duplicates as $dup) {
+            $phone  = $dup['phone_number'];
+            $keepId = (int) $dup['keep_id'];
+
+            $otherRows = $DB->request([
+                'SELECT' => ['id'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => [
+                    'phone_number' => $phone,
+                    'id'           => ['NE', $keepId]
+                ]
+            ]);
+
+            $removeIds = [];
+            foreach ($otherRows as $r) {
+                $removeIds[] = (int) $r['id'];
+            }
+
+            if (!empty($removeIds)) {
+                // Relinca todas as mensagens para o registro unico mantido
+                $DB->update('glpi_plugin_whatsappsimples_messages', ['chats_id' => $keepId], ['chats_id' => $removeIds]);
+                // Remove os registros duplicados de chats
+                $DB->delete('glpi_plugin_whatsappsimples_chats', ['id' => $removeIds]);
+            }
+        }
     }
 }
