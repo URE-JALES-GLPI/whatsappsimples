@@ -25,69 +25,84 @@ final class GetChatsController extends AbstractController
         $currentUserId = (int) Session::getLoginUserID();
 
         $chats = [];
+        $seenNumbers = [];
 
         try {
-            // Unificação Simples e Direta: GROUP BY phone_number garante 1 único contato por linha na lista da esquerda!
             if ($tab === 'mine') {
                 $iterator = $DB->request([
-                    'SELECT'  => ['MAX(id) AS id', 'phone_number', 'MAX(contact_name) AS contact_name', 'MAX(users_id) AS users_id', 'MAX(status) AS status', 'MAX(date_mod) AS max_date_mod'],
-                    'FROM'    => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'   => [
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
                         'users_id' => $currentUserId,
                         'status'   => ['in_progress', 'pending']
                     ],
-                    'GROUPBY' => 'phone_number',
-                    'ORDER'   => 'max_date_mod DESC'
+                    'ORDER'  => 'date_mod DESC'
                 ]);
 
                 foreach ($iterator as $row) {
+                    $phone = $row['phone_number'];
+                    if (isset($seenNumbers[$phone])) {
+                        continue; // Deduplica na memória mantendo 1 único registro mais recente por número
+                    }
+                    $seenNumbers[$phone] = true;
+
                     $chats[] = [
                         'id'           => (int) $row['id'],
                         'phone_number' => $row['phone_number'],
                         'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
                         'users_id'     => (int) $row['users_id'],
                         'status'       => $row['status'],
-                        'date_mod'     => $row['max_date_mod'] ?? date('Y-m-d H:i:s'),
+                        'date_mod'     => $row['date_mod'],
                     ];
                 }
             } elseif ($tab === 'queue') {
                 $iterator = $DB->request([
-                    'SELECT'  => ['MAX(id) AS id', 'phone_number', 'MAX(contact_name) AS contact_name', 'MAX(users_id) AS users_id', 'MAX(status) AS status', 'MAX(date_mod) AS max_date_mod'],
-                    'FROM'    => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'   => [
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
                         'users_id' => 0,
                         'status'   => ['pending', 'in_progress']
                     ],
-                    'GROUPBY' => 'phone_number',
-                    'ORDER'   => 'max_date_mod DESC'
+                    'ORDER'  => 'date_mod DESC'
                 ]);
 
                 foreach ($iterator as $row) {
+                    $phone = $row['phone_number'];
+                    if (isset($seenNumbers[$phone])) {
+                        continue;
+                    }
+                    $seenNumbers[$phone] = true;
+
                     $chats[] = [
                         'id'           => (int) $row['id'],
                         'phone_number' => $row['phone_number'],
                         'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
                         'users_id'     => (int) $row['users_id'],
                         'status'       => $row['status'],
-                        'date_mod'     => $row['max_date_mod'] ?? date('Y-m-d H:i:s'),
+                        'date_mod'     => $row['date_mod'],
                     ];
                 }
             } elseif ($tab === 'all') {
                 $iterator = $DB->request([
-                    'SELECT'  => ['MAX(id) AS id', 'phone_number', 'MAX(contact_name) AS contact_name', 'MAX(users_id) AS users_id', 'MAX(status) AS status', 'MAX(date_mod) AS max_date_mod'],
-                    'FROM'    => 'glpi_plugin_whatsappsimples_chats',
-                    'GROUPBY' => 'phone_number',
-                    'ORDER'   => 'max_date_mod DESC'
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'ORDER'  => 'date_mod DESC'
                 ]);
 
                 foreach ($iterator as $row) {
+                    $phone = $row['phone_number'];
+                    if (isset($seenNumbers[$phone])) {
+                        continue;
+                    }
+                    $seenNumbers[$phone] = true;
+
                     $chats[] = [
                         'id'           => (int) $row['id'],
                         'phone_number' => $row['phone_number'],
                         'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
                         'users_id'     => (int) $row['users_id'],
                         'status'       => $row['status'],
-                        'date_mod'     => $row['max_date_mod'] ?? date('Y-m-d H:i:s'),
+                        'date_mod'     => $row['date_mod'],
                     ];
                 }
             }
