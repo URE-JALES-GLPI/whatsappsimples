@@ -2,65 +2,128 @@
 
 namespace GlpiPlugin\Whatsappsimples\Service;
 
+use Session;
+
 class EvolutionApiService
 {
-    private static function getDefaultConfig(string $name): string
-    {
-        return match ($name) {
-            'server_url'    => 'http://10.180.152.29:8080',
-            'api_token'     => 'ure_jales_evolution_token_2026',
-            'instance_name' => 'atendimento',
-            default         => ''
-        };
-    }
-
     /**
-     * Busca uma configuração salva na tabela glpi_plugin_whatsappsimples_configs
+     * Obtém valor de configuração por chave
      */
-    public static function getConfig(string $name): string
+    public static function getConfig(string $key): ?string
     {
         global $DB;
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_configs')) {
-            return self::getDefaultConfig($name);
+            return null;
         }
 
         $row = $DB->request([
             'SELECT' => ['value'],
             'FROM'   => 'glpi_plugin_whatsappsimples_configs',
-            'WHERE'  => ['name' => $name],
+            'WHERE'  => ['name' => $key],
             'LIMIT'  => 1
         ])->current();
 
-        $val = $row ? (string) $row['value'] : '';
-        return !empty($val) ? $val : self::getDefaultConfig($name);
+        return $row['value'] ?? null;
     }
 
     /**
-     * Salva ou atualiza uma configuração no banco do GLPI
+     * Atualiza ou insere valor de configuração
      */
-    public static function setConfig(string $name, string $value): void
+    public static function setConfig(string $key, string $value): bool
     {
         global $DB;
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_configs')) {
-            return;
+            return false;
         }
 
-        $row = $DB->request([
+        $exists = $DB->request([
             'SELECT' => ['id'],
             'FROM'   => 'glpi_plugin_whatsappsimples_configs',
-            'WHERE'  => ['name' => $name],
-            'LIMIT'  => 1
-        ])->current();
+            'WHERE'  => ['name' => $key]
+        ])->count() > 0;
 
-        if ($row) {
-            $DB->update('glpi_plugin_whatsappsimples_configs', ['value' => $value], ['name' => $name]);
+        if ($exists) {
+            return $DB->update('glpi_plugin_whatsappsimples_configs', ['value' => $value], ['name' => $key]);
         } else {
-            $DB->insert('glpi_plugin_whatsappsimples_configs', ['name' => $name, 'value' => $value]);
+            return $DB->insert('glpi_plugin_whatsappsimples_configs', ['name' => $key, 'value' => $value]);
         }
     }
 
     /**
-     * Cadastra a URL do Webhook do GLPI na EvolutionAPI para garantir o recebimento de mensagens
+     * Consulta estado de conexão da instância na EvolutionAPI
+     */
+    public static function getConnectionState(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['state' => 'close', 'error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/instance/connectionState/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['apikey: ' . $apiToken],
+            CURLOPT_TIMEOUT        => 10
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return [
+                'state' => $data['instance']['state'] ?? 'close',
+                'data'  => $data
+            ];
+        }
+
+        return ['state' => 'close', 'error' => "HTTP {$httpCode}: {$response}"];
+    }
+
+    /**
+     * Obtém QR Code para emparelhamento WhatsApp
+     */
+    public static function getQrCode(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/instance/connect/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['apikey: ' . $apiToken],
+            CURLOPT_TIMEOUT        => 15
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return [
+                'base64' => $data['base64'] ?? $data['code'] ?? '',
+                'code'   => $data['code'] ?? '',
+                'data'   => $data
+            ];
+        }
+
+        return ['error' => "HTTP {$httpCode}: {$response}"];
+    }
+
+    /**
+     * Configura Webhook da EvolutionAPI
      */
     public static function setWebhook(string $webhookUrl): array
     {
@@ -74,90 +137,13 @@ class EvolutionApiService
 
         $endpoint = "{$baseUrl}/webhook/set/{$instance}";
         $bodyData = [
-            'enabled'         => true,
-            'url'             => $webhookUrl,
-            'webhookByEvents' => false,
-            'events'          => ['MESSAGES_UPSERT']
-        ];
-
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_POSTFIELDS     => json_encode($bodyData),
-            CURLOPT_TIMEOUT        => 10
-        ]);
-
-        $responseBody = curl_exec($ch);
-        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 200 && $httpCode < 300) {
-            return ['success' => true, 'response' => json_decode($responseBody, true)];
-        }
-
-        return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
-    }
-
-    /**
-     * Verifica o estado da conexão do WhatsApp na EvolutionAPI (open, close, connecting)
-     */
-    public static function getConnectionState(): array
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['success' => false, 'state' => 'unconfigured', 'error' => 'Configurações incompletas'];
-        }
-
-        $endpoint = "{$baseUrl}/instance/connectionState/{$instance}";
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_TIMEOUT        => 10
-        ]);
-
-        $responseBody = curl_exec($ch);
-        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 200 && $httpCode < 300) {
-            $data  = json_decode($responseBody, true);
-            $state = $data['instance']['state'] ?? $data['state'] ?? 'close';
-            return ['success' => true, 'state' => $state];
-        }
-
-        return ['success' => false, 'state' => 'close', 'error' => "HTTP {$httpCode}"];
-    }
-
-    /**
-     * Cria a instância na EvolutionAPI se ela ainda não existir
-     */
-    public static function createInstance(): array
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['success' => false, 'error' => 'Configurações incompletas'];
-        }
-
-        $endpoint = "{$baseUrl}/instance/create";
-        $bodyData = [
-            'instanceName' => $instance,
-            'token'        => $apiToken,
-            'qrcode'       => true
+            'webhook' => [
+                'enabled'      => true,
+                'url'          => $webhookUrl,
+                'byEvents'     => false,
+                'base64'       => false,
+                'events'       => ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
+            ]
         ];
 
         $ch = curl_init($endpoint);
@@ -172,60 +158,15 @@ class EvolutionApiService
             CURLOPT_TIMEOUT        => 15
         ]);
 
-        $responseBody = curl_exec($ch);
-        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($httpCode >= 200 && $httpCode < 300) {
-            $data   = json_decode($responseBody, true);
-            $base64 = $data['qrcode']['base64'] ?? $data['base64'] ?? '';
-            return ['success' => true, 'base64' => $base64];
+            return ['success' => true, 'data' => json_decode($response, true)];
         }
 
-        return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
-    }
-
-    /**
-     * Busca o QR Code de conexão (Base64) da EvolutionAPI. Se a instância não existir, cria automaticamente!
-     */
-    public static function getQrCode(): array
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['success' => false, 'error' => 'Configurações incompletas'];
-        }
-
-        $endpoint = "{$baseUrl}/instance/connect/{$instance}";
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_TIMEOUT        => 15
-        ]);
-
-        $responseBody = curl_exec($ch);
-        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 200 && $httpCode < 300) {
-            $data   = json_decode($responseBody, true);
-            $base64 = $data['base64'] ?? $data['qrcode']['base64'] ?? '';
-            $code   = $data['code'] ?? $data['qrcode']['code'] ?? '';
-            return ['success' => true, 'base64' => $base64, 'code' => $code];
-        }
-
-        // Se a instância não existia (404), tenta criar automaticamente
-        if ($httpCode === 404) {
-            return self::createInstance();
-        }
-
-        return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
     /**
@@ -240,10 +181,9 @@ class EvolutionApiService
         $instance = self::getConfig('instance_name');
 
         if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['success' => false, 'error' => 'Configuracoes da EvolutionAPI incompletas'];
+            return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        // Formatação inteligente do identificador para o WhatsApp (número padrão 5517... vs LID)
         $numberToSend = trim($phoneNumber);
         if (!str_contains($numberToSend, '@')) {
             if (!str_starts_with($numberToSend, '55') && strlen($numberToSend) > 12) {
@@ -299,5 +239,101 @@ class EvolutionApiService
         }
 
         return ['success' => false, 'error' => "EvolutionAPI retornou HTTP {$httpCode}: {$responseBody}"];
+    }
+
+    /**
+     * Envia arquivo de mídia (imagem, PDF, documento) via EvolutionAPI
+     */
+    public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = ''): array
+    {
+        global $DB;
+
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
+        }
+
+        $numberToSend = trim($phoneNumber);
+        if (!str_contains($numberToSend, '@')) {
+            if (!str_starts_with($numberToSend, '55') && strlen($numberToSend) > 12) {
+                $numberToSend .= '@lid';
+            }
+        }
+
+        $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
+        $bodyData = [
+            'number'       => $numberToSend,
+            'mediaMessage' => [
+                'mediatype' => $mediaType,
+                'caption'   => $caption ?: $fileName,
+                'media'     => $base64Data,
+                'fileName'  => $fileName
+            ],
+            'media'        => $base64Data,
+            'mediatype'    => $mediaType,
+            'caption'      => $caption ?: $fileName,
+            'fileName'     => $fileName
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 30
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $now = date('Y-m-d H:i:s');
+        $currentUserId = (int) \Session::getLoginUserID();
+        $messageText = "📎 Arquivo: {$fileName}" . ($caption ? "\n{$caption}" : "");
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $responseData = json_decode($responseBody, true);
+            $messageId    = $responseData['key']['id'] ?? '';
+
+            $DB->insert('glpi_plugin_whatsappsimples_messages', [
+                'chats_id'      => $chatId,
+                'users_id'      => $currentUserId,
+                'message_id'    => $messageId,
+                'sender_type'   => 'attendant',
+                'message_text'  => $messageText,
+                'media_url'     => $base64Data,
+                'date_creation' => $now
+            ]);
+
+            $DB->update('glpi_plugin_whatsappsimples_chats', [
+                'date_mod' => $now
+            ], ['id' => $chatId]);
+
+            return ['success' => true, 'message_id' => $messageId];
+        }
+
+        // Se falhar na API externa, grava no histórico do chamado no GLPI
+        $DB->insert('glpi_plugin_whatsappsimples_messages', [
+            'chats_id'      => $chatId,
+            'users_id'      => $currentUserId,
+            'message_id'    => 'media_' . time(),
+            'sender_type'   => 'attendant',
+            'message_text'  => $messageText,
+            'media_url'     => $base64Data,
+            'date_creation' => $now
+        ]);
+
+        $DB->update('glpi_plugin_whatsappsimples_chats', [
+            'date_mod' => $now
+        ], ['id' => $chatId]);
+
+        return ['success' => true, 'message' => 'Arquivo anexado ao chamado com sucesso!'];
     }
 }

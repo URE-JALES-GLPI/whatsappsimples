@@ -30,10 +30,6 @@ final class SendMessageController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Dados inválidos: informe o atendimento ou número'], 400);
         }
 
-        if (empty($text)) {
-            return new JsonResponse(['success' => false, 'error' => 'Digite um texto para enviar'], 400);
-        }
-
         $currentUserId = (int) Session::getLoginUserID();
         $now           = date('Y-m-d H:i:s');
 
@@ -48,14 +44,10 @@ final class SendMessageController extends AbstractController
         }
 
         if (!$chat && !empty($phoneNumber)) {
-            // Localiza ou cria atendimento ativo para o número fornecido
             $chat = $DB->request([
                 'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'WHERE'  => [
-                    'phone_number' => $phoneNumber,
-                    'status'       => ['pending', 'in_progress']
-                ],
+                'WHERE'  => ['phone_number' => $phoneNumber],
                 'ORDER'  => ['id DESC'],
                 'LIMIT'  => 1
             ])->current();
@@ -85,7 +77,32 @@ final class SendMessageController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Chat não encontrado'], 404);
         }
 
-        // Dispara mensagem via EvolutionAPI
+        // 1. Processamento de Upload de Arquivos
+        $uploadedFile = $request->files->get('file');
+        if ($uploadedFile) {
+            $fileName  = $uploadedFile->getClientOriginalName();
+            $mimeType  = $uploadedFile->getClientMimeType() ?: 'application/octet-stream';
+            $fileData  = file_get_contents($uploadedFile->getPathname());
+            $base64    = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
+
+            $mediaType = 'document';
+            if (str_starts_with($mimeType, 'image/')) {
+                $mediaType = 'image';
+            } elseif (str_starts_with($mimeType, 'audio/')) {
+                $mediaType = 'audio';
+            } elseif (str_starts_with($mimeType, 'video/')) {
+                $mediaType = 'video';
+            }
+
+            $result = EvolutionApiService::sendMedia($chatId, (string) $chat['phone_number'], $mediaType, $base64, $fileName, $text);
+            return new JsonResponse($result);
+        }
+
+        if (empty($text)) {
+            return new JsonResponse(['success' => false, 'error' => 'Digite um texto ou anexe um arquivo para enviar'], 400);
+        }
+
+        // 2. Dispara mensagem de texto via EvolutionAPI
         $result = EvolutionApiService::sendMessage($chatId, (string) $chat['phone_number'], $text);
 
         if (!empty($result['success'])) {

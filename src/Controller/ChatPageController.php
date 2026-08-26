@@ -21,10 +21,9 @@ final class ChatPageController extends AbstractController
 
         ?>
         <style>
-            /* STYLES FIÉIS AO DIGISAC (Digisac_Exemplo_Interface.png) */
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-            .digisac-app {
+            .omni-app {
                 font-family: 'Inter', system-ui, -apple-system, sans-serif;
                 display: flex;
                 flex-direction: column;
@@ -32,15 +31,16 @@ final class ChatPageController extends AbstractController
                 background: #f1f5f9;
                 border-radius: 8px;
                 overflow: hidden;
-                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
                 border: 1px solid #cbd5e1;
                 margin-top: -5px;
+                position: relative;
             }
 
-            /* TOP NAVBAR DIGISAC */
-            .digisac-navbar {
+            /* TOP NAVBAR OMNICHANNEL */
+            .omni-navbar {
                 height: 48px;
-                background: #2c3e50;
+                background: #1e293b;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
@@ -49,24 +49,24 @@ final class ChatPageController extends AbstractController
                 user-select: none;
             }
 
-            .digisac-brand {
+            .omni-brand {
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                font-size: 1.15rem;
+                font-size: 1.1rem;
                 font-weight: 700;
-                letter-spacing: -0.5px;
                 color: #ffffff;
+                letter-spacing: -0.3px;
             }
-            .digisac-brand span { color: #38bdf8; }
+            .omni-brand span { color: #38bdf8; }
 
-            .digisac-nav-tools {
+            .omni-nav-tools {
                 display: flex;
                 align-items: center;
                 gap: 4px;
             }
 
-            .digisac-nav-icon {
+            .omni-nav-icon {
                 width: 34px;
                 height: 34px;
                 display: flex;
@@ -77,16 +77,15 @@ final class ChatPageController extends AbstractController
                 cursor: pointer;
                 font-size: 1.1rem;
                 transition: all 0.15s;
-                position: relative;
             }
-            .digisac-nav-icon:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
-            .digisac-nav-icon.active {
-                background: #1e293b;
+            .omni-nav-icon:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
+            .omni-nav-icon.active {
+                background: #0f172a;
                 color: #ffffff;
-                border: 2px solid #ef4444; /* Destaque em vermelho idêntico à imagem de exemplo */
+                border: 2px solid #ef4444;
             }
 
-            .digisac-user-badge {
+            .omni-user-badge {
                 width: 28px;
                 height: 28px;
                 border-radius: 50%;
@@ -100,15 +99,15 @@ final class ChatPageController extends AbstractController
                 margin-left: 8px;
             }
 
-            /* BODY LAYOUT (SIDEBAR + CHAT) */
-            .digisac-body {
+            /* BODY LAYOUT */
+            .omni-body {
                 flex: 1;
                 display: flex;
                 overflow: hidden;
             }
 
             /* SIDEBAR ESQUERDA */
-            .digisac-sidebar {
+            .omni-sidebar {
                 width: 360px;
                 background: #ffffff;
                 border-right: 1px solid #e2e8f0;
@@ -116,7 +115,7 @@ final class ChatPageController extends AbstractController
                 flex-direction: column;
             }
 
-            .digisac-sidebar-header {
+            .omni-sidebar-header {
                 padding: 12px 16px 8px 16px;
                 display: flex;
                 align-items: center;
@@ -126,27 +125,27 @@ final class ChatPageController extends AbstractController
                 color: #1e293b;
             }
 
-            .digisac-search-box {
+            .omni-search-box {
                 padding: 0 16px 8px 16px;
                 display: flex;
                 gap: 8px;
             }
 
-            .digisac-search-input-wrap {
+            .omni-search-input-wrap {
                 flex: 1;
                 position: relative;
                 display: flex;
                 align-items: center;
             }
 
-            .digisac-search-input-wrap span {
+            .omni-search-input-wrap span {
                 position: absolute;
                 left: 10px;
                 color: #94a3b8;
                 font-size: 0.9rem;
             }
 
-            .digisac-search-input {
+            .omni-search-input {
                 width: 100%;
                 padding: 7px 10px 7px 32px;
                 border: 1px solid #cbd5e1;
@@ -154,11 +153,10 @@ final class ChatPageController extends AbstractController
                 font-size: 0.85rem;
                 outline: none;
                 background: #f8fafc;
-                transition: border-color 0.15s;
             }
-            .digisac-search-input:focus { border-color: #0284c7; background: #ffffff; }
+            .omni-search-input:focus { border-color: #0284c7; background: #ffffff; }
 
-            .digisac-filter-btn {
+            .omni-filter-btn {
                 width: 32px;
                 height: 32px;
                 border: 1px solid #cbd5e1;
@@ -171,14 +169,14 @@ final class ChatPageController extends AbstractController
                 cursor: pointer;
             }
 
-            /* ABAS DIGISAC (CHATS, FILA, CONTATOS) */
-            .digisac-tabs {
+            /* ABAS (CHATS, FILA, CONTATOS) */
+            .omni-tabs {
                 display: flex;
                 border-bottom: 1px solid #e2e8f0;
                 padding: 0 8px;
             }
 
-            .digisac-tab-btn {
+            .omni-tab-btn {
                 flex: 1;
                 padding: 10px 4px;
                 border: none;
@@ -194,12 +192,12 @@ final class ChatPageController extends AbstractController
                 border-bottom: 2px solid transparent;
                 transition: all 0.15s;
             }
-            .digisac-tab-btn.active {
+            .omni-tab-btn.active {
                 color: #0284c7;
                 border-bottom-color: #0284c7;
             }
 
-            .digisac-tab-badge {
+            .omni-tab-badge {
                 padding: 1px 6px;
                 border-radius: 10px;
                 font-size: 0.7rem;
@@ -207,12 +205,12 @@ final class ChatPageController extends AbstractController
                 background: #e2e8f0;
                 color: #475569;
             }
-            .digisac-tab-btn.active .digisac-tab-badge {
+            .omni-tab-btn.active .omni-tab-badge {
                 background: #0284c7;
                 color: #ffffff;
             }
 
-            .digisac-subsort {
+            .omni-subsort {
                 padding: 6px 16px;
                 font-size: 0.75rem;
                 color: #64748b;
@@ -222,15 +220,15 @@ final class ChatPageController extends AbstractController
                 justify-content: space-between;
                 align-items: center;
             }
-            .digisac-subsort span { color: #0284c7; font-weight: 600; cursor: pointer; }
+            .omni-subsort span { color: #0284c7; font-weight: 600; cursor: pointer; }
 
             /* LISTA DE CHATS */
-            .digisac-chat-list {
+            .omni-chat-list {
                 flex: 1;
                 overflow-y: auto;
             }
 
-            .digisac-chat-card {
+            .omni-chat-card {
                 display: flex;
                 align-items: center;
                 gap: 12px;
@@ -238,23 +236,22 @@ final class ChatPageController extends AbstractController
                 border-bottom: 1px solid #f1f5f9;
                 cursor: pointer;
                 transition: background 0.15s;
-                position: relative;
             }
-            .digisac-chat-card:hover { background: #f8fafc; }
-            .digisac-chat-card.selected {
+            .omni-chat-card:hover { background: #f8fafc; }
+            .omni-chat-card.selected {
                 background: #e0f2fe;
                 border-left: 4px solid #0284c7;
             }
 
-            .digisac-avatar-wrap {
+            .omni-avatar-wrap {
                 position: relative;
             }
 
-            .digisac-avatar {
+            .omni-avatar {
                 width: 42px;
                 height: 42px;
                 border-radius: 50%;
-                background: #64748b;
+                background: #0284c7;
                 color: #ffffff;
                 font-weight: 700;
                 font-size: 1rem;
@@ -264,7 +261,7 @@ final class ChatPageController extends AbstractController
                 text-transform: uppercase;
             }
 
-            .digisac-avatar-icon {
+            .omni-avatar-icon {
                 position: absolute;
                 bottom: -2px;
                 right: -2px;
@@ -280,19 +277,19 @@ final class ChatPageController extends AbstractController
                 border: 2px solid #ffffff;
             }
 
-            .digisac-card-info {
+            .omni-card-info {
                 flex: 1;
                 min-width: 0;
             }
 
-            .digisac-card-row1 {
+            .omni-card-row1 {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 margin-bottom: 2px;
             }
 
-            .digisac-card-name {
+            .omni-card-name {
                 font-weight: 600;
                 font-size: 0.9rem;
                 color: #1e293b;
@@ -301,12 +298,12 @@ final class ChatPageController extends AbstractController
                 text-overflow: ellipsis;
             }
 
-            .digisac-card-time {
+            .omni-card-time {
                 font-size: 0.72rem;
                 color: #94a3b8;
             }
 
-            .digisac-card-row2 {
+            .omni-card-row2 {
                 display: flex;
                 align-items: center;
                 gap: 4px;
@@ -318,7 +315,7 @@ final class ChatPageController extends AbstractController
             }
 
             /* MAIN CHAT WINDOW */
-            .digisac-main {
+            .omni-main {
                 flex: 1;
                 display: flex;
                 flex-direction: column;
@@ -327,7 +324,7 @@ final class ChatPageController extends AbstractController
             }
 
             /* CHAT HEADER BAR */
-            .digisac-chat-header {
+            .omni-chat-header {
                 height: 54px;
                 background: #ffffff;
                 border-bottom: 1px solid #cbd5e1;
@@ -338,19 +335,19 @@ final class ChatPageController extends AbstractController
                 z-index: 10;
             }
 
-            .digisac-header-contact {
+            .omni-header-contact {
                 display: flex;
                 align-items: center;
                 gap: 12px;
             }
 
-            .digisac-header-tags {
+            .omni-header-tags {
                 display: flex;
                 align-items: center;
                 gap: 6px;
             }
 
-            .digisac-tag-badge {
+            .omni-tag-badge {
                 padding: 3px 8px;
                 border-radius: 12px;
                 font-size: 0.72rem;
@@ -359,25 +356,10 @@ final class ChatPageController extends AbstractController
                 align-items: center;
                 gap: 4px;
             }
-            .digisac-tag-whatsapp { background: #22c55e; color: #ffffff; }
-            .digisac-tag-dept { background: #64748b; color: #ffffff; }
-            .digisac-tag-user { background: #64748b; color: #ffffff; }
+            .omni-tag-whatsapp { background: #22c55e; color: #ffffff; }
+            .omni-tag-dept { background: #64748b; color: #ffffff; }
 
-            .digisac-header-actions {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                color: #64748b;
-            }
-
-            .digisac-action-btn {
-                cursor: pointer;
-                font-size: 1.1rem;
-                transition: color 0.15s;
-            }
-            .digisac-action-btn:hover { color: #0284c7; }
-
-            .digisac-finish-btn {
+            .omni-finish-btn {
                 padding: 6px 14px;
                 background: #ef4444;
                 color: #ffffff;
@@ -391,10 +373,10 @@ final class ChatPageController extends AbstractController
                 gap: 6px;
                 transition: background 0.15s;
             }
-            .digisac-finish-btn:hover { background: #dc2626; }
+            .omni-finish-btn:hover { background: #dc2626; }
 
             /* MESSAGES AREA */
-            .digisac-messages-area {
+            .omni-messages-area {
                 flex: 1;
                 padding: 20px;
                 overflow-y: auto;
@@ -406,7 +388,7 @@ final class ChatPageController extends AbstractController
                 background-size: 16px 16px;
             }
 
-            .digisac-divider-badge {
+            .omni-divider-badge {
                 align-self: center;
                 background: #e2e8f0;
                 color: #475569;
@@ -418,7 +400,7 @@ final class ChatPageController extends AbstractController
                 margin: 8px 0;
             }
 
-            .digisac-bubble {
+            .omni-bubble {
                 max-width: 65%;
                 padding: 8px 12px 6px 12px;
                 border-radius: 8px;
@@ -428,72 +410,71 @@ final class ChatPageController extends AbstractController
                 word-wrap: break-word;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             }
-            .digisac-bubble.user {
+            .omni-bubble.user {
                 align-self: flex-start;
                 background: #ffffff;
                 color: #0f172a;
                 border-top-left-radius: 0;
             }
-            .digisac-bubble.attendant {
+            .omni-bubble.attendant {
                 align-self: flex-end;
                 background: #dcf8c6;
                 color: #0f172a;
                 border-top-right-radius: 0;
             }
 
-            .digisac-bubble-sender {
+            .omni-bubble-sender {
                 font-size: 0.75rem;
                 font-weight: 700;
                 margin-bottom: 2px;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 12px;
             }
-            .digisac-bubble.user .digisac-bubble-sender { color: #0284c7; }
-            .digisac-bubble.attendant .digisac-bubble-sender { color: #047857; }
+            .omni-bubble.user .omni-bubble-sender { color: #0284c7; }
+            .omni-bubble.attendant .omni-bubble-sender { color: #047857; }
 
-            .digisac-bubble-time {
+            .omni-bubble-time {
                 font-size: 0.65rem;
                 color: #94a3b8;
-                font-weight: normal;
                 float: right;
                 margin-top: 4px;
                 margin-left: 8px;
             }
 
             /* BOTTOM INPUT FOOTER */
-            .digisac-input-footer {
+            .omni-input-footer {
                 background: #ffffff;
                 border-top: 1px solid #cbd5e1;
                 padding: 10px 16px;
                 display: flex;
                 align-items: center;
                 gap: 10px;
+                position: relative;
             }
 
-            .digisac-footer-tools {
+            .omni-footer-tools {
                 display: flex;
                 align-items: center;
                 gap: 10px;
                 color: #64748b;
-                font-size: 1.15rem;
+                font-size: 1.2rem;
             }
-            .digisac-footer-tools span { cursor: pointer; transition: color 0.15s; }
-            .digisac-footer-tools span:hover { color: #0284c7; }
+            .omni-footer-tool-btn {
+                cursor: pointer;
+                transition: transform 0.1s, color 0.15s;
+                user-select: none;
+            }
+            .omni-footer-tool-btn:hover { color: #0284c7; transform: scale(1.1); }
 
-            .digisac-message-input {
+            .omni-message-input {
                 flex: 1;
-                padding: 8px 14px;
+                padding: 9px 16px;
                 border: 1px solid #cbd5e1;
                 border-radius: 20px;
                 font-size: 0.88rem;
                 outline: none;
-                transition: border-color 0.15s;
             }
-            .digisac-message-input:focus { border-color: #0284c7; }
+            .omni-message-input:focus { border-color: #0284c7; }
 
-            .digisac-send-btn {
+            .omni-send-btn {
                 width: 38px;
                 height: 38px;
                 border-radius: 50%;
@@ -507,100 +488,206 @@ final class ChatPageController extends AbstractController
                 font-size: 1.05rem;
                 transition: background 0.15s;
             }
-            .digisac-send-btn:hover { background: #0369a1; }
-            .digisac-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+            .omni-send-btn:hover { background: #0369a1; }
+            .omni-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+            /* POP-OVERS DE EMOJI E RESPOSTAS RÁPIDAS */
+            .omni-popover {
+                position: absolute;
+                bottom: 60px;
+                left: 16px;
+                background: #ffffff;
+                border: 1px solid #cbd5e1;
+                border-radius: 8px;
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15);
+                padding: 12px;
+                z-index: 100;
+                display: none;
+            }
+
+            .omni-emoji-grid {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 8px;
+                width: 240px;
+            }
+            .omni-emoji-item {
+                font-size: 1.3rem;
+                text-align: center;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 4px;
+                transition: background 0.15s;
+            }
+            .omni-emoji-item:hover { background: #f1f5f9; }
+
+            .omni-canned-list {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                width: 320px;
+                max-height: 250px;
+                overflow-y: auto;
+            }
+            .omni-canned-item {
+                padding: 8px 12px;
+                font-size: 0.83rem;
+                color: #334155;
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+            .omni-canned-item:hover {
+                background: #e0f2fe;
+                border-color: #0284c7;
+                color: #0369a1;
+            }
         </style>
 
-        <div class="digisac-app">
-            <!-- TOP NAVBAR DIGISAC -->
-            <div class="digisac-navbar">
-                <div class="digisac-brand">
-                    <span>digisac</span> | URE Omnichannel
+        <div class="omni-app">
+            <!-- TOP NAVBAR -->
+            <div class="omni-navbar">
+                <div class="omni-brand">
+                    <span>URE Omnichannel</span>
                 </div>
-                <div class="digisac-nav-tools">
-                    <div class="digisac-nav-icon active" title="Conversas / Chat">💬</div>
-                    <div class="digisac-nav-icon" title="Contatos">👥</div>
-                    <div class="digisac-nav-icon" title="Tags / Etiquetas">🏷️</div>
-                    <div class="digisac-nav-icon" title="Configurações">⚙️</div>
-                    <div class="digisac-user-badge">MD</div>
+                <div class="omni-nav-tools">
+                    <div class="omni-nav-icon active" title="Conversas / Chat">💬</div>
+                    <div class="omni-nav-icon" title="Contatos">👥</div>
+                    <div class="omni-nav-icon" title="Tags / Etiquetas">🏷️</div>
+                    <div class="omni-nav-icon" title="Configurações">⚙️</div>
+                    <div class="omni-user-badge">TI</div>
                 </div>
             </div>
 
             <!-- BODY LAYOUT -->
-            <div class="digisac-body">
+            <div class="omni-body">
                 <!-- SIDEBAR ESQUERDA -->
-                <div class="digisac-sidebar">
-                    <div class="digisac-sidebar-header">
+                <div class="omni-sidebar">
+                    <div class="omni-sidebar-header">
                         <span>Conversas</span>
                         <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;">&lt;</span>
                     </div>
 
-                    <div class="digisac-search-box">
-                        <div class="digisac-search-input-wrap">
+                    <div class="omni-search-box">
+                        <div class="omni-search-input-wrap">
                             <span>🔍</span>
-                            <input type="text" class="digisac-search-input" id="search-input" placeholder="Pesquisar por nome ou número..." oninput="filterChatList()">
+                            <input type="text" class="omni-search-input" id="search-input" placeholder="Pesquisar por nome ou número..." oninput="filterChatList()">
                         </div>
-                        <div class="digisac-filter-btn" title="Filtros">🔻</div>
+                        <div class="omni-filter-btn" title="Filtros">🔻</div>
                     </div>
 
-                    <!-- 3 ABAS DIGISAC -->
-                    <div class="digisac-tabs">
-                        <button class="digisac-tab-btn active" onclick="switchTab('mine', this)">
-                            💬 Chats <span class="digisac-tab-badge" id="badge-mine">0</span>
+                    <!-- 3 ABAS -->
+                    <div class="omni-tabs">
+                        <button class="omni-tab-btn active" onclick="switchTab('mine', this)">
+                            💬 Chats <span class="omni-tab-badge" id="badge-mine">0</span>
                         </button>
-                        <button class="digisac-tab-btn" onclick="switchTab('queue', this)">
-                            📥 Fila <span class="digisac-tab-badge" id="badge-queue">0</span>
+                        <button class="omni-tab-btn" onclick="switchTab('queue', this)">
+                            📥 Fila <span class="omni-tab-badge" id="badge-queue">0</span>
                         </button>
-                        <button class="digisac-tab-btn" onclick="switchTab('all', this)">
+                        <button class="omni-tab-btn" onclick="switchTab('all', this)">
                             👥 Contatos
                         </button>
                     </div>
 
-                    <div class="digisac-subsort">
+                    <div class="omni-subsort">
                         <span>Ordenar chamados por:</span>
                         <span>Opções de ordenação ↕</span>
                     </div>
 
                     <!-- LISTA DE CHATS -->
-                    <div class="digisac-chat-list" id="chat-list">
+                    <div class="omni-chat-list" id="chat-list">
                         <div style="padding:20px; text-align:center; color:#94a3b8; font-size:0.85rem;">Carregando atendimentos...</div>
                     </div>
                 </div>
 
                 <!-- MAIN CHAT WINDOW -->
-                <div class="digisac-main">
-                    <div class="digisac-chat-header" id="main-chat-header" style="display:none;">
-                        <div class="digisac-header-contact">
-                            <div class="digisac-avatar" id="header-avatar">?</div>
+                <div class="omni-main">
+                    <div class="omni-chat-header" id="main-chat-header" style="display:none;">
+                        <div class="omni-header-contact">
+                            <div class="omni-avatar" id="header-avatar">?</div>
                             <div>
                                 <div style="font-weight:700; font-size:0.95rem; color:#0f172a;" id="header-title">Contato</div>
                                 <div style="font-size:0.78rem; color:#64748b;" id="header-sub">Telefone</div>
                             </div>
                         </div>
 
-                        <div class="digisac-header-tags">
-                            <span class="digisac-tag-badge digisac-tag-whatsapp">🟢 Central WhatsApp</span>
-                            <span class="digisac-tag-badge digisac-tag-dept">🏷️ Suporte URE TI</span>
+                        <div class="omni-header-tags">
+                            <span class="omni-tag-badge omni-tag-whatsapp">🟢 Central WhatsApp</span>
+                            <span class="omni-tag-badge omni-tag-dept">🏷️ Suporte URE TI</span>
                             <div id="header-actions"></div>
                         </div>
                     </div>
 
-                    <div class="digisac-messages-area" id="messages-box">
+                    <div class="omni-messages-area" id="messages-box">
                         <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
                             <div style="font-size:3rem; margin-bottom:10px;">💬</div>
                             <div>Selecione uma conversa ao lado para iniciar o atendimento</div>
                         </div>
                     </div>
 
-                    <div class="digisac-input-footer">
-                        <div class="digisac-footer-tools">
-                            <span title="Anexar Arquivo">+</span>
-                            <span title="Emojis">😊</span>
-                            <span title="Respostas Rápidas">📄</span>
-                            <span title="Notas Internas">⚡</span>
+                    <!-- BARRA DE ENTRADA FUNCIONAL -->
+                    <div class="omni-input-footer">
+                        <!-- POP-OVER EMOJIS -->
+                        <div class="omni-popover" id="emoji-popover">
+                            <div style="font-weight:700; font-size:0.8rem; color:#64748b; margin-bottom:8px;">SELECIONE UM EMOJI</div>
+                            <div class="omni-emoji-grid">
+                                <span class="omni-emoji-item" onclick="insertEmoji('😊')">😊</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('👍')">👍</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('🚀')">🚀</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('📋')">📋</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('🙏')">🙏</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('✅')">✅</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('📞')">📞</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('⏳')">⏳</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('🤝')">🤝</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('💡')">💡</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('📍')">📍</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('📄')">📄</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('⚠️')">⚠️</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('❌')">❌</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('🤖')">🤖</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('👋')">👋</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('🎯')">🎯</span>
+                                <span class="omni-emoji-item" onclick="insertEmoji('💻')">💻</span>
+                            </div>
                         </div>
-                        <input type="text" class="digisac-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeypress="handleKeyPress(event)" disabled>
-                        <button class="digisac-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
+
+                        <!-- POP-OVER RESPOSTAS RÁPIDAS -->
+                        <div class="omni-popover" id="canned-popover">
+                            <div style="font-weight:700; font-size:0.8rem; color:#64748b; margin-bottom:8px;">RESPOSTAS RÁPIDAS</div>
+                            <div class="omni-canned-list">
+                                <div class="omni-canned-item" onclick="insertCanned('Olá! Como posso te ajudar hoje?')">
+                                    💬 <strong>Saudação:</strong> Olá! Como posso te ajudar hoje?
+                                </div>
+                                <div class="omni-canned-item" onclick="insertCanned('Seu chamado de suporte técnico está em andamento pela nossa equipe de TI.')">
+                                    🛠️ <strong>Em Andamento:</strong> Seu chamado de suporte está em andamento.
+                                </div>
+                                <div class="omni-canned-item" onclick="insertCanned('Aguarde um momento enquanto realizamos a verificação no sistema.')">
+                                    ⏳ <strong>Aguarde:</strong> Aguarde um momento enquanto verificamos no sistema.
+                                </div>
+                                <div class="omni-canned-item" onclick="insertCanned('Poderia nos enviar uma foto ou print do erro, por gentileza?')">
+                                    📷 <strong>Solicitar Print:</strong> Poderia nos enviar um print do erro?
+                                </div>
+                                <div class="omni-canned-item" onclick="insertCanned('Atendimento concluído com sucesso. Qualquer dúvida estamos à disposição!')">
+                                    ✅ <strong>Conclusão:</strong> Atendimento concluído com sucesso.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- INPUT INVISÍVEL DE UPLOAD DE ARQUIVOS -->
+                        <input type="file" id="file-input" style="display:none;" onchange="uploadSelectedFile(this)">
+
+                        <div class="omni-footer-tools">
+                            <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
+                            <span class="omni-footer-tool-btn" title="Emojis" onclick="togglePopover('emoji-popover')">😊</span>
+                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="togglePopover('canned-popover')">📄</span>
+                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">⚡</span>
+                        </div>
+
+                        <input type="text" class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeypress="handleKeyPress(event)" disabled>
+                        <button class="omni-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
                     </div>
                 </div>
             </div>
@@ -617,7 +704,7 @@ final class ChatPageController extends AbstractController
             function switchTab(tab, btn) {
                 currentTab = tab;
                 isContactTabActive = (tab === 'all');
-                document.querySelectorAll('.digisac-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.omni-tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 loadChats();
             }
@@ -628,7 +715,6 @@ final class ChatPageController extends AbstractController
                     const data = await res.json();
                     allLoadedChats = data.chats || [];
 
-                    // Atualiza contadores das abas
                     if (currentTab === 'mine') {
                         document.getElementById('badge-mine').innerText = allLoadedChats.length;
                     } else if (currentTab === 'queue') {
@@ -668,17 +754,17 @@ final class ChatPageController extends AbstractController
                     const isSelected = (c.id === activeChatId || c.phone_number === activePhoneNumber);
 
                     return `
-                        <div class="digisac-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
-                            <div class="digisac-avatar-wrap">
-                                <div class="digisac-avatar">${initials}</div>
-                                <div class="digisac-avatar-icon">💬</div>
+                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
+                            <div class="omni-avatar-wrap">
+                                <div class="omni-avatar">${initials}</div>
+                                <div class="omni-avatar-icon">💬</div>
                             </div>
-                            <div class="digisac-card-info">
-                                <div class="digisac-card-row1">
-                                    <div class="digisac-card-name">${c.contact_name}</div>
-                                    <div class="digisac-card-time">${formatTime(c.date_mod)}</div>
+                            <div class="omni-card-info">
+                                <div class="omni-card-row1">
+                                    <div class="omni-card-name">${c.contact_name}</div>
+                                    <div class="omni-card-time">${formatTime(c.date_mod)}</div>
                                 </div>
-                                <div class="digisac-card-row2">
+                                <div class="omni-card-row2">
                                     <span>✓✓</span> ${c.phone_number}
                                 </div>
                             </div>
@@ -699,7 +785,7 @@ final class ChatPageController extends AbstractController
                 const actionsBox = document.getElementById('header-actions');
                 if (!isContactTab && chatId > 0) {
                     actionsBox.innerHTML = `
-                        <button class="digisac-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
+                        <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
                     `;
                 } else if (isContactTab) {
                     actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
@@ -741,7 +827,7 @@ final class ChatPageController extends AbstractController
                         activeChatId = 0;
                         document.getElementById('main-chat-header').style.display = 'none';
                         document.getElementById('messages-box').innerHTML = `
-                            <div class="digisac-divider-badge">Atendimento encerrado com sucesso</div>
+                            <div class="omni-divider-badge">Atendimento encerrado com sucesso</div>
                         `;
                         document.getElementById('message-input').disabled = true;
                         document.getElementById('send-btn').disabled = true;
@@ -771,14 +857,14 @@ final class ChatPageController extends AbstractController
                     }
 
                     box.innerHTML = `
-                        <div class="digisac-divider-badge">Atendimento Iniciado</div>
+                        <div class="omni-divider-badge">Atendimento Iniciado</div>
                         ${data.messages.map(m => `
-                            <div class="digisac-bubble ${m.sender_type}">
-                                <div class="digisac-bubble-sender">
+                            <div class="omni-bubble ${m.sender_type}">
+                                <div class="omni-bubble-sender">
                                     <span>${m.sender_name || ''}</span>
                                 </div>
                                 <div>${escapeHtml(m.message_text)}</div>
-                                <div class="digisac-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
+                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                             </div>
                         `).join('')}
                     `;
@@ -828,6 +914,84 @@ final class ChatPageController extends AbstractController
                     console.error(e);
                 }
             }
+
+            // UPLOAD E ENVIO DE ARQUIVOS (IMAGEM / PDF / DOCUMENTO)
+            async function uploadSelectedFile(inputEl) {
+                if (!inputEl.files || inputEl.files.length === 0) return;
+                const file = inputEl.files[0];
+                if (!activeChatId && !activePhoneNumber) {
+                    alert('Selecione uma conversa antes de enviar arquivos.');
+                    return;
+                }
+
+                try {
+                    const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
+                    const formData = new FormData();
+                    formData.append('chat_id', activeChatId || 0);
+                    formData.append('phone_number', activePhoneNumber || '');
+                    formData.append('file', file);
+                    if (csrfToken) {
+                        formData.append('_glpi_csrf_token', csrfToken);
+                    }
+
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-Glpi-Csrf-Token': csrfToken
+                        },
+                        body: formData
+                    });
+
+                    const data = await res.json();
+                    if (data.success) {
+                        loadMessages(isContactTabActive);
+                        loadChats();
+                    } else {
+                        alert('Erro ao enviar arquivo: ' + (data.error || 'Falha desconhecida'));
+                    }
+                } catch (e) {
+                    alert('Erro no envio do arquivo.');
+                    console.error(e);
+                } finally {
+                    inputEl.value = '';
+                }
+            }
+
+            // GESTÃO DE POP-OVERS DE EMOJIS E RESPOSTAS RÁPIDAS
+            function togglePopover(id) {
+                const popover = document.getElementById(id);
+                const isVisible = popover.style.display === 'block';
+                closeAllPopovers();
+                if (!isVisible) {
+                    popover.style.display = 'block';
+                }
+            }
+
+            function closeAllPopovers() {
+                document.querySelectorAll('.omni-popover').forEach(p => p.style.display = 'none');
+            }
+
+            function insertEmoji(emoji) {
+                const input = document.getElementById('message-input');
+                input.value += emoji;
+                input.focus();
+                closeAllPopovers();
+            }
+
+            function insertCanned(text) {
+                const input = document.getElementById('message-input');
+                input.value = text;
+                input.focus();
+                closeAllPopovers();
+            }
+
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.omni-input-footer')) {
+                    closeAllPopovers();
+                }
+            });
 
             function handleKeyPress(e) {
                 if (e.key === 'Enter') {
