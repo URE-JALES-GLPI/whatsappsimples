@@ -22,25 +22,58 @@ final class GetMessagesController extends AbstractController
             return new JsonResponse(['messages' => []]);
         }
 
-        $chatId = (int) $request->query->get('chat_id', 0);
-        if ($chatId <= 0) {
+        $chatId      = (int) $request->query->get('chat_id', 0);
+        $phoneNumber = trim((string) $request->query->get('phone_number', ''));
+
+        if ($chatId <= 0 && empty($phoneNumber)) {
             return new JsonResponse(['messages' => []]);
         }
 
-        $chat = $DB->request([
-            'SELECT' => ['id', 'contact_name', 'phone_number', 'users_id'],
-            'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => ['id' => $chatId],
-            'LIMIT'  => 1
-        ])->current();
+        $contactDisplayName = 'Contato';
+        $chatAssignedUserId = 0;
+        $chatsIds = [];
 
-        $contactDisplayName = !empty($chat['contact_name']) ? $chat['contact_name'] : ($chat['phone_number'] ?? 'Contato');
-        $chatAssignedUserId = (int) ($chat['users_id'] ?? 0);
+        if ($chatId > 0) {
+            $chatsIds = [$chatId];
+            $chat = $DB->request([
+                'SELECT' => ['id', 'contact_name', 'phone_number', 'users_id'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => ['id' => $chatId],
+                'LIMIT'  => 1
+            ])->current();
+
+            if ($chat) {
+                $contactDisplayName = !empty($chat['contact_name']) ? $chat['contact_name'] : ($chat['phone_number'] ?? 'Contato');
+                $chatAssignedUserId = (int) ($chat['users_id'] ?? 0);
+            }
+        } else {
+            // Busca todas as sessoes associadas ao numero de telefone
+            $chatsIterator = $DB->request([
+                'SELECT' => ['id', 'contact_name', 'phone_number'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => ['phone_number' => $phoneNumber]
+            ]);
+
+            foreach ($chatsIterator as $cRow) {
+                $chatsIds[] = (int) $cRow['id'];
+                if (!empty($cRow['contact_name'])) {
+                    $contactDisplayName = $cRow['contact_name'];
+                }
+            }
+
+            if (empty($contactDisplayName) || $contactDisplayName === 'Contato') {
+                $contactDisplayName = $phoneNumber;
+            }
+        }
+
+        if (empty($chatsIds)) {
+            return new JsonResponse(['messages' => []]);
+        }
 
         $iterator = $DB->request([
             'SELECT' => ['id', 'chats_id', 'users_id', 'sender_type', 'message_text', 'media_url', 'date_creation'],
             'FROM'   => 'glpi_plugin_whatsappsimples_messages',
-            'WHERE'  => ['chats_id' => $chatId],
+            'WHERE'  => ['chats_id' => $chatsIds],
             'ORDER'  => ['id ASC']
         ]);
 

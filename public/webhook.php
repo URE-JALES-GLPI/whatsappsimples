@@ -1,6 +1,5 @@
 <?php
 
-// Webhook seguro com Autenticação por Token Secreto para a EvolutionAPI no GLPI 11
 if (!defined('GLPI_ROOT')) {
     define('GLPI_ROOT', dirname(__DIR__, 2));
     include_once(GLPI_ROOT . "/config/config.php");
@@ -10,7 +9,6 @@ use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
 header('Content-Type: application/json');
 
-// 1. VALIDAÇÃO DE SEGURANÇA POR TOKEN SECRETO (API KEY)
 $expectedToken = EvolutionApiService::getConfig('api_token') ?: 'ure_jales_evolution_token_2026';
 
 $providedToken = $_SERVER['HTTP_APIKEY'] 
@@ -24,13 +22,11 @@ if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
     exit;
 }
 
-// 2. Chamada GET para teste de saúde
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     echo json_encode(['success' => true, 'message' => 'Webhook publico do WhatsAppSimples autenticado e ativo!']);
     exit;
 }
 
-// 3. Lê o payload JSON enviado pela EvolutionAPI
 $content = file_get_contents('php://input');
 $payload = json_decode($content, true);
 
@@ -54,7 +50,6 @@ if (!empty($key['fromMe'])) {
     exit;
 }
 
-// Extração inteligente do número de telefone real (DDI + DDD + Número)
 $rawJid = '';
 if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
     $rawJid = $data['sender'];
@@ -82,10 +77,15 @@ if (empty($phoneNumber) || empty($text)) {
 global $DB;
 $now = date('Y-m-d H:i:s');
 
+// Busca apenas sessoes ATIVAS
 $chatIterator = $DB->request([
-    'SELECT' => ['id'],
+    'SELECT' => ['id', 'status'],
     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-    'WHERE'  => ['phone_number' => $phoneNumber],
+    'WHERE'  => [
+        'phone_number' => $phoneNumber,
+        'status'       => ['pending', 'in_progress']
+    ],
+    'ORDER'  => ['id DESC'],
     'LIMIT'  => 1
 ]);
 
@@ -97,6 +97,7 @@ if ($row = $chatIterator->current()) {
         'date_mod'     => $now
     ], ['id' => $chatId]);
 } else {
+    // Cria nova sessao na Fila se a anterior estiver encerrada
     $DB->insert('glpi_plugin_whatsappsimples_chats', [
         'phone_number'  => $phoneNumber,
         'contact_name'  => $contactName,

@@ -40,7 +40,7 @@ function plugin_whatsappsimples_ensureTables(): void
         $DB->insert('glpi_plugin_whatsappsimples_configs', ['name' => 'instance_name', 'value' => 'atendimento']);
     }
 
-    // 2. Tabela de Sessões/Atendimentos (Chats) - Com first_response_date nativo!
+    // 2. Tabela de Sessões/Atendimentos (Chats)
     if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
         $query = "CREATE TABLE `glpi_plugin_whatsappsimples_chats` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
@@ -49,14 +49,20 @@ function plugin_whatsappsimples_ensureTables(): void
             `users_id` int(11) NOT NULL DEFAULT 0,
             `status` varchar(20) NOT NULL DEFAULT 'pending',
             `first_response_date` datetime DEFAULT NULL,
+            `date_closed` datetime DEFAULT NULL,
             `date_creation` datetime NOT NULL,
             `date_mod` datetime DEFAULT NULL,
             PRIMARY KEY (`id`),
             KEY `phone_number` (`phone_number`),
-            KEY `users_id` (`users_id`)
+            KEY `users_id` (`users_id`),
+            KEY `status` (`status`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         $DB->doQuery($query);
+    } else {
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'date_closed')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `date_closed` datetime DEFAULT NULL AFTER `first_response_date`");
+        }
     }
 
     // 3. Tabela de Histórico de Mensagens (Messages)

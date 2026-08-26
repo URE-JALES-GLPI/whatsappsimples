@@ -29,7 +29,6 @@ final class WebhookController extends AbstractController
     {
         global $DB;
 
-        // 1. VALIDAÇÃO DE SEGURANÇA POR TOKEN SECRETO (API KEY)
         $expectedToken = EvolutionApiService::getConfig('api_token') ?: 'ure_jales_evolution_token_2026';
 
         $providedToken = $request->headers->get('apikey') 
@@ -37,18 +36,14 @@ final class WebhookController extends AbstractController
             ?? $request->query->get('token') 
             ?? '';
 
-        // Comparação segura de hash em tempo constante para evitar ataques de temporização
         if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
-            error_log("[WhatsAppSimples Webhook] REJEITADO: Tentativa de acesso com token invalido ou ausente.");
             return new JsonResponse(['success' => false, 'error' => 'Acesso negado: Token de autenticacao invalido ou ausente'], 401);
         }
 
-        // Se for uma chamada GET para validação de saúde do webhook
         if ($request->isMethod('GET')) {
             return new JsonResponse(['success' => true, 'message' => 'Webhook do WhatsAppSimples autenticado e ativo!']);
         }
 
-        // 2. Lê o payload JSON enviado pela EvolutionAPI
         $content = $request->getContent();
         $payload = json_decode($content, true);
 
@@ -57,9 +52,7 @@ final class WebhookController extends AbstractController
         }
 
         $event = strtolower($payload['event'] ?? '');
-        error_log("[WhatsAppSimples Webhook] Evento autenticado recebido: {$event}");
 
-        // 3. Aceita eventos de mensagem 'messages.upsert' e 'messages_upsert'
         if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {
             return new JsonResponse(['success' => true, 'message' => 'Evento ignorado']);
         }
@@ -67,12 +60,10 @@ final class WebhookController extends AbstractController
         $data = $payload['data'] ?? [];
         $key  = $data['key'] ?? [];
 
-        // Ignora mensagens enviadas por nós mesmos (fromMe = true)
         if (!empty($key['fromMe'])) {
             return new JsonResponse(['success' => true, 'message' => 'Mensagem propria ignorada']);
         }
 
-        // Extração inteligente do número de telefone real (DDI + DDD + Número)
         $rawJid = '';
         if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
             $rawJid = $data['sender'];
@@ -89,7 +80,6 @@ final class WebhookController extends AbstractController
         $contactName = $data['pushName'] ?? 'Contato não salvo';
         $messageId   = $key['id'] ?? '';
 
-        // 5. Extrai o conteúdo de texto da mensagem
         $messageData = $data['message'] ?? [];
         $text        = $messageData['conversation'] ?? $messageData['extendedTextMessage']['text'] ?? '';
 
@@ -98,13 +88,16 @@ final class WebhookController extends AbstractController
         }
 
         $now = date('Y-m-d H:i:s');
-        error_log("[WhatsAppSimples Webhook] Gravando mensagem autenticada do numero {$phoneNumber}: {$text}");
 
-        // 6. Localiza ou cria a conversa na fila
+        // Busca apenas sessões ATIVAS (pending ou in_progress)
         $chatIterator = $DB->request([
-            'SELECT' => ['id'],
+            'SELECT' => ['id', 'status'],
             'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => ['phone_number' => $phoneNumber],
+            'WHERE'  => [
+                'phone_number' => $phoneNumber,
+                'status'       => ['pending', 'in_progress']
+            ],
+            'ORDER'  => ['id DESC'],
             'LIMIT'  => 1
         ]);
 
@@ -116,6 +109,7 @@ final class WebhookController extends AbstractController
                 'date_mod'     => $now
             ], ['id' => $chatId]);
         } else {
+            // Se o atendimento anterior foi ENCERRADO ou nao existe, cria um novo na Fila!
             $DB->insert('glpi_plugin_whatsappsimples_chats', [
                 'phone_number'  => $phoneNumber,
                 'contact_name'  => $contactName,
@@ -127,7 +121,6 @@ final class WebhookController extends AbstractController
             $chatId = (int) $DB->insertId();
         }
 
-        // 7. Salva a mensagem recebida vinculada ao chat
         if ($chatId > 0) {
             $DB->insert('glpi_plugin_whatsappsimples_messages', [
                 'chats_id'      => $chatId,
