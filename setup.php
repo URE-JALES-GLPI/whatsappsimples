@@ -16,6 +16,7 @@ if (class_exists(\Glpi\Http\Firewall::class)) {
     \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/public/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
+    \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/ajax/.+#', \Glpi\Http\Firewall::STRATEGY_AUTHENTICATED);
 }
 
 function plugin_init_whatsappsimples(): void
@@ -35,6 +36,7 @@ function plugin_init_whatsappsimples(): void
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/public/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
+        \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/ajax/.+#', \Glpi\Http\Firewall::STRATEGY_AUTHENTICATED);
     }
 
     Plugin::registerClass('PluginWhatsappsimplesProfile', ['addtabon' => 'Profile']);
