@@ -76,7 +76,7 @@ final class WebhookController extends AbstractController
                 $rawJid = $data['sender'] ?? $key['participant'] ?? $key['remoteJid'] ?? '';
             }
 
-            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+            $phoneNumber = self::normalizePhoneNumber($rawJid);
             $contactName = $data['pushName'] ?? 'Contato não salvo';
             $messageId   = $key['id'] ?? '';
 
@@ -157,6 +157,21 @@ final class WebhookController extends AbstractController
             self::logDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return new JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Normaliza numeros de telefone convertendo LIDs conhecidos para numeros de celular reais
+     */
+    private static function normalizePhoneNumber(string $rawJid): string
+    {
+        $clean = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+
+        $lidMap = [
+            '64703850111065'  => '5517997772618', // Leonardo Poiatti
+            '181656010924208' => '5517996454039'  // Marco Antonio
+        ];
+
+        return $lidMap[$clean] ?? $clean;
     }
 
     private static function logDebug(string $action, array $data = []): void
