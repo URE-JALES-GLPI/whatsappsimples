@@ -4,6 +4,16 @@ namespace GlpiPlugin\Whatsappsimples\Service;
 
 class EvolutionApiService
 {
+    private static function getDefaultConfig(string $name): string
+    {
+        return match ($name) {
+            'server_url'    => 'http://10.180.152.29:8080',
+            'api_token'     => 'ure_jales_evolution_token_2026',
+            'instance_name' => 'atendimento',
+            default         => ''
+        };
+    }
+
     /**
      * Busca uma configuração salva na tabela glpi_plugin_whatsappsimples_configs
      */
@@ -11,7 +21,7 @@ class EvolutionApiService
     {
         global $DB;
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_configs')) {
-            return '';
+            return self::getDefaultConfig($name);
         }
 
         $row = $DB->request([
@@ -21,7 +31,8 @@ class EvolutionApiService
             'LIMIT'  => 1
         ])->current();
 
-        return $row ? (string) $row['value'] : '';
+        $val = $row ? (string) $row['value'] : '';
+        return !empty($val) ? $val : self::getDefaultConfig($name);
     }
 
     /**

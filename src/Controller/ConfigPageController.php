@@ -79,6 +79,7 @@ final class ConfigPageController extends AbstractController
                 <div class="wa-cfg-sub">Informe as configurações do servidor EvolutionAPI rodando no seu ambiente</div>
 
                 <form method="POST">
+                    <input type="hidden" name="_glpi_csrf_token" value="<?= Session::getNewCSRFToken() ?>">
                     <div class="wa-form-group">
                         <label class="wa-label">URL do Servidor EvolutionAPI</label>
                         <input type="text" name="server_url" class="wa-input" value="<?= htmlspecialchars($serverUrl) ?>" placeholder="http://10.180.152.27:8080" required>
