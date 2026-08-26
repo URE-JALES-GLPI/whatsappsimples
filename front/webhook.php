@@ -54,23 +54,19 @@ try {
         exit;
     }
 
-    $data = $payload['data'] ?? [];
-    $key  = $data['key'] ?? [];
-
-    if (!empty($key['fromMe'])) {
-        echo json_encode(['success' => true, 'message' => 'Mensagem propria ignorada']);
-        exit;
-    }
+    $data  = $payload['data'] ?? [];
+    $key   = $data['key'] ?? [];
+    $isFromMe = !empty($key['fromMe']);
 
     $rawJid = '';
-    if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
+    if (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
+        $rawJid = $key['remoteJid'];
+    } elseif (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
         $rawJid = $data['sender'];
     } elseif (!empty($key['participant']) && str_contains($key['participant'], '@s.whatsapp.net')) {
         $rawJid = $key['participant'];
-    } elseif (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
-        $rawJid = $key['remoteJid'];
     } else {
-        $rawJid = $data['sender'] ?? $key['participant'] ?? $key['remoteJid'] ?? '';
+        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
     }
 
     $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
@@ -103,7 +99,7 @@ try {
     if ($activeChat) {
         $chatId = (int) $activeChat['id'];
         $DB->update('glpi_plugin_whatsappsimples_chats', [
-            'contact_name' => $contactName,
+            'contact_name' => ($isFromMe && !empty($activeChat['contact_name'])) ? $activeChat['contact_name'] : $contactName,
             'date_mod'     => $now
         ], ['id' => $chatId]);
     } else {
@@ -118,17 +114,15 @@ try {
         if ($previousChat) {
             $chatId = (int) $previousChat['id'];
             $DB->update('glpi_plugin_whatsappsimples_chats', [
-                'contact_name' => $contactName,
-                'status'       => 'pending',
-                'users_id'     => 0,
-                'date_mod'     => $now
+                'status'   => $isFromMe ? 'in_progress' : 'pending',
+                'date_mod' => $now
             ], ['id' => $chatId]);
         } else {
             $DB->insert('glpi_plugin_whatsappsimples_chats', [
                 'phone_number'  => $phoneNumber,
                 'contact_name'  => $contactName,
                 'users_id'      => 0,
-                'status'        => 'pending',
+                'status'        => $isFromMe ? 'in_progress' : 'pending',
                 'date_creation' => $now,
                 'date_mod'      => $now
             ]);
@@ -137,16 +131,28 @@ try {
     }
 
     if ($chatId > 0) {
-        $DB->insert('glpi_plugin_whatsappsimples_messages', [
-            'chats_id'      => $chatId,
-            'message_id'    => $messageId,
-            'sender_type'   => 'user',
-            'message_text'  => $text,
-            'date_creation' => $now
-        ]);
+        $senderType = $isFromMe ? 'attendant' : 'user';
+
+        $alreadyExists = $DB->request([
+            'SELECT' => ['id'],
+            'FROM'   => 'glpi_plugin_whatsappsimples_messages',
+            'WHERE'  => ['message_id' => $messageId],
+            'LIMIT'  => 1
+        ])->count() > 0;
+
+        if (!$alreadyExists) {
+            $DB->insert('glpi_plugin_whatsappsimples_messages', [
+                'chats_id'      => $chatId,
+                'users_id'      => 0,
+                'message_id'    => $messageId,
+                'sender_type'   => $senderType,
+                'message_text'  => $text,
+                'date_creation' => $now
+            ]);
+        }
     }
 
-    echo json_encode(['success' => true, 'message' => 'Mensagem recebida e registrada com sucesso']);
+    echo json_encode(['success' => true, 'message' => 'Mensagem processada com sucesso']);
 
 } catch (\Throwable $e) {
     logWebhookDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage()]);
