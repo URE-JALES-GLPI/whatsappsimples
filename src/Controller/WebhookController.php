@@ -10,10 +10,15 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class WebhookController extends AbstractController
 {
-    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['POST'])]
+    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         global $DB;
+
+        // Se for uma chamada GET (ex: teste do navegador ou healthcheck da EvolutionAPI)
+        if ($request->isMethod('GET')) {
+            return new JsonResponse(['success' => true, 'message' => 'Webhook do WhatsAppSimples ativo!']);
+        }
 
         // 1. Lê o body request JSON enviado pela EvolutionAPI
         $content = $request->getContent();
