@@ -131,13 +131,17 @@ final class SendMessageController extends AbstractController
             return new JsonResponse([
                 'success' => false,
                 'error'   => 'Erro interno ao processar envio: ' . $e->getMessage()
-            ], 200); // Retorna HTTP 200 em JSON para evitar SyntaxError no frontend
+            ], 200);
         }
     }
 
     private static function logDebug(string $action, array $data = []): void
     {
         $logFile = GLPI_ROOT . '/files/_log/whatsappsimples.log';
+        $logDir  = dirname($logFile);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
         $entry = sprintf("[%s] [SendMessageController] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
         @file_put_contents($logFile, $entry, FILE_APPEND);
     }

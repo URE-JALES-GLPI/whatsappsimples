@@ -89,8 +89,6 @@ final class WebhookController extends AbstractController
 
             $now = date('Y-m-d H:i:s');
 
-            // IMPLEMENTAÇÃO ESTRITA DO FLUXO LÓGICO DE ATENDIMENTOS (1 CHAT ATIVO POR CONTATO POR VEZ)
-            
             // 1. Busca se já existe um CHAT ATIVO (status = 'pending' OU 'in_progress')
             $activeChat = $DB->request([
                 'SELECT' => ['id', 'status', 'users_id'],
@@ -105,7 +103,6 @@ final class WebhookController extends AbstractController
 
             $chatId = 0;
             if ($activeChat) {
-                // Se existe chat ativo, usa o chat_id existente e atualiza a data de modificação (subindo para o topo)
                 $chatId = (int) $activeChat['id'];
                 $DB->update('glpi_plugin_whatsappsimples_chats', [
                     'contact_name' => $contactName,
@@ -113,7 +110,6 @@ final class WebhookController extends AbstractController
                 ], ['id' => $chatId]);
                 self::logDebug("CHAT_ATIVO_ENCONTRADO", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
             } else {
-                // Busca se existe algum chat prévio no banco
                 $previousChat = $DB->request([
                     'SELECT' => ['id'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -123,7 +119,6 @@ final class WebhookController extends AbstractController
                 ])->current();
 
                 if ($previousChat) {
-                    // Reabre o chat existente na Fila de Atendimento
                     $chatId = (int) $previousChat['id'];
                     $DB->update('glpi_plugin_whatsappsimples_chats', [
                         'contact_name' => $contactName,
@@ -133,7 +128,6 @@ final class WebhookController extends AbstractController
                     ], ['id' => $chatId]);
                     self::logDebug("CHAT_REABERTO_NA_FILA", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
                 } else {
-                    // Cria 1 NOVO registro de Chat na Fila
                     $DB->insert('glpi_plugin_whatsappsimples_chats', [
                         'phone_number'  => $phoneNumber,
                         'contact_name'  => $contactName,
@@ -147,7 +141,6 @@ final class WebhookController extends AbstractController
                 }
             }
 
-            // 2. Grava a mensagem vinculada ao chat_id
             if ($chatId > 0) {
                 $DB->insert('glpi_plugin_whatsappsimples_messages', [
                     'chats_id'      => $chatId,
@@ -169,6 +162,10 @@ final class WebhookController extends AbstractController
     private static function logDebug(string $action, array $data = []): void
     {
         $logFile = GLPI_ROOT . '/files/_log/whatsappsimples.log';
+        $logDir  = dirname($logFile);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
         $entry = sprintf("[%s] [WebhookController] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
         @file_put_contents($logFile, $entry, FILE_APPEND);
     }
