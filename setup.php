@@ -12,6 +12,10 @@ function plugin_init_whatsappsimples(): void
     $PLUGIN_HOOKS['csrf_compliant']['whatsappsimples'] = true;
     $PLUGIN_HOOKS['change_profile']['whatsappsimples'] = ['PluginWhatsappsimplesProfile', 'changeProfile'];
 
+    if (class_exists(\Glpi\Http\Firewall::class)) {
+        \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
+    }
+
     Plugin::registerClass('PluginWhatsappsimplesProfile', ['addtabon' => 'Profile']);
 
     if (Session::getLoginUserID()) {
