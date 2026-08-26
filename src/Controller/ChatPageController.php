@@ -166,11 +166,14 @@ final class ChatPageController extends AbstractController
                 input.value = '';
 
                 try {
-                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : '';
+                    const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
                     const formData = new FormData();
                     formData.append('chat_id', activeChatId);
                     formData.append('text', text);
-                    formData.append('_glpi_csrf_token', csrfToken);
+                    if (csrfToken) {
+                        formData.append('_glpi_csrf_token', csrfToken);
+                    }
 
                     const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                         method: 'POST',

@@ -5,11 +5,12 @@ use GlpiPlugin\Whatsappsimples\Menu;
 
 include_once __DIR__ . '/hook.php';
 
-// Registra os caminhos STATELESS (API / Webhook sem sessão e sem CSRF) no GLPI 11
+// Registra os caminhos STATELESS (API / Webhook / Ajax sem barreira de CSRF humano) no GLPI 11
 if (class_exists(\Glpi\Http\SessionManager::class)) {
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/webhook#');
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/front/webhook.php#');
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/public/webhook.php#');
+    \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/ajax/#');
 }
 
 if (class_exists(\Glpi\Http\Firewall::class)) {
@@ -30,6 +31,7 @@ function plugin_init_whatsappsimples(): void
         \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/webhook#');
         \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/front/webhook.php#');
         \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/public/webhook.php#');
+        \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/ajax/#');
     }
 
     if (class_exists(\Glpi\Http\Firewall::class)) {
