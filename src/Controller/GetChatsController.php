@@ -21,7 +21,7 @@ final class GetChatsController extends AbstractController
             return new JsonResponse(['chats' => []]);
         }
 
-        // Limpeza inicial de LIDs conhecidos
+        // Correção de LIDs conhecidos
         $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517997772618'], ['phone_number' => '64703850111065']);
         $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517996454039'], ['phone_number' => '181656010924208']);
 
@@ -31,13 +31,13 @@ final class GetChatsController extends AbstractController
         $chats = [];
 
         if ($tab === 'mine') {
-            // Meus Atendimentos Ativos
+            // Meus Atendimentos (Atribuídos ao usuário logado e não encerrados)
             $iterator = $DB->request([
                 'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => [
                     'users_id' => $currentUserId,
-                    'status'   => 'in_progress'
+                    'status'   => ['in_progress', 'pending']
                 ],
                 'ORDER'  => ['date_mod DESC']
             ]);
@@ -53,13 +53,13 @@ final class GetChatsController extends AbstractController
                 ];
             }
         } elseif ($tab === 'queue') {
-            // Fila de Atendimento (Aguardando resposta)
+            // Fila de Atendimento (Não atribuídos users_id = 0 e não encerrados)
             $iterator = $DB->request([
                 'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => [
                     'users_id' => 0,
-                    'status'   => 'pending'
+                    'status'   => ['pending', 'in_progress']
                 ],
                 'ORDER'  => ['date_mod DESC']
             ]);
@@ -75,17 +75,17 @@ final class GetChatsController extends AbstractController
                 ];
             }
         } elseif ($tab === 'all') {
-            // Lista Única de Contatos (Agrupada por telefone para garantir 1 único registro por contato!)
+            // Lista Única de Contatos (Agrupada por telefone sem violar MySQL strict mode)
             $iterator = $DB->request([
-                'SELECT' => [
+                'SELECT'  => [
                     'phone_number',
                     'MAX(id) AS id',
                     'MAX(contact_name) AS contact_name',
-                    'MAX(date_mod) AS date_mod'
+                    'MAX(date_mod) AS max_date_mod'
                 ],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'GROUP'  => ['phone_number'],
-                'ORDER'  => ['date_mod DESC']
+                'FROM'    => 'glpi_plugin_whatsappsimples_chats',
+                'GROUPBY' => 'phone_number',
+                'ORDER'   => 'max_date_mod DESC'
             ]);
 
             foreach ($iterator as $row) {
@@ -95,7 +95,7 @@ final class GetChatsController extends AbstractController
                     'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
                     'users_id'     => 0,
                     'status'       => 'contact',
-                    'date_mod'     => $row['date_mod'],
+                    'date_mod'     => $row['max_date_mod'] ?? date('Y-m-d H:i:s'),
                 ];
             }
         }

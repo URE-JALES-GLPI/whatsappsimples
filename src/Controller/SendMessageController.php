@@ -22,19 +22,64 @@ final class SendMessageController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Tabela de chats não existe no banco'], 400);
         }
 
-        $chatId = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id') ?? 0);
-        $text   = trim((string) ($request->request->get('text') ?? $request->query->get('text') ?? ''));
+        $chatId      = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id') ?? 0);
+        $phoneNumber = trim((string) ($request->request->get('phone_number') ?? $request->query->get('phone_number') ?? ''));
+        $text        = trim((string) ($request->request->get('text') ?? $request->query->get('text') ?? ''));
 
-        if ($chatId <= 0 || empty($text)) {
-            return new JsonResponse(['success' => false, 'error' => 'Dados inválidos: chat_id ou texto ausente'], 400);
+        if ($chatId <= 0 && empty($phoneNumber)) {
+            return new JsonResponse(['success' => false, 'error' => 'Dados inválidos: informe o atendimento ou número'], 400);
         }
 
-        $chat = $DB->request([
-            'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
-            'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => ['id' => $chatId],
-            'LIMIT'  => 1
-        ])->current();
+        if (empty($text)) {
+            return new JsonResponse(['success' => false, 'error' => 'Digite um texto para enviar'], 400);
+        }
+
+        $currentUserId = (int) Session::getLoginUserID();
+        $now           = date('Y-m-d H:i:s');
+
+        $chat = null;
+        if ($chatId > 0) {
+            $chat = $DB->request([
+                'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => ['id' => $chatId],
+                'LIMIT'  => 1
+            ])->current();
+        }
+
+        if (!$chat && !empty($phoneNumber)) {
+            // Localiza ou cria atendimento ativo para o número fornecido
+            $chat = $DB->request([
+                'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => [
+                    'phone_number' => $phoneNumber,
+                    'status'       => ['pending', 'in_progress']
+                ],
+                'ORDER'  => ['id DESC'],
+                'LIMIT'  => 1
+            ])->current();
+
+            if (!$chat) {
+                $DB->insert('glpi_plugin_whatsappsimples_chats', [
+                    'phone_number'  => $phoneNumber,
+                    'contact_name'  => $phoneNumber,
+                    'users_id'      => $currentUserId,
+                    'status'        => 'in_progress',
+                    'date_creation' => $now,
+                    'date_mod'      => $now
+                ]);
+                $chatId = (int) $DB->insertId();
+                $chat   = [
+                    'id'                  => $chatId,
+                    'phone_number'        => $phoneNumber,
+                    'first_response_date' => null,
+                    'users_id'            => $currentUserId
+                ];
+            } else {
+                $chatId = (int) $chat['id'];
+            }
+        }
 
         if (!$chat) {
             return new JsonResponse(['success' => false, 'error' => 'Chat não encontrado'], 404);
@@ -44,14 +89,14 @@ final class SendMessageController extends AbstractController
         $result = EvolutionApiService::sendMessage($chatId, (string) $chat['phone_number'], $text);
 
         if (!empty($result['success'])) {
-            $currentUserId = (int) Session::getLoginUserID();
             $updateData = [
                 'users_id' => $currentUserId,
-                'status'   => 'in_progress'
+                'status'   => 'in_progress',
+                'date_mod' => $now
             ];
 
             if (empty($chat['first_response_date'])) {
-                $updateData['first_response_date'] = date('Y-m-d H:i:s');
+                $updateData['first_response_date'] = $now;
             }
 
             $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);

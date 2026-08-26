@@ -121,7 +121,7 @@ final class ChatPageController extends AbstractController
                     }
 
                     listEl.innerHTML = data.chats.map(c => `
-                        <div class="wa-chat-item ${c.id === activeChatId ? 'selected' : ''}" onclick="openChat(${c.id}, '${c.contact_name}', '${c.phone_number}', ${isContactTabActive})">
+                        <div class="wa-chat-item ${(c.id === activeChatId || c.phone_number === activePhoneNumber) ? 'selected' : ''}" onclick="openChat(${c.id}, '${c.contact_name}', '${c.phone_number}', ${isContactTabActive})">
                             <div class="wa-chat-header">
                                 <span>${c.contact_name}</span>
                                 <span class="wa-chat-time">${c.date_mod}</span>
@@ -145,13 +145,14 @@ final class ChatPageController extends AbstractController
                     actionsBox.innerHTML = `
                         <button class="wa-close-btn" onclick="closeActiveChat(${chatId})">✅ Encerrar Atendimento</button>
                     `;
-                    document.getElementById('message-input').disabled = false;
-                    document.getElementById('send-btn').disabled = false;
+                } else if (isContactTab) {
+                    actionsBox.innerHTML = `<span style="font-size:0.8rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
                 } else {
-                    actionsBox.innerHTML = isContactTab ? `<span style="font-size:0.8rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>` : '';
-                    document.getElementById('message-input').disabled = isContactTab;
-                    document.getElementById('send-btn').disabled = isContactTab;
+                    actionsBox.innerHTML = '';
                 }
+
+                document.getElementById('message-input').disabled = false;
+                document.getElementById('send-btn').disabled = false;
 
                 loadChats();
                 loadMessages(isContactTab);
@@ -230,7 +231,7 @@ final class ChatPageController extends AbstractController
             async function sendCurrentMessage() {
                 const input = document.getElementById('message-input');
                 const text = input.value.trim();
-                if (!text || !activeChatId) return;
+                if (!text || (!activeChatId && !activePhoneNumber)) return;
 
                 input.value = '';
 
@@ -238,7 +239,8 @@ final class ChatPageController extends AbstractController
                     const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
                     const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
                     const formData = new FormData();
-                    formData.append('chat_id', activeChatId);
+                    formData.append('chat_id', activeChatId || 0);
+                    formData.append('phone_number', activePhoneNumber || '');
                     formData.append('text', text);
                     if (csrfToken) {
                         formData.append('_glpi_csrf_token', csrfToken);
@@ -255,7 +257,7 @@ final class ChatPageController extends AbstractController
 
                     const data = await res.json();
                     if (data.success) {
-                        loadMessages(false);
+                        loadMessages(isContactTabActive);
                         loadChats();
                     } else {
                         alert('Erro ao enviar: ' + (data.error || 'Falha desconhecida'));
