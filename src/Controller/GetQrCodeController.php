@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class GetQrCodeController extends AbstractController
 {
-    #[Route('/ajax/qrcode', name: 'whatsappsimples_api_qrcode', methods: ['GET'])]
+    #[Route('/ajax/qrcode', name: 'whatsappsimples_api_qrcode', methods: ['GET', 'POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();

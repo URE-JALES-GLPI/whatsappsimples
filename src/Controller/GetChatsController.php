@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class GetChatsController extends AbstractController
 {
-    #[Route('/ajax/chats', name: 'whatsappsimples_api_chats', methods: ['GET'])]
+    #[Route('/ajax/chats', name: 'whatsappsimples_api_chats', methods: ['GET', 'POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();

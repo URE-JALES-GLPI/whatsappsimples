@@ -11,7 +11,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class GetMessagesController extends AbstractController
 {
-    #[Route('/ajax/messages', name: 'whatsappsimples_api_messages', methods: ['GET'])]
+    #[Route('/ajax/messages', name: 'whatsappsimples_api_messages', methods: ['GET', 'POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
