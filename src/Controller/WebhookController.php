@@ -3,12 +3,15 @@
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
 use Glpi\Controller\AbstractController;
+use Glpi\Http\Firewall;
+use Glpi\Security\Attribute\SecurityStrategy;
 use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+#[SecurityStrategy(Firewall::STRATEGY_NO_CHECK)]
 final class WebhookController extends AbstractController
 {
     public function isPublic(): bool

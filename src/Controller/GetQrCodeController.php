@@ -26,7 +26,7 @@ final class GetQrCodeController extends AbstractController
             $host   = $_SERVER['HTTP_HOST'] ?? '10.180.152.27';
             $config = EvolutionApiService::getConfig();
             $token  = urlencode($config['api_key'] ?? 'ure_jales_evolution_token_2026');
-            $webhookUrl = "{$scheme}://{$host}{$root}/plugins/whatsappsimples/public/webhook.php?token={$token}";
+            $webhookUrl = "{$scheme}://{$host}{$root}/plugins/whatsappsimples/webhook?token={$token}";
 
             EvolutionApiService::setWebhook($webhookUrl);
 
