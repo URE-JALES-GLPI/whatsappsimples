@@ -43,6 +43,9 @@ final class ChatPageController extends AbstractController
             .wa-bubble { max-width: 65%; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; position: relative; word-wrap: break-word; }
             .wa-bubble.user { align-self: flex-start; background: #ffffff; color: #1e293b; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
             .wa-bubble.attendant { align-self: flex-end; background: #dcf8c6; color: #0f172a; border-bottom-right-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+            .wa-msg-sender { font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.2px; }
+            .wa-bubble.user .wa-msg-sender { color: #0284c7; }
+            .wa-bubble.attendant .wa-msg-sender { color: #047857; }
             .wa-msg-time { font-size: 0.68rem; color: #94a3b8; text-align: right; margin-top: 4px; }
 
             .wa-input-area { padding: 12px 16px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
@@ -147,6 +150,7 @@ final class ChatPageController extends AbstractController
 
                     box.innerHTML = data.messages.map(m => `
                         <div class="wa-bubble ${m.sender_type}">
+                            <div class="wa-msg-sender">${m.sender_name || ''}</div>
                             <div>${m.message_text}</div>
                             <div class="wa-msg-time">${m.date_creation}</div>
                         </div>

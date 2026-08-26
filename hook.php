@@ -64,6 +64,7 @@ function plugin_whatsappsimples_ensureTables(): void
         $query = "CREATE TABLE `glpi_plugin_whatsappsimples_messages` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `chats_id` int(11) NOT NULL,
+            `users_id` int(11) NOT NULL DEFAULT 0,
             `message_id` varchar(255) NOT NULL DEFAULT '',
             `sender_type` varchar(20) NOT NULL DEFAULT 'user',
             `message_text` text,
@@ -71,9 +72,14 @@ function plugin_whatsappsimples_ensureTables(): void
             `date_creation` datetime NOT NULL,
             PRIMARY KEY (`id`),
             KEY `chats_id` (`chats_id`),
+            KEY `users_id` (`users_id`),
             KEY `message_id` (`message_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         $DB->doQuery($query);
+    } else {
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'users_id')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `users_id` int(11) NOT NULL DEFAULT 0 AFTER `chats_id`");
+        }
     }
 }

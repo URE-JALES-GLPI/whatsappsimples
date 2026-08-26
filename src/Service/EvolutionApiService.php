@@ -281,8 +281,10 @@ class EvolutionApiService
             $messageId    = $responseData['key']['id'] ?? '';
             $now          = date('Y-m-d H:i:s');
 
+            $currentUserId = (int) \Session::getLoginUserID();
             $DB->insert('glpi_plugin_whatsappsimples_messages', [
                 'chats_id'      => $chatId,
+                'users_id'      => $currentUserId,
                 'message_id'    => $messageId,
                 'sender_type'   => 'attendant',
                 'message_text'  => $text,
