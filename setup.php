@@ -14,6 +14,8 @@ function plugin_init_whatsappsimples(): void
 
     if (class_exists(\Glpi\Http\Firewall::class)) {
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
+        \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/public/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
+        \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     }
 
     Plugin::registerClass('PluginWhatsappsimplesProfile', ['addtabon' => 'Profile']);
