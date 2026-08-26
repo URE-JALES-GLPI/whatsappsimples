@@ -136,7 +136,7 @@ final class ConfigPageController extends AbstractController
 
                 try {
                     const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : '';
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/qrcode.php`, {
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/qrcode`, {
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
                             'X-Glpi-Csrf-Token': csrfToken

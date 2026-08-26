@@ -99,7 +99,7 @@ final class ChatPageController extends AbstractController
 
             async function loadChats() {
                 try {
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${currentTab}`);
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/chats?tab=${currentTab}`);
                     const data = await res.json();
                     const listEl = document.getElementById('chat-list');
 
@@ -136,7 +136,7 @@ final class ChatPageController extends AbstractController
             async function loadMessages() {
                 if (!activeChatId) return;
                 try {
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/messages.php?chat_id=${activeChatId}`);
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/messages?chat_id=${activeChatId}`);
                     const data = await res.json();
                     const box = document.getElementById('messages-box');
 
@@ -175,7 +175,7 @@ final class ChatPageController extends AbstractController
                         formData.append('_glpi_csrf_token', csrfToken);
                     }
 
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
                         method: 'POST',
                         headers: {
                             'X-Requested-With': 'XMLHttpRequest',
