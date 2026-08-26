@@ -11,6 +11,7 @@ services:
       - SERVER_URL=http://localhost:8080
       - AUTHENTICATION_TYPE=apikey
       - AUTHENTICATION_API_KEY=ure_jales_evolution_token_2026
+      - DATABASE_ENABLED=false
       - LOG_LEVEL=ERROR,WARN,LOG
       - DEL_INSTANCE=false
     volumes:
