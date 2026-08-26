@@ -10,7 +10,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class WebhookController extends AbstractController
 {
-    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['GET', 'POST'])]
+    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['GET', 'POST'], options: ['no_login' => true, 'public' => true])]
     public function __invoke(Request $request): Response
     {
         global $DB;
