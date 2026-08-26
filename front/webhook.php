@@ -1,8 +1,9 @@
 <?php
 
-include('../../../inc/includes.php');
+// Permite acesso público externo do Webhook sem exigir login de usuário no GLPI
+define('GLPI_ROOT', dirname(__DIR__, 3));
+include_once(GLPI_ROOT . "/config/config.php");
 
-// Webhook publico sem exigencia de sessao do GLPI
 header('Content-Type: application/json');
 
 $content = file_get_contents('php://input');
