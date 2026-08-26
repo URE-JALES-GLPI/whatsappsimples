@@ -21,6 +21,10 @@ final class GetChatsController extends AbstractController
             return new JsonResponse(['chats' => []]);
         }
 
+        // Correção automatica dos LIDs conhecidos para os números móveis reais de WhatsApp
+        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517997772618'], ['phone_number' => '64703850111065']);
+        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => '5517996454039'], ['phone_number' => '181656010924208']);
+
         $tab = $request->query->get('tab', 'mine');
         $currentUserId = (int) Session::getLoginUserID();
 

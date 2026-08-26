@@ -72,16 +72,19 @@ final class WebhookController extends AbstractController
             return new JsonResponse(['success' => true, 'message' => 'Mensagem propria ignorada']);
         }
 
-        // 4. Extração inteligente do número de telefone (suporte a LID vs s.whatsapp.net)
-        $remoteJid   = $key['remoteJid'] ?? '';
-        $participant = $key['participant'] ?? ($data['sender'] ?? '');
-        $targetJid   = (!empty($participant) && str_contains($participant, '@s.whatsapp.net')) ? $participant : $remoteJid;
-
-        if (str_ends_with($targetJid, '@lid')) {
-            $phoneNumber = $targetJid;
+        // Extração inteligente do número de telefone real (DDI + DDD + Número)
+        $rawJid = '';
+        if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
+            $rawJid = $data['sender'];
+        } elseif (!empty($key['participant']) && str_contains($key['participant'], '@s.whatsapp.net')) {
+            $rawJid = $key['participant'];
+        } elseif (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
+            $rawJid = $key['remoteJid'];
         } else {
-            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us'], '', $targetJid));
+            $rawJid = $data['sender'] ?? $key['participant'] ?? $key['remoteJid'] ?? '';
         }
+
+        $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
 
         $contactName = $data['pushName'] ?? 'Contato não salvo';
         $messageId   = $key['id'] ?? '';
