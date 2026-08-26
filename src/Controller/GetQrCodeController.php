@@ -16,10 +16,19 @@ final class GetQrCodeController extends AbstractController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        global $CFG_GLPI;
 
         $stateResult = EvolutionApiService::getConnectionState();
 
         if (!empty($stateResult['state']) && $stateResult['state'] === 'open') {
+            // Se o WhatsApp está conectado, garante que o Webhook do GLPI está registrado na EvolutionAPI
+            $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? '10.180.152.27';
+            $root   = $CFG_GLPI['root_doc'] ?? '/glpi';
+            $webhookUrl = "{$scheme}://{$host}{$root}/plugins/whatsappsimples/webhook";
+
+            EvolutionApiService::setWebhook($webhookUrl);
+
             return new JsonResponse([
                 'success' => true,
                 'state'   => 'open',

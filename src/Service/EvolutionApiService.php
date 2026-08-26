@@ -60,6 +60,50 @@ class EvolutionApiService
     }
 
     /**
+     * Cadastra a URL do Webhook do GLPI na EvolutionAPI para garantir o recebimento de mensagens
+     */
+    public static function setWebhook(string $webhookUrl): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['success' => false, 'error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/webhook/set/{$instance}";
+        $bodyData = [
+            'enabled'         => true,
+            'url'             => $webhookUrl,
+            'webhookByEvents' => false,
+            'events'          => ['MESSAGES_UPSERT']
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 10
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return ['success' => true, 'response' => json_decode($responseBody, true)];
+        }
+
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$responseBody}"];
+    }
+
+    /**
      * Verifica o estado da conexão do WhatsApp na EvolutionAPI (open, close, connecting)
      */
     public static function getConnectionState(): array
@@ -219,12 +263,7 @@ class EvolutionApiService
 
         $responseBody = curl_exec($ch);
         $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError    = curl_error($ch);
         curl_close($ch);
-
-        if ($curlError) {
-            return ['success' => false, 'error' => 'Erro na conexao cURL: ' . $curlError];
-        }
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $responseData = json_decode($responseBody, true);
