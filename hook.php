@@ -74,7 +74,7 @@ function plugin_whatsappsimples_ensureTables(): void
             `message_id` varchar(255) NOT NULL DEFAULT '',
             `sender_type` varchar(20) NOT NULL DEFAULT 'user',
             `message_text` text,
-            `media_url` varchar(500) DEFAULT NULL,
+            `media_url` longtext DEFAULT NULL,
             `date_creation` datetime NOT NULL,
             PRIMARY KEY (`id`),
             KEY `chats_id` (`chats_id`),
@@ -86,6 +86,11 @@ function plugin_whatsappsimples_ensureTables(): void
     } else {
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'users_id')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `users_id` int(11) NOT NULL DEFAULT 0 AFTER `chats_id`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_url')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_url` longtext DEFAULT NULL AFTER `message_text`");
+        } else {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
         }
     }
 }

@@ -7,6 +7,24 @@ use Session;
 class EvolutionApiService
 {
     /**
+     * Garantia dinamica de colunas no banco de dados para evitar erro Unknown column
+     */
+    private static function ensureMessageColumns(): void
+    {
+        global $DB;
+        if ($DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'users_id')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `users_id` int(11) NOT NULL DEFAULT 0 AFTER `chats_id`");
+            }
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_url')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_url` longtext DEFAULT NULL AFTER `message_text`");
+            } else {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
+            }
+        }
+    }
+
+    /**
      * Obtém valor de configuração por chave
      */
     public static function getConfig(string $key): ?string
@@ -176,6 +194,8 @@ class EvolutionApiService
     {
         global $DB;
 
+        self::ensureMessageColumns();
+
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
         $apiToken = self::getConfig('api_token');
         $instance = self::getConfig('instance_name');
@@ -247,6 +267,8 @@ class EvolutionApiService
     public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = ''): array
     {
         global $DB;
+
+        self::ensureMessageColumns();
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
         $apiToken = self::getConfig('api_token');
