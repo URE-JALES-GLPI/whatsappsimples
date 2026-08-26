@@ -21,75 +21,587 @@ final class ChatPageController extends AbstractController
 
         ?>
         <style>
-            .wa-container { display: flex; height: calc(100vh - 120px); background: #f8fafc; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-            .wa-sidebar { width: 340px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
-            .wa-tabs { display: flex; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; padding: 4px; }
-            .wa-tab-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; font-size: 0.85rem; font-weight: 600; color: #64748b; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
-            .wa-tab-btn.active { background: #ffffff; color: #0d9488; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-            
-            .wa-chat-list { flex: 1; overflow-y: auto; }
-            .wa-chat-item { padding: 12px 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; transition: background 0.15s; }
-            .wa-chat-item:hover { background: #f8fafc; }
-            .wa-chat-item.selected { background: #ccfbf1; border-left: 4px solid #0d9488; }
-            .wa-chat-header { display: flex; justify-content: space-between; font-weight: 600; font-size: 0.9rem; color: #1e293b; margin-bottom: 4px; }
-            .wa-chat-time { font-size: 0.75rem; color: #94a3b8; font-weight: normal; }
-            .wa-chat-sub { font-size: 0.8rem; color: #64748b; }
+            /* STYLES FIÉIS AO DIGISAC (Digisac_Exemplo_Interface.png) */
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-            .wa-main { flex: 1; display: flex; flex-direction: column; background: #efeae2; }
-            .wa-main-header { padding: 14px 20px; background: #ffffff; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-            .wa-contact-title { font-weight: 700; font-size: 1rem; color: #0f172a; }
-            .wa-contact-sub { font-size: 0.8rem; color: #64748b; }
+            .digisac-app {
+                font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 100px);
+                background: #f1f5f9;
+                border-radius: 8px;
+                overflow: hidden;
+                box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+                border: 1px solid #cbd5e1;
+                margin-top: -5px;
+            }
 
-            .wa-close-btn { padding: 6px 14px; background: #ef4444; color: #ffffff; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.2s; }
-            .wa-close-btn:hover { background: #dc2626; }
+            /* TOP NAVBAR DIGISAC */
+            .digisac-navbar {
+                height: 48px;
+                background: #2c3e50;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 16px;
+                color: #ffffff;
+                user-select: none;
+            }
 
-            .wa-messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-            .wa-bubble { max-width: 65%; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; line-height: 1.4; position: relative; word-wrap: break-word; }
-            .wa-bubble.user { align-self: flex-start; background: #ffffff; color: #1e293b; border-bottom-left-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-            .wa-bubble.attendant { align-self: flex-end; background: #dcf8c6; color: #0f172a; border-bottom-right-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-            .wa-msg-sender { font-size: 0.75rem; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.2px; }
-            .wa-bubble.user .wa-msg-sender { color: #0284c7; }
-            .wa-bubble.attendant .wa-msg-sender { color: #047857; }
-            .wa-msg-time { font-size: 0.68rem; color: #94a3b8; text-align: right; margin-top: 4px; }
+            .digisac-brand {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 1.15rem;
+                font-weight: 700;
+                letter-spacing: -0.5px;
+                color: #ffffff;
+            }
+            .digisac-brand span { color: #38bdf8; }
 
-            .wa-input-area { padding: 12px 16px; background: #ffffff; border-top: 1px solid #e2e8f0; display: flex; gap: 10px; }
-            .wa-input { flex: 1; padding: 10px 14px; border: 1.5px solid #cbd5e1; border-radius: 20px; outline: none; font-size: 0.9rem; }
-            .wa-input:focus { border-color: #0d9488; }
-            .wa-send-btn { padding: 10px 20px; background: #0d9488; color: #ffffff; border: none; border-radius: 20px; font-weight: 600; cursor: pointer; }
-            .wa-send-btn:hover { background: #0f766e; }
-            .wa-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+            .digisac-nav-tools {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+
+            .digisac-nav-icon {
+                width: 34px;
+                height: 34px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 6px;
+                color: #cbd5e1;
+                cursor: pointer;
+                font-size: 1.1rem;
+                transition: all 0.15s;
+                position: relative;
+            }
+            .digisac-nav-icon:hover { background: rgba(255,255,255,0.1); color: #ffffff; }
+            .digisac-nav-icon.active {
+                background: #1e293b;
+                color: #ffffff;
+                border: 2px solid #ef4444; /* Destaque em vermelho idêntico à imagem de exemplo */
+            }
+
+            .digisac-user-badge {
+                width: 28px;
+                height: 28px;
+                border-radius: 50%;
+                background: #ec4899;
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 0.75rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                margin-left: 8px;
+            }
+
+            /* BODY LAYOUT (SIDEBAR + CHAT) */
+            .digisac-body {
+                flex: 1;
+                display: flex;
+                overflow: hidden;
+            }
+
+            /* SIDEBAR ESQUERDA */
+            .digisac-sidebar {
+                width: 360px;
+                background: #ffffff;
+                border-right: 1px solid #e2e8f0;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .digisac-sidebar-header {
+                padding: 12px 16px 8px 16px;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #1e293b;
+            }
+
+            .digisac-search-box {
+                padding: 0 16px 8px 16px;
+                display: flex;
+                gap: 8px;
+            }
+
+            .digisac-search-input-wrap {
+                flex: 1;
+                position: relative;
+                display: flex;
+                align-items: center;
+            }
+
+            .digisac-search-input-wrap span {
+                position: absolute;
+                left: 10px;
+                color: #94a3b8;
+                font-size: 0.9rem;
+            }
+
+            .digisac-search-input {
+                width: 100%;
+                padding: 7px 10px 7px 32px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                font-size: 0.85rem;
+                outline: none;
+                background: #f8fafc;
+                transition: border-color 0.15s;
+            }
+            .digisac-search-input:focus { border-color: #0284c7; background: #ffffff; }
+
+            .digisac-filter-btn {
+                width: 32px;
+                height: 32px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                background: #ffffff;
+                color: #64748b;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+            }
+
+            /* ABAS DIGISAC (CHATS, FILA, CONTATOS) */
+            .digisac-tabs {
+                display: flex;
+                border-bottom: 1px solid #e2e8f0;
+                padding: 0 8px;
+            }
+
+            .digisac-tab-btn {
+                flex: 1;
+                padding: 10px 4px;
+                border: none;
+                background: transparent;
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #64748b;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                border-bottom: 2px solid transparent;
+                transition: all 0.15s;
+            }
+            .digisac-tab-btn.active {
+                color: #0284c7;
+                border-bottom-color: #0284c7;
+            }
+
+            .digisac-tab-badge {
+                padding: 1px 6px;
+                border-radius: 10px;
+                font-size: 0.7rem;
+                font-weight: 700;
+                background: #e2e8f0;
+                color: #475569;
+            }
+            .digisac-tab-btn.active .digisac-tab-badge {
+                background: #0284c7;
+                color: #ffffff;
+            }
+
+            .digisac-subsort {
+                padding: 6px 16px;
+                font-size: 0.75rem;
+                color: #64748b;
+                background: #f8fafc;
+                border-bottom: 1px solid #f1f5f9;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .digisac-subsort span { color: #0284c7; font-weight: 600; cursor: pointer; }
+
+            /* LISTA DE CHATS */
+            .digisac-chat-list {
+                flex: 1;
+                overflow-y: auto;
+            }
+
+            .digisac-chat-card {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                padding: 12px 16px;
+                border-bottom: 1px solid #f1f5f9;
+                cursor: pointer;
+                transition: background 0.15s;
+                position: relative;
+            }
+            .digisac-chat-card:hover { background: #f8fafc; }
+            .digisac-chat-card.selected {
+                background: #e0f2fe;
+                border-left: 4px solid #0284c7;
+            }
+
+            .digisac-avatar-wrap {
+                position: relative;
+            }
+
+            .digisac-avatar {
+                width: 42px;
+                height: 42px;
+                border-radius: 50%;
+                background: #64748b;
+                color: #ffffff;
+                font-weight: 700;
+                font-size: 1rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                text-transform: uppercase;
+            }
+
+            .digisac-avatar-icon {
+                position: absolute;
+                bottom: -2px;
+                right: -2px;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #22c55e;
+                color: #ffffff;
+                font-size: 0.65rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border: 2px solid #ffffff;
+            }
+
+            .digisac-card-info {
+                flex: 1;
+                min-width: 0;
+            }
+
+            .digisac-card-row1 {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 2px;
+            }
+
+            .digisac-card-name {
+                font-weight: 600;
+                font-size: 0.9rem;
+                color: #1e293b;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .digisac-card-time {
+                font-size: 0.72rem;
+                color: #94a3b8;
+            }
+
+            .digisac-card-row2 {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                font-size: 0.8rem;
+                color: #64748b;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* MAIN CHAT WINDOW */
+            .digisac-main {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                background: #efeae2;
+                position: relative;
+            }
+
+            /* CHAT HEADER BAR */
+            .digisac-chat-header {
+                height: 54px;
+                background: #ffffff;
+                border-bottom: 1px solid #cbd5e1;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0 16px;
+                z-index: 10;
+            }
+
+            .digisac-header-contact {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+
+            .digisac-header-tags {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .digisac-tag-badge {
+                padding: 3px 8px;
+                border-radius: 12px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .digisac-tag-whatsapp { background: #22c55e; color: #ffffff; }
+            .digisac-tag-dept { background: #64748b; color: #ffffff; }
+            .digisac-tag-user { background: #64748b; color: #ffffff; }
+
+            .digisac-header-actions {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                color: #64748b;
+            }
+
+            .digisac-action-btn {
+                cursor: pointer;
+                font-size: 1.1rem;
+                transition: color 0.15s;
+            }
+            .digisac-action-btn:hover { color: #0284c7; }
+
+            .digisac-finish-btn {
+                padding: 6px 14px;
+                background: #ef4444;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: background 0.15s;
+            }
+            .digisac-finish-btn:hover { background: #dc2626; }
+
+            /* MESSAGES AREA */
+            .digisac-messages-area {
+                flex: 1;
+                padding: 20px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                background-color: #efeae2;
+                background-image: radial-gradient(#cbd5e1 0.75px, transparent 0.75px);
+                background-size: 16px 16px;
+            }
+
+            .digisac-divider-badge {
+                align-self: center;
+                background: #e2e8f0;
+                color: #475569;
+                padding: 4px 14px;
+                border-radius: 12px;
+                font-size: 0.75rem;
+                font-weight: 500;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+                margin: 8px 0;
+            }
+
+            .digisac-bubble {
+                max-width: 65%;
+                padding: 8px 12px 6px 12px;
+                border-radius: 8px;
+                font-size: 0.88rem;
+                line-height: 1.45;
+                position: relative;
+                word-wrap: break-word;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            }
+            .digisac-bubble.user {
+                align-self: flex-start;
+                background: #ffffff;
+                color: #0f172a;
+                border-top-left-radius: 0;
+            }
+            .digisac-bubble.attendant {
+                align-self: flex-end;
+                background: #dcf8c6;
+                color: #0f172a;
+                border-top-right-radius: 0;
+            }
+
+            .digisac-bubble-sender {
+                font-size: 0.75rem;
+                font-weight: 700;
+                margin-bottom: 2px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+            }
+            .digisac-bubble.user .digisac-bubble-sender { color: #0284c7; }
+            .digisac-bubble.attendant .digisac-bubble-sender { color: #047857; }
+
+            .digisac-bubble-time {
+                font-size: 0.65rem;
+                color: #94a3b8;
+                font-weight: normal;
+                float: right;
+                margin-top: 4px;
+                margin-left: 8px;
+            }
+
+            /* BOTTOM INPUT FOOTER */
+            .digisac-input-footer {
+                background: #ffffff;
+                border-top: 1px solid #cbd5e1;
+                padding: 10px 16px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .digisac-footer-tools {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: #64748b;
+                font-size: 1.15rem;
+            }
+            .digisac-footer-tools span { cursor: pointer; transition: color 0.15s; }
+            .digisac-footer-tools span:hover { color: #0284c7; }
+
+            .digisac-message-input {
+                flex: 1;
+                padding: 8px 14px;
+                border: 1px solid #cbd5e1;
+                border-radius: 20px;
+                font-size: 0.88rem;
+                outline: none;
+                transition: border-color 0.15s;
+            }
+            .digisac-message-input:focus { border-color: #0284c7; }
+
+            .digisac-send-btn {
+                width: 38px;
+                height: 38px;
+                border-radius: 50%;
+                background: #0284c7;
+                color: #ffffff;
+                border: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 1.05rem;
+                transition: background 0.15s;
+            }
+            .digisac-send-btn:hover { background: #0369a1; }
+            .digisac-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
         </style>
 
-        <div class="wa-container">
-            <!-- COLUNA DA ESQUERDA: 3 ABAS -->
-            <div class="wa-sidebar">
-                <div class="wa-tabs">
-                    <button class="wa-tab-btn active" onclick="switchTab('mine', this)">💬 Chats</button>
-                    <button class="wa-tab-btn" onclick="switchTab('queue', this)">📥 Fila</button>
-                    <button class="wa-tab-btn" onclick="switchTab('all', this)">👥 Contatos</button>
+        <div class="digisac-app">
+            <!-- TOP NAVBAR DIGISAC -->
+            <div class="digisac-navbar">
+                <div class="digisac-brand">
+                    <span>digisac</span> | URE Omnichannel
                 </div>
-                <div class="wa-chat-list" id="chat-list">
-                    <div style="padding:20px; text-align:center; color:#94a3b8;">Carregando conversas...</div>
+                <div class="digisac-nav-tools">
+                    <div class="digisac-nav-icon active" title="Conversas / Chat">💬</div>
+                    <div class="digisac-nav-icon" title="Contatos">👥</div>
+                    <div class="digisac-nav-icon" title="Tags / Etiquetas">🏷️</div>
+                    <div class="digisac-nav-icon" title="Configurações">⚙️</div>
+                    <div class="digisac-user-badge">MD</div>
                 </div>
             </div>
 
-            <!-- COLUNA DA DIREITA: JANELA DO CHAT -->
-            <div class="wa-main">
-                <div class="wa-main-header">
-                    <div>
-                        <div class="wa-contact-title" id="chat-title">Selecione uma conversa</div>
-                        <div class="wa-contact-sub" id="chat-sub">Escolha um atendimento na lista à esquerda</div>
+            <!-- BODY LAYOUT -->
+            <div class="digisac-body">
+                <!-- SIDEBAR ESQUERDA -->
+                <div class="digisac-sidebar">
+                    <div class="digisac-sidebar-header">
+                        <span>Conversas</span>
+                        <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;">&lt;</span>
                     </div>
-                    <div id="header-actions"></div>
+
+                    <div class="digisac-search-box">
+                        <div class="digisac-search-input-wrap">
+                            <span>🔍</span>
+                            <input type="text" class="digisac-search-input" id="search-input" placeholder="Pesquisar por nome ou número..." oninput="filterChatList()">
+                        </div>
+                        <div class="digisac-filter-btn" title="Filtros">🔻</div>
+                    </div>
+
+                    <!-- 3 ABAS DIGISAC -->
+                    <div class="digisac-tabs">
+                        <button class="digisac-tab-btn active" onclick="switchTab('mine', this)">
+                            💬 Chats <span class="digisac-tab-badge" id="badge-mine">0</span>
+                        </button>
+                        <button class="digisac-tab-btn" onclick="switchTab('queue', this)">
+                            📥 Fila <span class="digisac-tab-badge" id="badge-queue">0</span>
+                        </button>
+                        <button class="digisac-tab-btn" onclick="switchTab('all', this)">
+                            👥 Contatos
+                        </button>
+                    </div>
+
+                    <div class="digisac-subsort">
+                        <span>Ordenar chamados por:</span>
+                        <span>Opções de ordenação ↕</span>
+                    </div>
+
+                    <!-- LISTA DE CHATS -->
+                    <div class="digisac-chat-list" id="chat-list">
+                        <div style="padding:20px; text-align:center; color:#94a3b8; font-size:0.85rem;">Carregando atendimentos...</div>
+                    </div>
                 </div>
 
-                <div class="wa-messages-box" id="messages-box">
-                    <div style="margin:auto; color:#94a3b8; font-size:0.9rem;">Nenhuma conversa selecionada</div>
-                </div>
+                <!-- MAIN CHAT WINDOW -->
+                <div class="digisac-main">
+                    <div class="digisac-chat-header" id="main-chat-header" style="display:none;">
+                        <div class="digisac-header-contact">
+                            <div class="digisac-avatar" id="header-avatar">?</div>
+                            <div>
+                                <div style="font-weight:700; font-size:0.95rem; color:#0f172a;" id="header-title">Contato</div>
+                                <div style="font-size:0.78rem; color:#64748b;" id="header-sub">Telefone</div>
+                            </div>
+                        </div>
 
-                <div class="wa-input-area">
-                    <input type="text" class="wa-input" id="message-input" placeholder="Digite sua resposta..." onkeypress="handleKeyPress(event)" disabled>
-                    <button class="wa-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled>Enviar</button>
+                        <div class="digisac-header-tags">
+                            <span class="digisac-tag-badge digisac-tag-whatsapp">🟢 Central WhatsApp</span>
+                            <span class="digisac-tag-badge digisac-tag-dept">🏷️ Suporte URE TI</span>
+                            <div id="header-actions"></div>
+                        </div>
+                    </div>
+
+                    <div class="digisac-messages-area" id="messages-box">
+                        <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
+                            <div style="font-size:3rem; margin-bottom:10px;">💬</div>
+                            <div>Selecione uma conversa ao lado para iniciar o atendimento</div>
+                        </div>
+                    </div>
+
+                    <div class="digisac-input-footer">
+                        <div class="digisac-footer-tools">
+                            <span title="Anexar Arquivo">+</span>
+                            <span title="Emojis">😊</span>
+                            <span title="Respostas Rápidas">📄</span>
+                            <span title="Notas Internas">⚡</span>
+                        </div>
+                        <input type="text" class="digisac-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeypress="handleKeyPress(event)" disabled>
+                        <button class="digisac-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -99,12 +611,13 @@ final class ChatPageController extends AbstractController
             let activeChatId = 0;
             let activePhoneNumber = '';
             let isContactTabActive = false;
+            let allLoadedChats = [];
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
 
             function switchTab(tab, btn) {
                 currentTab = tab;
                 isContactTabActive = (tab === 'all');
-                document.querySelectorAll('.wa-tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.digisac-tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 loadChats();
             }
@@ -113,40 +626,83 @@ final class ChatPageController extends AbstractController
                 try {
                     const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/chats?tab=${currentTab}`);
                     const data = await res.json();
-                    const listEl = document.getElementById('chat-list');
+                    allLoadedChats = data.chats || [];
 
-                    if (!data.chats || data.chats.length === 0) {
-                        listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8;">Nenhum registro nesta aba</div>';
-                        return;
+                    // Atualiza contadores das abas
+                    if (currentTab === 'mine') {
+                        document.getElementById('badge-mine').innerText = allLoadedChats.length;
+                    } else if (currentTab === 'queue') {
+                        document.getElementById('badge-queue').innerText = allLoadedChats.length;
                     }
 
-                    listEl.innerHTML = data.chats.map(c => `
-                        <div class="wa-chat-item ${(c.id === activeChatId || c.phone_number === activePhoneNumber) ? 'selected' : ''}" onclick="openChat(${c.id}, '${c.contact_name}', '${c.phone_number}', ${isContactTabActive})">
-                            <div class="wa-chat-header">
-                                <span>${c.contact_name}</span>
-                                <span class="wa-chat-time">${c.date_mod}</span>
-                            </div>
-                            <div class="wa-chat-sub">${c.phone_number}</div>
-                        </div>
-                    `).join('');
+                    renderChatList(allLoadedChats);
                 } catch (e) {
                     console.error('Erro ao carregar chats:', e);
                 }
             }
 
+            function filterChatList() {
+                const query = document.getElementById('search-input').value.toLowerCase().trim();
+                if (!query) {
+                    renderChatList(allLoadedChats);
+                    return;
+                }
+
+                const filtered = allLoadedChats.filter(c => 
+                    (c.contact_name && c.contact_name.toLowerCase().includes(query)) ||
+                    (c.phone_number && c.phone_number.includes(query))
+                );
+                renderChatList(filtered);
+            }
+
+            function renderChatList(chats) {
+                const listEl = document.getElementById('chat-list');
+
+                if (!chats || chats.length === 0) {
+                    listEl.innerHTML = '<div style="padding:20px; text-align:center; color:#94a3b8; font-size:0.85rem;">Nenhum registro encontrado</div>';
+                    return;
+                }
+
+                listEl.innerHTML = chats.map(c => {
+                    const initials = getInitials(c.contact_name || c.phone_number);
+                    const isSelected = (c.id === activeChatId || c.phone_number === activePhoneNumber);
+
+                    return `
+                        <div class="digisac-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
+                            <div class="digisac-avatar-wrap">
+                                <div class="digisac-avatar">${initials}</div>
+                                <div class="digisac-avatar-icon">💬</div>
+                            </div>
+                            <div class="digisac-card-info">
+                                <div class="digisac-card-row1">
+                                    <div class="digisac-card-name">${c.contact_name}</div>
+                                    <div class="digisac-card-time">${formatTime(c.date_mod)}</div>
+                                </div>
+                                <div class="digisac-card-row2">
+                                    <span>✓✓</span> ${c.phone_number}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
             async function openChat(chatId, name, phone, isContactTab = false) {
                 activeChatId = chatId;
                 activePhoneNumber = phone;
-                document.getElementById('chat-title').innerText = name;
-                document.getElementById('chat-sub').innerText = phone;
+
+                document.getElementById('main-chat-header').style.display = 'flex';
+                document.getElementById('header-title').innerText = name;
+                document.getElementById('header-sub').innerText = phone;
+                document.getElementById('header-avatar').innerText = getInitials(name);
 
                 const actionsBox = document.getElementById('header-actions');
                 if (!isContactTab && chatId > 0) {
                     actionsBox.innerHTML = `
-                        <button class="wa-close-btn" onclick="closeActiveChat(${chatId})">✅ Encerrar Atendimento</button>
+                        <button class="digisac-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
                     `;
                 } else if (isContactTab) {
-                    actionsBox.innerHTML = `<span style="font-size:0.8rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
+                    actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
                 } else {
                     actionsBox.innerHTML = '';
                 }
@@ -154,7 +710,7 @@ final class ChatPageController extends AbstractController
                 document.getElementById('message-input').disabled = false;
                 document.getElementById('send-btn').disabled = false;
 
-                loadChats();
+                renderChatList(allLoadedChats);
                 loadMessages(isContactTab);
             }
 
@@ -183,10 +739,10 @@ final class ChatPageController extends AbstractController
                     const data = await res.json();
                     if (data.success) {
                         activeChatId = 0;
-                        document.getElementById('chat-title').innerText = 'Selecione uma conversa';
-                        document.getElementById('chat-sub').innerText = 'Escolha um atendimento na lista à esquerda';
-                        document.getElementById('header-actions').innerHTML = '';
-                        document.getElementById('messages-box').innerHTML = '<div style="margin:auto; color:#94a3b8; font-size:0.9rem;">Atendimento encerrado com sucesso!</div>';
+                        document.getElementById('main-chat-header').style.display = 'none';
+                        document.getElementById('messages-box').innerHTML = `
+                            <div class="digisac-divider-badge">Atendimento encerrado com sucesso</div>
+                        `;
                         document.getElementById('message-input').disabled = true;
                         document.getElementById('send-btn').disabled = true;
                         loadChats();
@@ -210,17 +766,22 @@ final class ChatPageController extends AbstractController
                     const box = document.getElementById('messages-box');
 
                     if (!data.messages || data.messages.length === 0) {
-                        box.innerHTML = '<div style="margin:auto; color:#94a3b8;">Sem mensagens registradas</div>';
+                        box.innerHTML = '<div style="margin:auto; color:#94a3b8; font-size:0.85rem;">Sem mensagens registradas</div>';
                         return;
                     }
 
-                    box.innerHTML = data.messages.map(m => `
-                        <div class="wa-bubble ${m.sender_type}">
-                            <div class="wa-msg-sender">${m.sender_name || ''}</div>
-                            <div>${m.message_text}</div>
-                            <div class="wa-msg-time">${m.date_creation}</div>
-                        </div>
-                    `).join('');
+                    box.innerHTML = `
+                        <div class="digisac-divider-badge">Atendimento Iniciado</div>
+                        ${data.messages.map(m => `
+                            <div class="digisac-bubble ${m.sender_type}">
+                                <div class="digisac-bubble-sender">
+                                    <span>${m.sender_name || ''}</span>
+                                </div>
+                                <div>${escapeHtml(m.message_text)}</div>
+                                <div class="digisac-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
+                            </div>
+                        `).join('')}
+                    `;
 
                     box.scrollTop = box.scrollHeight;
                 } catch (e) {
@@ -272,6 +833,34 @@ final class ChatPageController extends AbstractController
                 if (e.key === 'Enter') {
                     sendCurrentMessage();
                 }
+            }
+
+            function getInitials(name) {
+                if (!name) return 'C';
+                const parts = name.trim().split(' ');
+                if (parts.length >= 2) {
+                    return (parts[0][0] + parts[1][0]).toUpperCase();
+                }
+                return name.substring(0, 2).toUpperCase();
+            }
+
+            function formatTime(dateStr) {
+                if (!dateStr) return '';
+                const parts = dateStr.split(' ');
+                if (parts.length === 2) {
+                    return parts[1].substring(0, 5);
+                }
+                return dateStr;
+            }
+
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+
+            function escapeJs(str) {
+                if (!str) return '';
+                return str.replace(/'/g, "\\'");
             }
 
             loadChats();
