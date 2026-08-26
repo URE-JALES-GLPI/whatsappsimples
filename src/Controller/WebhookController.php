@@ -65,7 +65,8 @@ final class WebhookController extends AbstractController
                 return new JsonResponse(['success' => true, 'message' => 'Mensagem própria ignorada']);
             }
 
-            // EXTRAÇÃO DE PRIORIDADE: Busca obrigatoriamente um JID real com @s.whatsapp.net antes de aceitar @lid
+            // ISOLAMENTO TOTAL POR NUMERO DE TELEFONE:
+            // Prioriza JID real do WhatsApp com @s.whatsapp.net (ex: 5517996194229)
             $rawJid = '';
             if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
                 $rawJid = $data['sender'];
@@ -77,7 +78,7 @@ final class WebhookController extends AbstractController
                 $rawJid = $data['sender'] ?? $key['participant'] ?? $key['remoteJid'] ?? '';
             }
 
-            $phoneNumber = self::normalizePhoneNumber($rawJid);
+            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
             $contactName = $data['pushName'] ?? 'Contato não salvo';
             $messageId   = $key['id'] ?? '';
 
@@ -90,7 +91,7 @@ final class WebhookController extends AbstractController
 
             $now = date('Y-m-d H:i:s');
 
-            // 1. Busca se já existe um CHAT ATIVO (status = 'pending' OU 'in_progress')
+            // 1. Busca se já existe um CHAT ATIVO EXCLUSIVO para este número de telefone (phone_number)
             $activeChat = $DB->request([
                 'SELECT' => ['id', 'status', 'users_id'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -158,22 +159,6 @@ final class WebhookController extends AbstractController
             self::logDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return new JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
-
-    /**
-     * Normaliza numeros de telefone convertendo LIDs conhecidos para numeros de celular reais
-     */
-    private static function normalizePhoneNumber(string $rawJid): string
-    {
-        $clean = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-
-        $lidMap = [
-            '64703850111065'  => '5517997772618', // Leonardo Poiatti
-            '181656010924208' => '5517996454039', // Marco Antonio
-            '118064540569761' => '5517996454039'  // Aryan F.
-        ];
-
-        return $lidMap[$clean] ?? $clean;
     }
 
     private static function logDebug(string $action, array $data = []): void
