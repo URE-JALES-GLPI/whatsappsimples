@@ -1,77 +1,53 @@
-# WhatsApp Integrado
+# 📘 Plugin WhatsAppSimples (URE Omnichannel) para GLPI 11
 
-Plugin desenvolvido para integrar o **WhatsApp diretamente ao GLPI**, permitindo que usuários e equipes realizem atendimentos sem a necessidade de utilizar aplicações externas.
-
-## 📋 Sobre
-
-Este plugin tem como objetivo disponibilizar uma experiência completa de mensagens dentro do GLPI, centralizando a comunicação entre a equipe e os usuários em uma única plataforma.
-
-A interface foi desenvolvida para oferecer uma experiência semelhante à do WhatsApp, permitindo o envio e recebimento de mensagens em tempo real, compartilhamento de arquivos e gerenciamento de conversas, sem a necessidade de alternar entre diferentes sistemas.
-
-> **Observação:** O plugin não possui suporte para chamadas de voz ou vídeo.
+Plugin Omnichannel nativo para **GLPI 11** integrado à **EvolutionAPI (v1.8.2)**.
 
 ---
 
-## ✨ Funcionalidades
+## 🚀 Funcionalidades Principais
 
-* Envio e recebimento de mensagens em tempo real.
-* Conversas individuais e em grupo.
-* Compartilhamento de imagens, documentos, vídeos e outros arquivos.
-* Envio de áudios.
-* Visualização de mensagens enviadas e recebidas.
-* Pesquisa rápida de conversas e contatos.
-* Histórico completo de mensagens.
-* Notificações de novas mensagens.
-* Interface inspirada no WhatsApp.
-* Integração nativa ao GLPI.
+* **Interface Inspirada na Plataforma Digisac:** Barra superior `URE Omnichannel`, avatares com selo do WhatsApp, temas de mensagens e busca em tempo real.
+* **Ciclo de Vida de Atendimento:** Separação por **Chats (Meus Atendimentos)**, **Fila (Aguardando)** e **Contatos (Lista Única e Histórico Unificado)**.
+* **Encerrar e Reabrir:** Botão **"Encerrar Atendimento"** que arquiva a conversa. Ao receber nova mensagem do cliente, o chamado é reaberto na Fila preservando 100% do histórico prévio.
+* **Identificação de Remetente:** Exibição do **Nome do Técnico Logado no GLPI** (ex: *Marco Masson*, *Aryan Ferrari*, *Leonardo Poiatti*) nos balões verdes e do nome do cliente nos balões brancos.
+* **Ferramentas Funcionais de Mensagem:** Upload de arquivos/mídia (`+`), seletor interativo de emojis (`😊`), respostas rápidas padronizadas (`📄`) e notas internas (`⚡`).
 
 ---
 
-## 🎯 Objetivos
+## 📂 Estrutura de Arquivos e Controladores Symfony (GLPI 11)
 
-* Centralizar a comunicação dentro do GLPI.
-* Melhorar a produtividade das equipes de atendimento.
-* Reduzir a necessidade de utilizar aplicativos externos.
-* Facilitar o compartilhamento de informações.
-* Manter o histórico de conversas organizado.
-* Proporcionar uma experiência moderna e intuitiva aos usuários.
-
----
-
-## 🖥️ Compatibilidade
-
-* GLPI 11.x
-* PHP 8.x
-
-> A compatibilidade pode variar conforme a versão do GLPI utilizada.
-
----
-
-## 🚀 Benefícios
-
-* Comunicação centralizada em uma única plataforma.
-* Atendimento mais ágil e organizado.
-* Histórico completo das conversas.
-* Compartilhamento simplificado de arquivos.
-* Interface familiar e de fácil utilização.
-* Maior integração entre usuários e equipes de suporte.
+```
+whatsappsimples/
+├── src/
+│   ├── Controller/
+│   │   ├── ChatPageController.php      # Rota /Chat (Interface URE Omnichannel)
+│   │   ├── ConfigPageController.php    # Rota /front/config.php (Configurações / QR Code)
+│   │   ├── GetChatsController.php      # Rota /ajax/chats (Listagem e Deduplicação)
+│   │   ├── GetMessagesController.php   # Rota /ajax/messages (Histórico de Mensagens)
+│   │   ├── SendMessageController.php   # Rota /ajax/send (Envio de Mensagens e Mídia)
+│   │   ├── CloseChatController.php     # Rota /ajax/close (Encerramento de Atendimento)
+│   │   └── WebhookController.php       # Rota /webhook (Webhook Público EvolutionAPI)
+│   └── Service/
+│       └── EvolutionApiService.php     # Serviço cURL com EvolutionAPI v1.8.2
+├── hook.php                           # Schemas SQL e Instalação
+├── setup.php                          # Registro de Hooks e Rotas do GLPI
+└── README.md
+```
 
 ---
 
-## 🤝 Contribuições
+## 🗄️ Tabelas no Banco de Dados GLPI
 
-Contribuições são bem-vindas.
-
-Caso encontre algum problema ou tenha sugestões de melhoria, abra uma **Issue** ou envie um **Pull Request**.
-
----
-
-## 📄 Licença
-
-Este projeto é distribuído sob a licença **GPL v2+**.
+1. **`glpi_plugin_whatsappsimples_configs`**: Guardas de credenciais (`server_url`, `api_token`, `instance_name`).
+2. **`glpi_plugin_whatsappsimples_chats`**: Atendimentos e contatos (`phone_number`, `contact_name`, `users_id`, `status`).
+3. **`glpi_plugin_whatsappsimples_messages`**: Registro de mensagens e arquivos (`chats_id`, `users_id`, `sender_type`, `message_text`, `media_url`).
 
 ---
 
-## 👨‍💻 Autor
+## ⚡ Comandos para Atualização e Deploy (Servidor GLPI)
 
-Desenvolvido por **Leonardo Poiatti Fação**.
+```bash
+cd /var/www/html/glpi/plugins/whatsappsimples
+git pull origin marco
+php /var/www/html/glpi/bin/console glpi:cache:clear --allow-superuser
+```
