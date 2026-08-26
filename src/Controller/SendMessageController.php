@@ -80,6 +80,8 @@ final class SendMessageController extends AbstractController
                 return new JsonResponse(['success' => false, 'error' => 'Atendimento não encontrado no banco de dados'], 404);
             }
 
+            $phoneToUpdate = (string) $chat['phone_number'];
+
             // 1. Envio de Arquivos de Mídia
             $uploadedFile = $request->files->get('file');
             if ($uploadedFile) {
@@ -97,7 +99,15 @@ final class SendMessageController extends AbstractController
                     $mediaType = 'video';
                 }
 
-                $result = EvolutionApiService::sendMedia($chatId, (string) $chat['phone_number'], $mediaType, $base64, $fileName, $text);
+                $result = EvolutionApiService::sendMedia($chatId, $phoneToUpdate, $mediaType, $base64, $fileName, $text);
+                
+                // Atribui o contato ao usuário logado em TODAS as linhas do número para remover da Fila
+                $DB->update('glpi_plugin_whatsappsimples_chats', [
+                    'users_id' => $currentUserId,
+                    'status'   => 'in_progress',
+                    'date_mod' => $now
+                ], ['phone_number' => $phoneToUpdate]);
+
                 self::logDebug("RESULTADO_ENVIO_MIDIA", $result);
                 return new JsonResponse($result);
             }
@@ -107,7 +117,7 @@ final class SendMessageController extends AbstractController
             }
 
             // 2. Envio de Mensagem de Texto
-            $result = EvolutionApiService::sendMessage($chatId, (string) $chat['phone_number'], $text);
+            $result = EvolutionApiService::sendMessage($chatId, $phoneToUpdate, $text);
             self::logDebug("RESULTADO_ENVIO_TEXTO", $result);
 
             if (!empty($result['success'])) {
@@ -121,7 +131,8 @@ final class SendMessageController extends AbstractController
                     $updateData['first_response_date'] = $now;
                 }
 
-                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
+                // Atualiza o status de TODOS os registros deste telefone para 'in_progress' e 'users_id = currentUserId'
+                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneToUpdate]);
             }
 
             return new JsonResponse($result);
