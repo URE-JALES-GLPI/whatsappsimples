@@ -135,7 +135,13 @@ final class ConfigPageController extends AbstractController
                 box.innerHTML = '<div style="color:#64748b;">Consultando EvolutionAPI...</div>';
 
                 try {
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/qrcode.php`);
+                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : '';
+                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/qrcode.php`, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-Glpi-Csrf-Token': csrfToken
+                        }
+                    });
                     const data = await res.json();
 
                     if (data.state === 'open') {

@@ -175,6 +175,7 @@ final class ChatPageController extends AbstractController
                     const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                         method: 'POST',
                         headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
                             'X-Glpi-Csrf-Token': csrfToken
                         },
                         body: formData
