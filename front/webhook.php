@@ -1,8 +1,8 @@
 <?php
 
-// Webhook público para recebimento de eventos da EvolutionAPI (mesmo padrão do Protocolo/front/verify.php)
+// Webhook público para recebimento de eventos da EvolutionAPI (Inicialização direta do banco GLPI sem checagem de sessão humana)
 define('GLPI_ROOT', dirname(__DIR__, 2));
-include_once(GLPI_ROOT . "/inc/includes.php");
+include_once(GLPI_ROOT . "/config/config.php");
 
 header('Content-Type: application/json');
 
