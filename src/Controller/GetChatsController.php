@@ -21,75 +21,83 @@ final class GetChatsController extends AbstractController
             return new JsonResponse(['chats' => []]);
         }
 
-        self::consolidateDuplicateChats();
+        try {
+            self::consolidateDuplicateChats();
+        } catch (\Throwable $e) {
+            // Silencia falhas secundarias de consolidação para não interromper a API
+        }
 
         $tab = $request->query->get('tab', 'mine');
         $currentUserId = (int) Session::getLoginUserID();
 
         $chats = [];
 
-        if ($tab === 'mine') {
-            // Meus Atendimentos Ativos (Atribuídos a mim e não encerrados)
-            $iterator = $DB->request([
-                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'WHERE'  => [
-                    'users_id' => $currentUserId,
-                    'status'   => ['in_progress', 'pending']
-                ],
-                'ORDER'  => ['date_mod DESC']
-            ]);
+        try {
+            if ($tab === 'mine') {
+                // Meus Atendimentos Ativos (Atribuídos a mim e não encerrados)
+                $iterator = $DB->request([
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
+                        'users_id' => $currentUserId,
+                        'status'   => ['in_progress', 'pending']
+                    ],
+                    'ORDER'  => 'date_mod DESC'
+                ]);
 
-            foreach ($iterator as $row) {
-                $chats[] = [
-                    'id'           => (int) $row['id'],
-                    'phone_number' => $row['phone_number'],
-                    'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
-                    'users_id'     => (int) $row['users_id'],
-                    'status'       => $row['status'],
-                    'date_mod'     => $row['date_mod'],
-                ];
-            }
-        } elseif ($tab === 'queue') {
-            // Fila de Atendimento (Não atribuídos users_id = 0 e não encerrados)
-            $iterator = $DB->request([
-                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'WHERE'  => [
-                    'users_id' => 0,
-                    'status'   => ['pending', 'in_progress']
-                ],
-                'ORDER'  => ['date_mod DESC']
-            ]);
+                foreach ($iterator as $row) {
+                    $chats[] = [
+                        'id'           => (int) $row['id'],
+                        'phone_number' => $row['phone_number'],
+                        'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
+                        'users_id'     => (int) $row['users_id'],
+                        'status'       => $row['status'],
+                        'date_mod'     => $row['date_mod'],
+                    ];
+                }
+            } elseif ($tab === 'queue') {
+                // Fila de Atendimento (Não atribuídos users_id = 0 e não encerrados)
+                $iterator = $DB->request([
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
+                        'users_id' => 0,
+                        'status'   => ['pending', 'in_progress']
+                    ],
+                    'ORDER'  => 'date_mod DESC'
+                ]);
 
-            foreach ($iterator as $row) {
-                $chats[] = [
-                    'id'           => (int) $row['id'],
-                    'phone_number' => $row['phone_number'],
-                    'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
-                    'users_id'     => (int) $row['users_id'],
-                    'status'       => $row['status'],
-                    'date_mod'     => $row['date_mod'],
-                ];
-            }
-        } elseif ($tab === 'all') {
-            // Todos os Contatos (1 único registro por número)
-            $iterator = $DB->request([
-                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'ORDER'  => ['date_mod DESC']
-            ]);
+                foreach ($iterator as $row) {
+                    $chats[] = [
+                        'id'           => (int) $row['id'],
+                        'phone_number' => $row['phone_number'],
+                        'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
+                        'users_id'     => (int) $row['users_id'],
+                        'status'       => $row['status'],
+                        'date_mod'     => $row['date_mod'],
+                    ];
+                }
+            } elseif ($tab === 'all') {
+                // Todos os Contatos (1 único registro por número)
+                $iterator = $DB->request([
+                    'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'ORDER'  => 'date_mod DESC'
+                ]);
 
-            foreach ($iterator as $row) {
-                $chats[] = [
-                    'id'           => (int) $row['id'],
-                    'phone_number' => $row['phone_number'],
-                    'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
-                    'users_id'     => (int) $row['users_id'],
-                    'status'       => $row['status'],
-                    'date_mod'     => $row['date_mod'],
-                ];
+                foreach ($iterator as $row) {
+                    $chats[] = [
+                        'id'           => (int) $row['id'],
+                        'phone_number' => $row['phone_number'],
+                        'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
+                        'users_id'     => (int) $row['users_id'],
+                        'status'       => $row['status'],
+                        'date_mod'     => $row['date_mod'],
+                    ];
+                }
             }
+        } catch (\Throwable $e) {
+            return new JsonResponse(['chats' => [], 'error' => $e->getMessage()]);
         }
 
         return new JsonResponse(['chats' => $chats]);
@@ -113,11 +121,14 @@ final class GetChatsController extends AbstractController
         $duplicates = $DB->request([
             'SELECT'  => ['phone_number', 'COUNT(*) AS total', 'MIN(id) AS keep_id'],
             'FROM'    => 'glpi_plugin_whatsappsimples_chats',
-            'GROUPBY' => 'phone_number',
-            'HAVING'  => ['total' => ['>', 1]]
+            'GROUPBY' => 'phone_number'
         ]);
 
         foreach ($duplicates as $dup) {
+            if ((int) ($dup['total'] ?? 0) <= 1) {
+                continue;
+            }
+
             $phone  = $dup['phone_number'];
             $keepId = (int) $dup['keep_id'];
 
