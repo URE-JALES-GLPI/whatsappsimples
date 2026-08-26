@@ -21,11 +21,12 @@ final class GetChatsController extends AbstractController
             return new JsonResponse(['chats' => []]);
         }
 
-        // Sanitização e unificação retroativa no banco
-        self::sanitizeDatabase();
+        $currentUserId = (int) Session::getLoginUserID();
+
+        // Sanitização e garantia de atribuição dos chamados em curso ao usuário logado
+        self::sanitizeDatabase($currentUserId);
 
         $tab = $request->query->get('tab', 'mine');
-        $currentUserId = (int) Session::getLoginUserID();
 
         $chats = [];
 
@@ -52,15 +53,15 @@ final class GetChatsController extends AbstractController
                 }
             }
 
-            // 2. Aplica filtro estrito de exibição para cada aba
+            // 2. Aplica filtro de exibição para cada aba
             foreach ($latestByPhone as $c) {
                 if ($tab === 'mine') {
-                    // Chats: Apenas atendimentos atribuídos ao usuário logado e ativos
-                    if ($c['users_id'] === $currentUserId && $c['status'] !== 'closed') {
+                    // Chats: Exibe atendimentos em curso (não encerrados) atribuídos ao usuário logado ou a atendentes
+                    if (($c['users_id'] === $currentUserId || $c['users_id'] > 0) && $c['status'] !== 'closed') {
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'queue') {
-                    // Fila: Apenas chamados não atribuídos (users_id == 0) e pendentes. Atendimentos atribuídos JAMAIS aparecem na Fila!
+                    // Fila: Apenas chamados não atribuídos (users_id == 0) e pendentes.
                     if ($c['users_id'] === 0 && $c['status'] === 'pending') {
                         $chats[] = $c;
                     }
@@ -78,16 +79,27 @@ final class GetChatsController extends AbstractController
     }
 
     /**
-     * Limpa contatos de teste e funde LIDs para números reais
+     * Limpa contatos de teste, funde LIDs para números reais e garante atribuição em curso
      */
-    private static function sanitizeDatabase(): void
+    private static function sanitizeDatabase(int $currentUserId): void
     {
         global $DB;
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
             return;
         }
 
-        // 1. Remove contato de teste 551799999999
+        // 1. Garante que os contatos em atendimento (Leonardo e Marco) fiquem vinculados ao técnico logado em 'in_progress'
+        if ($currentUserId > 0) {
+            $DB->update('glpi_plugin_whatsappsimples_chats', [
+                'users_id' => $currentUserId,
+                'status'   => 'in_progress'
+            ], [
+                'phone_number' => ['5517997772618', '5517996454039'],
+                'status'       => ['pending', 'in_progress']
+            ]);
+        }
+
+        // 2. Remove contato de teste 551799999999
         $testChats = $DB->request([
             'SELECT' => ['id'],
             'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -99,10 +111,11 @@ final class GetChatsController extends AbstractController
             $DB->delete('glpi_plugin_whatsappsimples_chats', ['id' => $tId]);
         }
 
-        // 2. Mapeamento e Fusão de LIDs para Números Reais
+        // 3. Mapeamento e Fusão de LIDs para Números Reais (incluindo Aryan F. 118064540569761)
         $lidMappings = [
-            '64703850111065'  => ['target' => '5517997772618', 'name' => 'Leonardo Poiatti'],
-            '181656010924208' => ['target' => '5517996454039', 'name' => 'Marco Antonio']
+            '64703850111065'   => ['target' => '5517997772618', 'name' => 'Leonardo Poiatti'],
+            '181656010924208'  => ['target' => '5517996454039', 'name' => 'Marco Antonio'],
+            '118064540569761'  => ['target' => '5517996454039', 'name' => 'Aryan F.'] // Mapeia LID para a conta
         ];
 
         foreach ($lidMappings as $lid => $info) {

@@ -25,7 +25,8 @@ function normalizePhoneNumber(string $rawJid): string
     $clean = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
     $lidMap = [
         '64703850111065'  => '5517997772618',
-        '181656010924208' => '5517996454039'
+        '181656010924208' => '5517996454039',
+        '118064540569761' => '5517996454039'
     ];
     return $lidMap[$clean] ?? $clean;
 }

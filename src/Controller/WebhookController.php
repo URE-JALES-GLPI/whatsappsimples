@@ -65,6 +65,7 @@ final class WebhookController extends AbstractController
                 return new JsonResponse(['success' => true, 'message' => 'Mensagem própria ignorada']);
             }
 
+            // EXTRAÇÃO DE PRIORIDADE: Busca obrigatoriamente um JID real com @s.whatsapp.net antes de aceitar @lid
             $rawJid = '';
             if (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
                 $rawJid = $data['sender'];
@@ -168,7 +169,8 @@ final class WebhookController extends AbstractController
 
         $lidMap = [
             '64703850111065'  => '5517997772618', // Leonardo Poiatti
-            '181656010924208' => '5517996454039'  // Marco Antonio
+            '181656010924208' => '5517996454039', // Marco Antonio
+            '118064540569761' => '5517996454039'  // Aryan F.
         ];
 
         return $lidMap[$clean] ?? $clean;
