@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Attribute\Route;
 
 final class SendMessageController extends AbstractController
 {
-    #[Route('/ajax/send', name: 'whatsappsimples_api_send', methods: ['POST'])]
+    #[Route('/ajax/send', name: 'whatsappsimples_api_send', methods: ['GET', 'POST'])]
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
@@ -22,11 +22,11 @@ final class SendMessageController extends AbstractController
             return new JsonResponse(['success' => false, 'error' => 'Tabela de chats não existe no banco'], 400);
         }
 
-        $chatId = $request->request->getInt('chat_id');
-        $text   = trim($request->request->getString('text'));
+        $chatId = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id') ?? 0);
+        $text   = trim((string) ($request->request->get('text') ?? $request->query->get('text') ?? ''));
 
         if ($chatId <= 0 || empty($text)) {
-            return new JsonResponse(['success' => false, 'error' => 'Dados inválidos'], 400);
+            return new JsonResponse(['success' => false, 'error' => 'Dados inválidos: chat_id ou texto ausente'], 400);
         }
 
         $chat = $DB->request([
@@ -41,7 +41,7 @@ final class SendMessageController extends AbstractController
         }
 
         // Dispara mensagem via EvolutionAPI
-        $result = EvolutionApiService::sendMessage($chatId, $chat['phone_number'], $text);
+        $result = EvolutionApiService::sendMessage($chatId, (string) $chat['phone_number'], $text);
 
         if (!empty($result['success'])) {
             $currentUserId = (int) Session::getLoginUserID();

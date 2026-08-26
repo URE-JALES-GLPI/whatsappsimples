@@ -72,9 +72,11 @@ final class WebhookController extends AbstractController
             return new JsonResponse(['success' => true, 'message' => 'Mensagem propria ignorada']);
         }
 
-        // 4. Extrai os dados do remetente
+        // 4. Extraição inteligente do número de telefone (lid vs s.whatsapp.net)
         $remoteJid   = $key['remoteJid'] ?? '';
-        $phoneNumber = preg_replace('/[^0-9]/', "", str_replace('@s.whatsapp.net', '', $remoteJid));
+        $participant = $key['participant'] ?? ($data['sender'] ?? '');
+        $targetJid   = (!empty($participant) && str_contains($participant, '@s.whatsapp.net')) ? $participant : $remoteJid;
+        $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $targetJid));
         $contactName = $data['pushName'] ?? 'Contato não salvo';
         $messageId   = $key['id'] ?? '';
 
