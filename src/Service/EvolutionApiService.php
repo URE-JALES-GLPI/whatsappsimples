@@ -245,8 +245,11 @@ class EvolutionApiService
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
-            'number' => $phoneNumber,
-            'text'   => $text
+            'number'      => $phoneNumber,
+            'text'        => $text,
+            'textMessage' => [
+                'text' => $text
+            ]
         ];
 
         $ch = curl_init($endpoint);
