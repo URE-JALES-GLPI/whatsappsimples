@@ -1,9 +1,7 @@
 <?php
 
-define('GLPI_ROOT', dirname(__DIR__, 3));
-define('GLPI_KEEP_SESSION', true);
-define('GLPI_DISABLE_AUTO_SESSION', true);
-
+// Webhook público para recebimento de eventos da EvolutionAPI (mesmo padrão do Protocolo/front/verify.php)
+define('GLPI_ROOT', dirname(__DIR__, 2));
 include_once(GLPI_ROOT . "/inc/includes.php");
 
 header('Content-Type: application/json');
