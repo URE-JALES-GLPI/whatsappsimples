@@ -1,10 +1,27 @@
 <?php
 
-// Webhook público para recebimento de eventos da EvolutionAPI (Inicialização direta do banco GLPI sem checagem de sessão humana)
+// Webhook seguro com Autenticação por Token Secreto para a EvolutionAPI
 define('GLPI_ROOT', dirname(__DIR__, 2));
 include_once(GLPI_ROOT . "/config/config.php");
 
+use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
+
 header('Content-Type: application/json');
+
+// 1. VALIDAÇÃO DE SEGURANÇA POR TOKEN SECRETO (API KEY)
+$config = EvolutionApiService::getConfig();
+$expectedToken = $config['api_key'] ?? 'ure_jales_evolution_token_2026';
+
+$providedToken = $_SERVER['HTTP_APIKEY'] 
+    ?? $_SERVER['HTTP_X_API_KEY'] 
+    ?? $_GET['token'] 
+    ?? '';
+
+if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'error' => 'Acesso negado: Token de autenticacao invalido ou ausente']);
+    exit;
+}
 
 $content = file_get_contents('php://input');
 $payload = json_decode($content, true);

@@ -126,7 +126,7 @@ final class ConfigPageController extends AbstractController
 
         <script>
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
-            const webhookFullUrl = window.location.origin + rootDoc + '/plugins/whatsappsimples/front/webhook.php';
+            const webhookFullUrl = window.location.origin + rootDoc + '/plugins/whatsappsimples/front/webhook.php?token=ure_jales_evolution_token_2026';
 
             document.getElementById('webhook-url-input').value = webhookFullUrl;
 
