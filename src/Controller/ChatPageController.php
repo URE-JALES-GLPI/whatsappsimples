@@ -709,22 +709,33 @@ final class ChatPageController extends AbstractController
                 loadChats();
             }
 
-            async function loadChats() {
+            async function safeFetchJson(url, options = {}) {
                 try {
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/chats?tab=${currentTab}`);
-                    const data = await res.json();
-                    allLoadedChats = data.chats || [];
-
-                    if (currentTab === 'mine') {
-                        document.getElementById('badge-mine').innerText = allLoadedChats.length;
-                    } else if (currentTab === 'queue') {
-                        document.getElementById('badge-queue').innerText = allLoadedChats.length;
+                    const res = await fetch(url, options);
+                    const text = await res.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch(e) {
+                        console.error('Resposta nao-JSON do servidor:', text);
+                        return { success: false, error: 'Servidor retornou formato invalido. Verifique o log whatsappsimples.log' };
                     }
-
-                    renderChatList(allLoadedChats);
-                } catch (e) {
-                    console.error('Erro ao carregar chats:', e);
+                } catch(e) {
+                    console.error('Erro na chamada AJAX:', e);
+                    return { success: false, error: 'Falha na conexao de rede' };
                 }
+            }
+
+            async function loadChats() {
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats?tab=${currentTab}`);
+                allLoadedChats = data.chats || [];
+
+                if (currentTab === 'mine') {
+                    document.getElementById('badge-mine').innerText = allLoadedChats.length;
+                } else if (currentTab === 'queue') {
+                    document.getElementById('badge-queue').innerText = allLoadedChats.length;
+                }
+
+                renderChatList(allLoadedChats);
             }
 
             function filterChatList() {
@@ -803,76 +814,66 @@ final class ChatPageController extends AbstractController
             async function closeActiveChat(chatId) {
                 if (!confirm('Deseja realmente encerrar este atendimento?')) return;
 
-                try {
-                    const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
-                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
-                    
-                    const formData = new FormData();
-                    formData.append('chat_id', chatId);
-                    if (csrfToken) {
-                        formData.append('_glpi_csrf_token', csrfToken);
-                    }
+                const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
+                
+                const formData = new FormData();
+                formData.append('chat_id', chatId);
+                if (csrfToken) {
+                    formData.append('_glpi_csrf_token', csrfToken);
+                }
 
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/close`, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-Glpi-Csrf-Token': csrfToken
-                        },
-                        body: formData
-                    });
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Glpi-Csrf-Token': csrfToken
+                    },
+                    body: formData
+                });
 
-                    const data = await res.json();
-                    if (data.success) {
-                        activeChatId = 0;
-                        document.getElementById('main-chat-header').style.display = 'none';
-                        document.getElementById('messages-box').innerHTML = `
-                            <div class="omni-divider-badge">Atendimento encerrado com sucesso</div>
-                        `;
-                        document.getElementById('message-input').disabled = true;
-                        document.getElementById('send-btn').disabled = true;
-                        loadChats();
-                    } else {
-                        alert(data.error || 'Erro ao encerrar atendimento');
-                    }
-                } catch (e) {
-                    console.error('Erro ao encerrar chat:', e);
+                if (data.success) {
+                    activeChatId = 0;
+                    document.getElementById('main-chat-header').style.display = 'none';
+                    document.getElementById('messages-box').innerHTML = `
+                        <div class="omni-divider-badge">Atendimento encerrado com sucesso</div>
+                    `;
+                    document.getElementById('message-input').disabled = true;
+                    document.getElementById('send-btn').disabled = true;
+                    loadChats();
+                } else {
+                    alert(data.error || 'Erro ao encerrar atendimento');
                 }
             }
 
             async function loadMessages(isContactTab = false) {
                 if (!activeChatId && !activePhoneNumber) return;
-                try {
-                    const url = isContactTab 
-                        ? `${rootDoc}/plugins/whatsappsimples/ajax/messages?phone_number=${encodeURIComponent(activePhoneNumber)}`
-                        : `${rootDoc}/plugins/whatsappsimples/ajax/messages?chat_id=${activeChatId}`;
+                const url = isContactTab 
+                    ? `${rootDoc}/plugins/whatsappsimples/ajax/messages?phone_number=${encodeURIComponent(activePhoneNumber)}`
+                    : `${rootDoc}/plugins/whatsappsimples/ajax/messages?chat_id=${activeChatId}`;
 
-                    const res = await fetch(url);
-                    const data = await res.json();
-                    const box = document.getElementById('messages-box');
+                const data = await safeFetchJson(url);
+                const box = document.getElementById('messages-box');
 
-                    if (!data.messages || data.messages.length === 0) {
-                        box.innerHTML = '<div style="margin:auto; color:#94a3b8; font-size:0.85rem;">Sem mensagens registradas</div>';
-                        return;
-                    }
-
-                    box.innerHTML = `
-                        <div class="omni-divider-badge">Atendimento Iniciado</div>
-                        ${data.messages.map(m => `
-                            <div class="omni-bubble ${m.sender_type}">
-                                <div class="omni-bubble-sender">
-                                    <span>${m.sender_name || ''}</span>
-                                </div>
-                                <div>${escapeHtml(m.message_text)}</div>
-                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
-                            </div>
-                        `).join('')}
-                    `;
-
-                    box.scrollTop = box.scrollHeight;
-                } catch (e) {
-                    console.error('Erro ao carregar mensagens:', e);
+                if (!data.messages || data.messages.length === 0) {
+                    box.innerHTML = '<div style="margin:auto; color:#94a3b8; font-size:0.85rem;">Sem mensagens registradas</div>';
+                    return;
                 }
+
+                box.innerHTML = `
+                    <div class="omni-divider-badge">Atendimento Iniciado</div>
+                    ${data.messages.map(m => `
+                        <div class="omni-bubble ${m.sender_type}">
+                            <div class="omni-bubble-sender">
+                                <span>${m.sender_name || ''}</span>
+                            </div>
+                            <div>${escapeHtml(m.message_text)}</div>
+                            <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
+                        </div>
+                    `).join('')}
+                `;
+
+                box.scrollTop = box.scrollHeight;
             }
 
             async function sendCurrentMessage() {
@@ -882,40 +883,33 @@ final class ChatPageController extends AbstractController
 
                 input.value = '';
 
-                try {
-                    const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
-                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
-                    const formData = new FormData();
-                    formData.append('chat_id', activeChatId || 0);
-                    formData.append('phone_number', activePhoneNumber || '');
-                    formData.append('text', text);
-                    if (csrfToken) {
-                        formData.append('_glpi_csrf_token', csrfToken);
-                    }
+                const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
+                const formData = new FormData();
+                formData.append('chat_id', activeChatId || 0);
+                formData.append('phone_number', activePhoneNumber || '');
+                formData.append('text', text);
+                if (csrfToken) {
+                    formData.append('_glpi_csrf_token', csrfToken);
+                }
 
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-Glpi-Csrf-Token': csrfToken
-                        },
-                        body: formData
-                    });
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Glpi-Csrf-Token': csrfToken
+                    },
+                    body: formData
+                });
 
-                    const data = await res.json();
-                    if (data.success) {
-                        loadMessages(isContactTabActive);
-                        loadChats();
-                    } else {
-                        alert('Erro ao enviar: ' + (data.error || 'Falha desconhecida'));
-                    }
-                } catch (e) {
-                    alert('Erro na requisição de envio.');
-                    console.error(e);
+                if (data.success) {
+                    loadMessages(isContactTabActive);
+                    loadChats();
+                } else {
+                    alert('Erro ao enviar: ' + (data.error || 'Falha desconhecida'));
                 }
             }
 
-            // UPLOAD E ENVIO DE ARQUIVOS (IMAGEM / PDF / DOCUMENTO)
             async function uploadSelectedFile(inputEl) {
                 if (!inputEl.files || inputEl.files.length === 0) return;
                 const file = inputEl.files[0];
@@ -924,42 +918,34 @@ final class ChatPageController extends AbstractController
                     return;
                 }
 
-                try {
-                    const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
-                    const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
-                    const formData = new FormData();
-                    formData.append('chat_id', activeChatId || 0);
-                    formData.append('phone_number', activePhoneNumber || '');
-                    formData.append('file', file);
-                    if (csrfToken) {
-                        formData.append('_glpi_csrf_token', csrfToken);
-                    }
-
-                    const res = await fetch(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-Glpi-Csrf-Token': csrfToken
-                        },
-                        body: formData
-                    });
-
-                    const data = await res.json();
-                    if (data.success) {
-                        loadMessages(isContactTabActive);
-                        loadChats();
-                    } else {
-                        alert('Erro ao enviar arquivo: ' + (data.error || 'Falha desconhecida'));
-                    }
-                } catch (e) {
-                    alert('Erro no envio do arquivo.');
-                    console.error(e);
-                } finally {
-                    inputEl.value = '';
+                const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
+                const formData = new FormData();
+                formData.append('chat_id', activeChatId || 0);
+                formData.append('phone_number', activePhoneNumber || '');
+                formData.append('file', file);
+                if (csrfToken) {
+                    formData.append('_glpi_csrf_token', csrfToken);
                 }
+
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Glpi-Csrf-Token': csrfToken
+                    },
+                    body: formData
+                });
+
+                if (data.success) {
+                    loadMessages(isContactTabActive);
+                    loadChats();
+                } else {
+                    alert('Erro ao enviar arquivo: ' + (data.error || 'Falha desconhecida'));
+                }
+                inputEl.value = '';
             }
 
-            // GESTÃO DE POP-OVERS DE EMOJIS E RESPOSTAS RÁPIDAS
             function togglePopover(id) {
                 const popover = document.getElementById(id);
                 const isVisible = popover.style.display === 'block';
