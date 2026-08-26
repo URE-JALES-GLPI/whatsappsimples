@@ -1,9 +1,6 @@
 <?php
 
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', dirname(__DIR__, 2));
-}
-include_once(GLPI_ROOT . "/inc/includes.php");
+include_once(__DIR__ . '/../../../inc/includes.php');
 
 Session::checkLoginUser();
 header('Content-Type: application/json');

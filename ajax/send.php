@@ -1,9 +1,6 @@
 <?php
 
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', dirname(__DIR__, 2));
-}
-include_once(GLPI_ROOT . "/inc/includes.php");
+include_once(__DIR__ . '/../../../inc/includes.php');
 
 Session::checkLoginUser();
 header('Content-Type: application/json');
@@ -13,6 +10,10 @@ global $DB;
 if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
     echo json_encode(['success' => false, 'error' => 'Tabela de chats não existe no banco']);
     exit;
+}
+
+if (isset($_POST['_glpi_csrf_token'])) {
+    Session::checkCSRF($_POST);
 }
 
 $chatId = (int) ($_POST['chat_id'] ?? $_GET['chat_id'] ?? 0);
