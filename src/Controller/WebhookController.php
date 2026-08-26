@@ -30,8 +30,7 @@ final class WebhookController extends AbstractController
         global $DB;
 
         // 1. VALIDAÇÃO DE SEGURANÇA POR TOKEN SECRETO (API KEY)
-        $config = EvolutionApiService::getConfig();
-        $expectedToken = $config['api_key'] ?? 'ure_jales_evolution_token_2026';
+        $expectedToken = EvolutionApiService::getConfig('api_token') ?: 'ure_jales_evolution_token_2026';
 
         $providedToken = $request->headers->get('apikey') 
             ?? $request->headers->get('x-api-key') 
