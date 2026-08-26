@@ -243,9 +243,17 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configuracoes da EvolutionAPI incompletas'];
         }
 
+        // Formatação inteligente do identificador para o WhatsApp (número padrão 5517... vs LID)
+        $numberToSend = trim($phoneNumber);
+        if (!str_contains($numberToSend, '@')) {
+            if (!str_starts_with($numberToSend, '55') && strlen($numberToSend) > 12) {
+                $numberToSend .= '@lid';
+            }
+        }
+
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
-            'number'      => $phoneNumber,
+            'number'      => $numberToSend,
             'text'        => $text,
             'textMessage' => [
                 'text' => $text

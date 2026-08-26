@@ -53,11 +53,17 @@ if (!empty($key['fromMe'])) {
     exit;
 }
 
-// Extração inteligente do número de telefone (lid vs s.whatsapp.net)
+// Extração inteligente do número de telefone (suporte a LID vs s.whatsapp.net)
 $remoteJid   = $key['remoteJid'] ?? '';
 $participant = $key['participant'] ?? ($data['sender'] ?? '');
 $targetJid   = (!empty($participant) && str_contains($participant, '@s.whatsapp.net')) ? $participant : $remoteJid;
-$phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $targetJid));
+
+if (str_ends_with($targetJid, '@lid')) {
+    $phoneNumber = $targetJid;
+} else {
+    $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us'], '', $targetJid));
+}
+
 $contactName = $data['pushName'] ?? 'Contato não salvo';
 $messageId   = $key['id'] ?? '';
 
