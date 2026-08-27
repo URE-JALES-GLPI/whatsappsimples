@@ -39,7 +39,7 @@ final class SendMessageController extends AbstractController
             $chat = null;
             if ($chatId > 0) {
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                     'WHERE'  => ['id' => $chatId],
                     'LIMIT'  => 1
@@ -48,7 +48,7 @@ final class SendMessageController extends AbstractController
 
             if (!$chat && !empty($phoneNumber)) {
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'first_response_date', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                     'WHERE'  => ['phone_number' => $phoneNumber],
                     'ORDER'  => 'id DESC',
@@ -126,10 +126,6 @@ final class SendMessageController extends AbstractController
                     'status'   => 'in_progress',
                     'date_mod' => $now
                 ];
-
-                if (empty($chat['first_response_date'])) {
-                    $updateData['first_response_date'] = $now;
-                }
 
                 // Atualiza o status de TODOS os registros deste telefone para 'in_progress' e 'users_id = currentUserId'
                 $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneToUpdate]);
