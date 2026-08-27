@@ -20,6 +20,7 @@ services:
       - CACHE_REDIS_ENABLED=true
       - CACHE_REDIS_URI=redis://evolution-redis:6379/6
       - CACHE_REDIS_PREFIX_KEY=evolution
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1030831524
       # Outras configuracoes V2
       - LOG_LEVEL=ERROR,WARN,LOG
       - DEL_INSTANCE=false
