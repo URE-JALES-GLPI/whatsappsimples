@@ -116,7 +116,35 @@ final class SendMessageController
             }
 
             // 2. Envio de Mensagem de Texto
-            $result = EvolutionApiService::sendMessage($chatId, $phoneToUpdate, $text);
+            $isInternal = false;
+            $pureText = $text;
+            if (str_starts_with($text, '[NOTA INTERNA]')) {
+                $isInternal = true;
+                // Remove o prefixo para salvar no banco limpo (ou mantém, mas limpo é melhor)
+                $pureText = trim(str_replace('[NOTA INTERNA]', '', $text));
+                if (empty($pureText)) {
+                    return new JsonResponse(['success' => false, 'error' => 'Nota interna não pode ser vazia'], 400);
+                }
+            }
+
+            if ($isInternal) {
+                // Não envia para a API. Apenas salva no banco de dados.
+                $messageId = 'internal_' . time() . '_' . rand(100, 999);
+                EvolutionApiService::ensureMessageColumns();
+                $DB->insert('glpi_plugin_whatsappsimples_messages', [
+                    'chats_id'      => $chatId,
+                    'users_id'      => $currentUserId,
+                    'message_id'    => $messageId,
+                    'sender_type'   => 'attendant',
+                    'message_text'  => $pureText,
+                    'is_internal'   => 1,
+                    'date_creation' => $now
+                ]);
+                $result = ['success' => true, 'message' => 'Nota interna salva'];
+            } else {
+                $result = EvolutionApiService::sendMessage($chatId, $phoneToUpdate, $text);
+            }
+            
             self::logDebug("RESULTADO_ENVIO_TEXTO", $result);
 
             if (!empty($result['success'])) {

@@ -424,6 +424,11 @@ final class ChatPageController extends AbstractController
                 border: 1px solid #bce2a4;
                 border-top-right-radius: 0;
             }
+            .omni-bubble.omni-msg-internal {
+                background: #fef08a !important;
+                color: #854d0e !important;
+                border: 1px solid #fde047 !important;
+            }
 
             .omni-bubble-sender {
                 font-size: 0.75rem;
@@ -684,8 +689,8 @@ final class ChatPageController extends AbstractController
                         <div class="omni-footer-tools">
                             <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
                             <span class="omni-footer-tool-btn" title="Emojis" onclick="togglePopover('emoji-popover')">😊</span>
-                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="togglePopover('canned-popover')">📄</span>
-                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">⚡</span>
+                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="togglePopover('canned-popover')">⚡</span>
+                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
                         <input type="text" class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeypress="handleKeyPress(event)" disabled>
@@ -904,7 +909,7 @@ final class ChatPageController extends AbstractController
                 box.innerHTML = `
                     <div class="omni-divider-badge">Atendimento Iniciado</div>
                     ${data.messages.map(m => `
-                        <div class="omni-bubble ${m.sender_type}">
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
