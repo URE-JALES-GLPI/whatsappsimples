@@ -424,6 +424,11 @@ final class ChatPageController extends AbstractController
                 border: 1px solid #bce2a4;
                 border-top-right-radius: 0;
             }
+            .omni-bubble.omni-msg-internal {
+                background: #fef08a !important;
+                color: #854d0e !important;
+                border: 1px solid #fde047 !important;
+            }
 
             .omni-bubble-sender {
                 font-size: 0.75rem;
@@ -473,6 +478,13 @@ final class ChatPageController extends AbstractController
                 border-radius: 20px;
                 font-size: 0.88rem;
                 outline: none;
+                resize: none;
+                font-family: inherit;
+                line-height: 1.4;
+                height: 38px;
+                max-height: 114px;
+                overflow-y: auto;
+                box-sizing: border-box;
             }
             .omni-message-input:focus { border-color: #0284c7; }
 
@@ -683,12 +695,12 @@ final class ChatPageController extends AbstractController
 
                         <div class="omni-footer-tools">
                             <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
-                            <span class="omni-footer-tool-btn" title="Emojis" onclick="togglePopover('emoji-popover')">😊</span>
-                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="togglePopover('canned-popover')">📄</span>
-                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">⚡</span>
+                            <span class="omni-footer-tool-btn" title="Emojis" onclick="toggleOmniPopover('emoji-popover')">😊</span>
+                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="toggleOmniPopover('canned-popover')">⚡</span>
+                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
-                        <input type="text" class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeypress="handleKeyPress(event)" disabled>
+                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this)" disabled rows="1"></textarea>
                         <button class="omni-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
                     </div>
                 </div>
@@ -904,7 +916,7 @@ final class ChatPageController extends AbstractController
                 box.innerHTML = `
                     <div class="omni-divider-badge">Atendimento Iniciado</div>
                     ${data.messages.map(m => `
-                        <div class="omni-bubble ${m.sender_type}">
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
@@ -923,6 +935,7 @@ final class ChatPageController extends AbstractController
                 if (!text || (!activeChatId && !activePhoneNumber)) return;
 
                 input.value = '';
+                input.style.height = '38px'; // Reset height after send
 
                 const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
@@ -987,7 +1000,7 @@ final class ChatPageController extends AbstractController
                 inputEl.value = '';
             }
 
-            function togglePopover(id) {
+            function toggleOmniPopover(id) {
                 const popover = document.getElementById(id);
                 const isVisible = popover.style.display === 'block';
                 closeAllPopovers();
@@ -1022,7 +1035,20 @@ final class ChatPageController extends AbstractController
 
             function handleKeyPress(e) {
                 if (e.key === 'Enter') {
-                    sendCurrentMessage();
+                    if (e.shiftKey) {
+                        // Não faz nada, o comportamento padrão do navegador vai inserir a quebra de linha
+                        return;
+                    } else {
+                        e.preventDefault();
+                        sendCurrentMessage();
+                    }
+                }
+            }
+
+            function autoResizeInput(el) {
+                el.style.height = '38px';
+                if (el.scrollHeight > 38) {
+                    el.style.height = Math.min(el.scrollHeight, 114) + 'px';
                 }
             }
 
@@ -1046,7 +1072,7 @@ final class ChatPageController extends AbstractController
 
             function escapeHtml(str) {
                 if (!str) return '';
-                return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
             }
 
             function escapeJs(str) {
