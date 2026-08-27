@@ -70,6 +70,7 @@ class EvolutionApiService
 
         // O JID do contato está SEMPRE em data.key.remoteJid
         // Para grupos, o remetente individual fica em data.key.participant
+        // root-level 'sender' = NOSSO número (linha da URE), NUNCA usar como identificador do contato
         $contactJid = $key['participant'] ?? $key['remoteJid'] ?? '';
 
         if (empty($contactJid)) {
@@ -77,28 +78,24 @@ class EvolutionApiService
             return '';
         }
 
-        $digits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $contactJid));
+        self::log("JID_BRUTO_CONTATO", ['jid' => $contactJid]);
 
-        // 1. Já é número brasileiro válido?
-        if (self::isValidBrazilianNumber($digits)) {
-            self::log("NUMERO_DIRETO_DO_JID", ['jid' => $contactJid, 'numero' => $digits]);
-            return $digits;
+        // Se o JID já é um número brasileiro válido (5517...@s.whatsapp.net)
+        $digitsOnly = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $contactJid));
+        if (self::isValidBrazilianNumber($digitsOnly)) {
+            self::log("NUMERO_BR_DIRETO", ['jid' => $contactJid, 'numero' => $digitsOnly]);
+            return $digitsOnly;
         }
 
-        // 2. É um LID — tenta resolver via API
-        if (!empty($digits)) {
-            self::log("LID_DETECTADO_BUSCANDO_API", ['jid' => $contactJid, 'digits' => $digits]);
-            $resolved = self::fetchRealJidFromApi($digits);
-            if (!empty($resolved)) {
-                self::log("LID_RESOLVIDO_COM_SUCESSO", ['lid' => $digits, 'numero_real' => $resolved]);
-                return $resolved;
-            }
+        // É um LID da Meta — guarda o JID COMPLETO com @lid para usar no envio
+        if (str_contains($contactJid, '@lid')) {
+            self::log("LID_JID_COMPLETO_PRESERVADO", ['jid' => $contactJid]);
+            return $contactJid; // ex: "258522822520959@lid"
         }
 
-        // 3. Fallback: retorna os dígitos brutos do LID
-        // Melhor ter o LID como chave única do que usar o número errado da linha
-        self::log("FALLBACK_LID_BRUTO", ['digits' => $digits]);
-        return $digits;
+        // Fallback: retorna o que tiver
+        self::log("FALLBACK_JID", ['jid' => $contactJid]);
+        return $contactJid;
     }
 
     /**
@@ -208,30 +205,25 @@ class EvolutionApiService
     // ──────────────────────────────────────────────────
 
     /**
-     * Formata o número para envio pela EvolutionAPI.
+     * Formata o número/JID para envio pela EvolutionAPI.
      * - Números brasileiros (55...): envia como string de dígitos
-     * - LIDs da Meta: envia com sufixo @lid
+     * - JIDs com @lid: envia o JID completo (ex: "258522822520959@lid")
      */
     public static function formatNumberForSending(string $phoneNumber): string
     {
-        $clean = trim(str_replace(['@s.whatsapp.net', '@c.us'], '', $phoneNumber));
-
-        if (str_contains($clean, '@lid')) {
-            return $clean;
+        // Se já tem @lid ou @s.whatsapp.net, retorna como está
+        if (str_contains($phoneNumber, '@')) {
+            return $phoneNumber;
         }
 
-        $digits = preg_replace('/[^0-9]/', '', $clean);
+        $digits = preg_replace('/[^0-9]/', '', $phoneNumber);
 
         if (self::isValidBrazilianNumber($digits)) {
             return $digits;
         }
 
-        // É um LID ou número não-brasileiro → adiciona @lid
-        if (strlen($digits) > 13 || !str_starts_with($digits, '55')) {
-            return $digits . '@lid';
-        }
-
-        return $digits;
+        // Número não-brasileiro sem sufixo: adiciona @lid
+        return $digits . '@lid';
     }
 
     // ──────────────────────────────────────────────────
@@ -329,20 +321,20 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        // Se o número armazenado é um LID, tenta resolver antes de enviar
-        if (!self::isValidBrazilianNumber($phoneNumber)) {
-            $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $phoneNumber));
+        $numberToSend = self::formatNumberForSending($phoneNumber);
+        self::log("SEND_NUMERO_FORMATADO", ['input' => $phoneNumber, 'formatted' => $numberToSend]);
+
+        // Para LIDs, tenta buscar o número real antes de enviar (sem bloquear se não resolver)
+        if (!self::isValidBrazilianNumber($phoneNumber) && !str_contains($phoneNumber, '@lid')) {
+            $rawDigits = preg_replace('/[^0-9]/', '', $phoneNumber);
             $resolved = self::fetchRealJidFromApi($rawDigits);
             if (!empty($resolved)) {
                 self::log("SEND_LID_RESOLVIDO", ['original' => $phoneNumber, 'resolvido' => $resolved]);
-                // Atualiza o banco com o número correto para que futuras mensagens não precisem resolver novamente
                 $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $resolved], ['id' => $chatId]);
                 $phoneNumber = $resolved;
+                $numberToSend = self::formatNumberForSending($resolved);
             }
         }
-
-        $numberToSend = self::formatNumberForSending($phoneNumber);
-        self::log("SEND_NUMERO_FORMATADO", ['input' => $phoneNumber, 'formatted' => $numberToSend]);
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
