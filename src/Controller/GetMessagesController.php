@@ -84,7 +84,8 @@ final class GetMessagesController extends AbstractController
 
             foreach ($iterator as $row) {
                 $senderName = '';
-                if ($row['sender_type'] === 'user') {
+                $type = $row['sender_type'];
+                if ($type === 'user' || $type === 'contact') {
                     $senderName = $contactDisplayName;
                 } else {
                     $techId = (int) ($row['users_id'] ?? 0);

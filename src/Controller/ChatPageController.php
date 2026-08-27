@@ -410,16 +410,18 @@ final class ChatPageController extends AbstractController
                 word-wrap: break-word;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.1);
             }
-            .omni-bubble.user {
+            .omni-bubble.user, .omni-bubble.contact {
                 align-self: flex-start;
-                background: #ffffff;
+                background: #f1f5f9;
                 color: #0f172a;
+                border: 1px solid #e2e8f0;
                 border-top-left-radius: 0;
             }
             .omni-bubble.attendant {
                 align-self: flex-end;
                 background: #dcf8c6;
                 color: #0f172a;
+                border: 1px solid #bce2a4;
                 border-top-right-radius: 0;
             }
 
@@ -428,7 +430,7 @@ final class ChatPageController extends AbstractController
                 font-weight: 700;
                 margin-bottom: 2px;
             }
-            .omni-bubble.user .omni-bubble-sender { color: #0284c7; }
+            .omni-bubble.user .omni-bubble-sender, .omni-bubble.contact .omni-bubble-sender { color: #0284c7; }
             .omni-bubble.attendant .omni-bubble-sender { color: #047857; }
 
             .omni-bubble-time {
