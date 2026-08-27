@@ -107,24 +107,26 @@ final class WebhookController extends AbstractController
             // BUSCA OU CRIA O CHAT — sem duplicatas
             // ══════════════════════════════════════════
 
-            // Busca por número exato primeiro
+            // 1. Busca por número exato OU pelo linked_lid
             $activeChat = $DB->request([
-                'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
+                'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => [
-                    'phone_number' => $phoneNumber,
+                    'OR' => [
+                        'phone_number' => $phoneNumber,
+                        'linked_lid'   => $phoneNumber
+                    ],
                     'status'       => ['pending', 'in_progress']
                 ],
                 'ORDER'  => 'id DESC',
                 'LIMIT'  => 1
             ])->current();
 
-            // Se não encontrou por número exato e o número é um LID, tenta busca parcial
-            // (LID pode variar entre sessões, mas os dígitos ficam iguais)
-            if (!$activeChat && !empty($phoneNumber)) {
+            // 2. Se não encontrou e o número é um LID, tenta busca parcial (retrocompatibilidade)
+            if (!$activeChat && !empty($phoneNumber) && str_contains($phoneNumber, '@lid')) {
                 $rawLidDigits = preg_replace('/[^0-9]/', '', $phoneNumber);
                 $activeChat = $DB->request([
-                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
+                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number', 'linked_lid'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                     'WHERE'  => [
                         'phone_number' => ['LIKE', '%' . $rawLidDigits . '%'],
@@ -134,9 +136,37 @@ final class WebhookController extends AbstractController
                     'LIMIT'  => 1
                 ])->current();
                 if ($activeChat) {
-                    // Usa o telefone já cadastrado (pode ser o real)
                     $phoneNumber = $activeChat['phone_number'];
                     self::logDebug("CHAT_ENCONTRADO_POR_LID_PARCIAL", ['phone' => $phoneNumber, 'chat_id' => $activeChat['id']]);
+                }
+            }
+
+            // 3. Fallback inteligente: se AINDA não achou, é um LID, e temos o nome do contato,
+            // verifica se existe UM chat aberto com esse exato nome. Se sim, assume que é ele e vincula o LID!
+            if (!$activeChat && !empty($phoneNumber) && str_contains($phoneNumber, '@lid') && !empty($contactName) && $contactName !== $phoneNumber) {
+                $possibleChats = $DB->request([
+                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number', 'linked_lid'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
+                        'contact_name' => $contactName,
+                        'status'       => ['pending', 'in_progress']
+                    ],
+                    'ORDER'  => 'id DESC'
+                ]);
+
+                // Só faz o vinculo se encontrou EXATAMENTE UM chat com esse nome para evitar conflitos de homônimos
+                if ($possibleChats->count() === 1) {
+                    $activeChat = $possibleChats->current();
+                    self::logDebug("CHAT_ENCONTRADO_POR_NOME", ['name' => $contactName, 'chat_id' => $activeChat['id'], 'vinculando_lid' => $phoneNumber]);
+                    
+                    // Vincula o LID a este chat para as próximas mensagens acharem direto na etapa 1
+                    $DB->update('glpi_plugin_whatsappsimples_chats', [
+                        'linked_lid' => $phoneNumber
+                    ], [
+                        'id' => $activeChat['id']
+                    ]);
+
+                    $phoneNumber = $activeChat['phone_number']; // Usa o número real que já estava no banco
                 }
             }
 

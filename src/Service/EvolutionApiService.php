@@ -23,6 +23,12 @@ class EvolutionApiService
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
             }
         }
+        if ($DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'linked_lid')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `linked_lid` varchar(50) DEFAULT NULL AFTER `phone_number`");
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD INDEX `linked_lid_idx` (`linked_lid`)");
+            }
+        }
     }
 
     private static function log(string $action, array $data = []): void
