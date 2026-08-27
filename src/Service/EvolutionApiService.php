@@ -162,43 +162,6 @@ class EvolutionApiService
         return null;
     }
 
-    /**
-     * Método principal: dado um payload de webhook, retorna o melhor número de telefone possível.
-     * Se o payload contiver apenas um LID, tenta resolver via API.
-     * Retorna os dígitos do número real ou, como último recurso, os dígitos brutos do JID.
-     */
-    public static function resolvePhoneNumber(array $payload): string
-    {
-        $data = $payload['data'] ?? $payload;
-        $key  = $data['key'] ?? [];
-
-        // Extrai o JID bruto para ter um fallback
-        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
-        $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-
-        // 1. Tenta extração profunda do payload (0ms, sem chamada de rede)
-        $realNumber = self::extractRealPhoneNumberFromPayload($payload);
-        if (!empty($realNumber) && self::isValidBrazilianNumber($realNumber)) {
-            return $realNumber;
-        }
-
-        // 2. Se o rawDigits já é um número brasileiro válido, usa direto
-        if (self::isValidBrazilianNumber($rawDigits)) {
-            return $rawDigits;
-        }
-
-        // 3. rawDigits é um LID — tenta resolver via API da EvolutionAPI
-        if (!empty($rawDigits)) {
-            $resolved = self::fetchRealJidFromApi($rawDigits);
-            if (!empty($resolved)) {
-                return $resolved;
-            }
-        }
-
-        // 4. Último recurso: retorna os dígitos brutos (pode ser LID)
-        self::log("FALLBACK_RAW_DIGITS", ['rawDigits' => $rawDigits]);
-        return $rawDigits;
-    }
 
     // ──────────────────────────────────────────────────
     // FORMATAÇÃO PARA ENVIO
