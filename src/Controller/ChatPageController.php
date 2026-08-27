@@ -695,8 +695,8 @@ final class ChatPageController extends AbstractController
 
                         <div class="omni-footer-tools">
                             <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
-                            <span class="omni-footer-tool-btn" title="Emojis" onclick="togglePopover('emoji-popover')">😊</span>
-                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="togglePopover('canned-popover')">⚡</span>
+                            <span class="omni-footer-tool-btn" title="Emojis" onclick="toggleOmniPopover('emoji-popover')">😊</span>
+                            <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="toggleOmniPopover('canned-popover')">⚡</span>
                             <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
@@ -1000,7 +1000,7 @@ final class ChatPageController extends AbstractController
                 inputEl.value = '';
             }
 
-            function togglePopover(id) {
+            function toggleOmniPopover(id) {
                 const popover = document.getElementById(id);
                 const isVisible = popover.style.display === 'block';
                 closeAllPopovers();
