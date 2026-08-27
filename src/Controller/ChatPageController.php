@@ -482,7 +482,7 @@ final class ChatPageController extends AbstractController
                 font-family: inherit;
                 line-height: 1.4;
                 height: 38px;
-                max-height: 120px;
+                max-height: 114px;
                 overflow-y: auto;
                 box-sizing: border-box;
             }
@@ -700,7 +700,7 @@ final class ChatPageController extends AbstractController
                             <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
-                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this)" disabled rows="1"></textarea>
+                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this)" disabled rows="1"></textarea>
                         <button class="omni-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
                     </div>
                 </div>
@@ -1034,16 +1034,21 @@ final class ChatPageController extends AbstractController
             });
 
             function handleKeyPress(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendCurrentMessage();
+                if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                        // Não faz nada, o comportamento padrão do navegador vai inserir a quebra de linha
+                        return;
+                    } else {
+                        e.preventDefault();
+                        sendCurrentMessage();
+                    }
                 }
             }
 
             function autoResizeInput(el) {
                 el.style.height = '38px';
                 if (el.scrollHeight > 38) {
-                    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+                    el.style.height = Math.min(el.scrollHeight, 114) + 'px';
                 }
             }
 
