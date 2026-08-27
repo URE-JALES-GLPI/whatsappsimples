@@ -7,7 +7,8 @@
 
 if (!defined('GLPI_ROOT')) {
     define('GLPI_ROOT', dirname(__DIR__, 2));
-    include_once(GLPI_ROOT . "/config/config.php");
+    define('GLPI_API', 1);
+    include_once(GLPI_ROOT . "/inc/includes.php");
 }
 
 use GlpiPlugin\Whatsappsimples\DTO\IncomingMessageDTO;
