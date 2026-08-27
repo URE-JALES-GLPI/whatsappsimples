@@ -481,9 +481,10 @@ final class ChatPageController extends AbstractController
                 resize: none;
                 font-family: inherit;
                 line-height: 1.4;
-                min-height: 38px;
+                height: 38px;
                 max-height: 120px;
                 overflow-y: auto;
+                box-sizing: border-box;
             }
             .omni-message-input:focus { border-color: #0284c7; }
 
@@ -699,7 +700,7 @@ final class ChatPageController extends AbstractController
                             <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
-                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeydown="handleKeyPress(event)" disabled rows="1"></textarea>
+                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this)" disabled rows="1"></textarea>
                         <button class="omni-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
                     </div>
                 </div>
@@ -934,6 +935,7 @@ final class ChatPageController extends AbstractController
                 if (!text || (!activeChatId && !activePhoneNumber)) return;
 
                 input.value = '';
+                input.style.height = '38px'; // Reset height after send
 
                 const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
@@ -1035,6 +1037,13 @@ final class ChatPageController extends AbstractController
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
                     sendCurrentMessage();
+                }
+            }
+
+            function autoResizeInput(el) {
+                el.style.height = '38px';
+                if (el.scrollHeight > 38) {
+                    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
                 }
             }
 
