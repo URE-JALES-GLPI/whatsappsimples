@@ -641,13 +641,9 @@ final class ChatPageController extends AbstractController
                         </div>
                     </div>
 
-                    <!-- BARRA DE ENTRADA FUNCIONAL -->
-                    <!-- PREVIEW DE ARQUIVO -->
+                    <!-- PREVIEW DE ARQUIVOS -->
                     <div id="file-preview-container" style="display:none; background: #f8fafc; padding: 8px 16px; border-top: 1px solid #cbd5e1;">
-                        <div style="display: flex; align-items: center; justify-content: space-between; background: #e2e8f0; padding: 6px 12px; border-radius: 6px;">
-                            <span id="file-preview-name" style="font-size: 0.85rem; font-weight: 600; color: #334155;"></span>
-                            <span style="cursor: pointer; color: #ef4444; font-weight: bold; font-size: 1.1rem;" onclick="clearSelectedFile()" title="Remover">&times;</span>
-                        </div>
+                        <div id="file-preview-list"></div>
                     </div>
 
                     <div class="omni-input-footer">
@@ -699,7 +695,7 @@ final class ChatPageController extends AbstractController
                         </div>
 
                         <!-- INPUT INVISÍVEL DE UPLOAD DE ARQUIVOS -->
-                        <input type="file" id="file-input" style="display:none;" onchange="uploadSelectedFile(this)">
+                        <input type="file" id="file-input" style="display:none;" onchange="uploadSelectedFile(this)" multiple>
 
                         <div class="omni-footer-tools">
                             <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
@@ -721,6 +717,7 @@ final class ChatPageController extends AbstractController
             let activePhoneNumber = '';
             let isContactTabActive = false;
             let allLoadedChats = [];
+            let stagedFiles = [];
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
 
             function switchTab(tab, btn) {
@@ -939,11 +936,9 @@ final class ChatPageController extends AbstractController
 
             async function sendCurrentMessage() {
                 const input = document.getElementById('message-input');
-                const fileInput = document.getElementById('file-input');
                 const text = input.value.trim();
-                const file = fileInput.files && fileInput.files.length > 0 ? fileInput.files[0] : null;
 
-                if ((!text && !file) || (!activeChatId && !activePhoneNumber)) return;
+                if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
                 // Bloqueia o input durante envio para evitar duplicação
                 document.getElementById('send-btn').disabled = true;
@@ -954,58 +949,120 @@ final class ChatPageController extends AbstractController
 
                 const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
-                const formData = new FormData();
-                formData.append('chat_id', activeChatId || 0);
-                formData.append('phone_number', activePhoneNumber || '');
-                formData.append('text', text);
                 
-                if (file) {
-                    formData.append('file', file);
-                }
+                let hasError = false;
 
-                if (csrfToken) {
-                    formData.append('_glpi_csrf_token', csrfToken);
-                }
+                if (stagedFiles.length > 0) {
+                    for (let i = 0; i < stagedFiles.length; i++) {
+                        const formData = new FormData();
+                        formData.append('chat_id', activeChatId || 0);
+                        formData.append('phone_number', activePhoneNumber || '');
+                        // A legenda vai apenas no primeiro arquivo, se houver
+                        if (i === 0 && text) {
+                            formData.append('text', text);
+                        }
+                        formData.append('file', stagedFiles[i]);
+                        if (csrfToken) {
+                            formData.append('_glpi_csrf_token', csrfToken);
+                        }
 
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
-                    body: formData
-                });
+                        const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-Glpi-Csrf-Token': csrfToken
+                            },
+                            body: formData
+                        });
+
+                        if (!data.success) {
+                            alert('Erro ao enviar o arquivo ' + stagedFiles[i].name + ': ' + (data.error || 'Falha desconhecida'));
+                            hasError = true;
+                        }
+                    }
+                } else if (text) {
+                    const formData = new FormData();
+                    formData.append('chat_id', activeChatId || 0);
+                    formData.append('phone_number', activePhoneNumber || '');
+                    formData.append('text', text);
+                    if (csrfToken) {
+                        formData.append('_glpi_csrf_token', csrfToken);
+                    }
+
+                    const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-Glpi-Csrf-Token': csrfToken
+                        },
+                        body: formData
+                    });
+
+                    if (!data.success) {
+                        alert('Erro ao enviar: ' + (data.error || 'Falha desconhecida'));
+                        hasError = true;
+                    }
+                }
 
                 document.getElementById('send-btn').disabled = false;
                 input.disabled = false;
                 input.focus();
 
-                if (data.success) {
+                if (!hasError) {
                     clearSelectedFile();
                     loadMessages(isContactTabActive);
                     loadChats();
                 } else {
-                    alert('Erro ao enviar: ' + (data.error || 'Falha desconhecida'));
+                    // Recarrega para mostrar as que passaram
+                    loadMessages(isContactTabActive);
+                    loadChats();
                 }
             }
 
             function clearSelectedFile() {
-                const fileInput = document.getElementById('file-input');
-                fileInput.value = '';
-                document.getElementById('file-preview-container').style.display = 'none';
-                document.getElementById('file-preview-name').innerText = '';
+                stagedFiles = [];
+                document.getElementById('file-input').value = '';
+                renderStagedFiles();
+            }
+
+            function removeStagedFile(index) {
+                stagedFiles.splice(index, 1);
+                renderStagedFiles();
+            }
+
+            function renderStagedFiles() {
+                const container = document.getElementById('file-preview-container');
+                const list = document.getElementById('file-preview-list');
+                
+                if (stagedFiles.length === 0) {
+                    container.style.display = 'none';
+                    list.innerHTML = '';
+                    return;
+                }
+                
+                container.style.display = 'block';
+                list.innerHTML = stagedFiles.map((f, i) => `
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #e2e8f0; padding: 4px 8px; border-radius: 4px; margin-bottom: 4px;">
+                        <span style="font-size: 0.8rem; font-weight: 600; color: #334155; max-width: 90%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">📎 ${f.name}</span>
+                        <span style="cursor: pointer; color: #ef4444; font-weight: bold; font-size: 1.1rem; line-height: 1;" onclick="removeStagedFile(${i})" title="Remover">&times;</span>
+                    </div>
+                `).join('');
             }
 
             function uploadSelectedFile(inputEl) {
                 if (!inputEl.files || inputEl.files.length === 0) return;
-                const file = inputEl.files[0];
                 if (!activeChatId && !activePhoneNumber) {
                     alert('Selecione uma conversa antes de anexar arquivos.');
                     inputEl.value = '';
                     return;
                 }
-                document.getElementById('file-preview-name').innerText = '📎 ' + file.name;
-                document.getElementById('file-preview-container').style.display = 'block';
+                
+                for(let i = 0; i < inputEl.files.length; i++) {
+                    stagedFiles.push(inputEl.files[i]);
+                }
+                
+                renderStagedFiles();
+                inputEl.value = ''; // Limpa o input para poder selecionar mais depois
             }
 
             function toggleOmniPopover(id) {
