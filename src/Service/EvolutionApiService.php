@@ -463,11 +463,12 @@ class EvolutionApiService
 
         $numberToSend = self::formatNumberForSending($phoneNumber);
 
-        // Extrai o mimetype da string base64 se possível
+        // Extrai o mimetype e o base64 puro da string (Evolution API 1.8.2 rejeita o prefixo)
         $mimeType = 'application/octet-stream';
-        if (preg_match('/^data:(.*?);base64,/', $base64Data, $matches)) {
+        $pureBase64 = $base64Data;
+        if (preg_match('/^data:(.*?);base64,(.*)$/', $base64Data, $matches)) {
             $mimeType = $matches[1];
-            // EvolutioAPI geralmente aceita a string inteira, então deixamos o prefixo
+            $pureBase64 = $matches[2];
         }
 
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
@@ -481,7 +482,7 @@ class EvolutionApiService
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,
                 'caption'   => $caption ?: '',
-                'media'     => $base64Data
+                'media'     => $pureBase64
             ]
         ];
 
