@@ -62,23 +62,12 @@ final class WebhookController extends AbstractController
             $key   = $data['key'] ?? [];
             $isFromMe = !empty($key['fromMe']);
 
-            // Extração prioritária do JID com @s.whatsapp.net ou fallback
-            $rawJid = '';
-            if (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
-                $rawJid = $key['remoteJid'];
-            } elseif (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
-                $rawJid = $data['sender'];
-            } elseif (!empty($key['participant']) && str_contains($key['participant'], '@s.whatsapp.net')) {
-                $rawJid = $key['participant'];
-            } else {
-                $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
-            }
+            // 1. Extração profunda e infalível do número de celular real (55...) diretamente do payload
+            $phoneNumber = EvolutionApiService::extractRealPhoneNumberFromPayload($payload);
 
-            // Tenta obter o número de telefone limpo ou resolve via EvolutionAPI se for LID
-            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-
+            // 2. Se o payload continha apenas um LID e o número extraído não inicia com 55, consulta a EvolutionAPI ao vivo
             if (!empty($phoneNumber) && (!str_starts_with($phoneNumber, '55') || strlen($phoneNumber) > 13)) {
-                $resolved = EvolutionApiService::fetchRealJid($rawJid);
+                $resolved = EvolutionApiService::fetchRealJid($phoneNumber);
                 if (!empty($resolved)) {
                     $phoneNumber = $resolved;
                 }
@@ -96,9 +85,9 @@ final class WebhookController extends AbstractController
 
             $now = date('Y-m-d H:i:s');
 
-            // 1. Localiza se já existe um CHAT ATIVO para este número de telefone
+            // 3. Localiza se já existe um CHAT ATIVO para este número de telefone
             $activeChat = $DB->request([
-                'SELECT' => ['id', 'status', 'users_id'],
+                'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => [
                     'phone_number' => $phoneNumber,

@@ -25,6 +25,31 @@ class EvolutionApiService
     }
 
     /**
+     * Extrai o número de celular real (55...) diretamente do payload do Webhook por inspecao profunda do JSON
+     */
+    public static function extractRealPhoneNumberFromPayload(array $payload): string
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        // 1. Procura por JID completo no formato 55179xxxxxxx@s.whatsapp.net ou @c.us
+        if (preg_match('/(55\d{10,11})@(s\.whatsapp\.net|c\.us)/', $json, $matches)) {
+            return $matches[1];
+        }
+
+        // 2. Procura por sequência numérica brasileira de 12 a 13 dígitos iniciada com 55
+        if (preg_match('/(?<!\d)(55\d{10,11})(?!\d)/', $json, $matches)) {
+            return $matches[1];
+        }
+
+        // 3. Fallback: extrai do remoteJid ou sender
+        $data   = $payload['data'] ?? [];
+        $key    = $data['key'] ?? [];
+        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
+
+        return preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+    }
+
+    /**
      * Tenta resolver um LID do WhatsApp Meta para o numero de celular real (55...) via EvolutionAPI de forma 100% dinamica e escalavel
      */
     public static function fetchRealJid(string $numberOrLid): string
@@ -47,31 +72,36 @@ class EvolutionApiService
             return $clean;
         }
 
-        // 1. Consulta perfil do contato na EvolutionAPI (/chat/fetchProfile)
-        $endpoint = "{$baseUrl}/chat/fetchProfile/{$instance}";
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_POSTFIELDS     => json_encode(['number' => $clean]),
-            CURLOPT_TIMEOUT        => 4
-        ]);
+        // Tentativas com formato limpo e com sufixo @lid
+        $targetsToTest = [$clean . '@lid', $clean];
 
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
+        foreach ($targetsToTest as $targetNumber) {
+            // 1. Consulta perfil do contato na EvolutionAPI (/chat/fetchProfile)
+            $endpoint = "{$baseUrl}/chat/fetchProfile/{$instance}";
+            $ch = curl_init($endpoint);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken
+                ],
+                CURLOPT_POSTFIELDS     => json_encode(['number' => $targetNumber]),
+                CURLOPT_TIMEOUT        => 4
+            ]);
 
-        if ($httpCode >= 200 && $httpCode < 300) {
-            $data = json_decode($response, true);
-            $realJid = $data['jid'] ?? $data['number'] ?? '';
-            if (!empty($realJid)) {
-                $cleanReal = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $realJid));
-                if (!empty($cleanReal) && str_starts_with($cleanReal, '55') && strlen($cleanReal) >= 12) {
-                    return $cleanReal;
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                $data = json_decode($response, true);
+                $realJid = $data['jid'] ?? $data['number'] ?? '';
+                if (!empty($realJid)) {
+                    $cleanReal = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $realJid));
+                    if (!empty($cleanReal) && str_starts_with($cleanReal, '55') && strlen($cleanReal) >= 12) {
+                        return $cleanReal;
+                    }
                 }
             }
         }
@@ -86,7 +116,7 @@ class EvolutionApiService
                 'Content-Type: application/json',
                 'apikey: ' . $apiToken
             ],
-            CURLOPT_POSTFIELDS     => json_encode(['numbers' => [$clean, $clean . '@lid']]),
+            CURLOPT_POSTFIELDS     => json_encode(['numbers' => [$clean . '@lid', $clean]]),
             CURLOPT_TIMEOUT        => 4
         ]);
 

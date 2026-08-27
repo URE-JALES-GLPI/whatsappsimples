@@ -3,6 +3,7 @@
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
 use Glpi\Controller\AbstractController;
+use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 use Session;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -27,7 +28,7 @@ final class GetChatsController extends AbstractController
         $chats = [];
 
         try {
-            // 1. Busca os registros mais recentes por numero de telefone (isolamento 100% individual por numero)
+            // 1. Busca os registros mais recentes por numero de telefone
             $iterator = $DB->request([
                 'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -40,6 +41,17 @@ final class GetChatsController extends AbstractController
                 if (empty($phone)) {
                     continue;
                 }
+
+                // Se o telefone armazenado no banco for um LID (não inicia com 55), tenta resolver dinamicamente via API
+                if (!str_starts_with($phone, '55') || strlen($phone) > 13) {
+                    $realPhone = EvolutionApiService::fetchRealJid($phone);
+                    if (!empty($realPhone) && str_starts_with($realPhone, '55')) {
+                        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $realPhone], ['id' => (int) $row['id']]);
+                        $phone = $realPhone;
+                        $row['phone_number'] = $realPhone;
+                    }
+                }
+
                 if (!isset($latestByPhone[$phone])) {
                     $latestByPhone[$phone] = [
                         'id'           => (int) $row['id'],
@@ -56,7 +68,7 @@ final class GetChatsController extends AbstractController
             foreach ($latestByPhone as $c) {
                 if ($tab === 'mine') {
                     // Chats: Atendimentos ativos vinculados ao técnico logado
-                    if ($c['users_id'] === $currentUserId && $c['status'] !== 'closed') {
+                    if (($c['users_id'] === $currentUserId || $c['users_id'] > 0) && $c['status'] !== 'closed') {
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'queue') {
