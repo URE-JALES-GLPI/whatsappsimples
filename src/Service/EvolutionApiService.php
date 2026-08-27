@@ -279,6 +279,39 @@ class EvolutionApiService
         return ['state' => 'close', 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
+    public static function getQrCode(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/instance/connect/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['apikey: ' . $apiToken],
+            CURLOPT_TIMEOUT        => 10
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return [
+                'base64' => $data['base64'] ?? '',
+                'code'   => $data['code'] ?? ''
+            ];
+        }
+
+        return ['error' => "HTTP {$httpCode}: {$response}"];
+    }
+
     // ──────────────────────────────────────────────────
     // WEBHOOK
     // ──────────────────────────────────────────────────
