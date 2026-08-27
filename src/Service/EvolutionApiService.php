@@ -463,18 +463,20 @@ class EvolutionApiService
 
         $numberToSend = self::formatNumberForSending($phoneNumber);
 
+        // Extrai o mimetype da string base64 se possível
+        $mimeType = 'application/octet-stream';
+        if (preg_match('/^data:(.*?);base64,/', $base64Data, $matches)) {
+            $mimeType = $matches[1];
+            // EvolutioAPI geralmente aceita a string inteira, então deixamos o prefixo
+        }
+
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
         $bodyData = [
             'number'       => $numberToSend,
-            'mediaMessage' => [
-                'mediatype' => $mediaType,
-                'caption'   => $caption ?: $fileName,
-                'media'     => $base64Data,
-                'fileName'  => $fileName
-            ],
-            'media'        => $base64Data,
             'mediatype'    => $mediaType,
-            'caption'      => $caption ?: $fileName,
+            'mimetype'     => $mimeType,
+            'caption'      => $caption ?: '',
+            'media'        => $base64Data,
             'fileName'     => $fileName
         ];
 
@@ -517,18 +519,7 @@ class EvolutionApiService
             return ['success' => true, 'message_id' => $messageId];
         }
 
-        $DB->insert('glpi_plugin_whatsappsimples_messages', [
-            'chats_id'      => $chatId,
-            'users_id'      => $currentUserId,
-            'message_id'    => 'media_' . time(),
-            'sender_type'   => 'attendant',
-            'message_text'  => $messageText,
-            'media_url'     => $base64Data,
-            'date_creation' => $now
-        ]);
-
-        $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
-
-        return ['success' => true, 'message' => 'Arquivo anexado ao chamado com sucesso!'];
+        self::log("ERRO_ENVIO_MIDIA", ['http_code' => $httpCode, 'response' => $responseBody]);
+        return ['success' => false, 'error' => "A Evolution API rejeitou o arquivo (HTTP {$httpCode}). Resposta: " . substr($responseBody, 0, 100)];
     }
 }
