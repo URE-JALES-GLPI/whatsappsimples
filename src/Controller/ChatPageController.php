@@ -642,6 +642,14 @@ final class ChatPageController extends AbstractController
                     </div>
 
                     <!-- BARRA DE ENTRADA FUNCIONAL -->
+                    <!-- PREVIEW DE ARQUIVO -->
+                    <div id="file-preview-container" style="display:none; background: #f8fafc; padding: 8px 16px; border-top: 1px solid #cbd5e1;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; background: #e2e8f0; padding: 6px 12px; border-radius: 6px;">
+                            <span id="file-preview-name" style="font-size: 0.85rem; font-weight: 600; color: #334155;"></span>
+                            <span style="cursor: pointer; color: #ef4444; font-weight: bold; font-size: 1.1rem;" onclick="clearSelectedFile()" title="Remover">&times;</span>
+                        </div>
+                    </div>
+
                     <div class="omni-input-footer">
                         <!-- POP-OVER EMOJIS -->
                         <div class="omni-popover" id="emoji-popover">
@@ -931,8 +939,15 @@ final class ChatPageController extends AbstractController
 
             async function sendCurrentMessage() {
                 const input = document.getElementById('message-input');
+                const fileInput = document.getElementById('file-input');
                 const text = input.value.trim();
-                if (!text || (!activeChatId && !activePhoneNumber)) return;
+                const file = fileInput.files && fileInput.files.length > 0 ? fileInput.files[0] : null;
+
+                if ((!text && !file) || (!activeChatId && !activePhoneNumber)) return;
+
+                // Bloqueia o input durante envio para evitar duplicação
+                document.getElementById('send-btn').disabled = true;
+                input.disabled = true;
 
                 input.value = '';
                 input.style.height = '38px'; // Reset height after send
@@ -943,6 +958,11 @@ final class ChatPageController extends AbstractController
                 formData.append('chat_id', activeChatId || 0);
                 formData.append('phone_number', activePhoneNumber || '');
                 formData.append('text', text);
+                
+                if (file) {
+                    formData.append('file', file);
+                }
+
                 if (csrfToken) {
                     formData.append('_glpi_csrf_token', csrfToken);
                 }
@@ -956,7 +976,12 @@ final class ChatPageController extends AbstractController
                     body: formData
                 });
 
+                document.getElementById('send-btn').disabled = false;
+                input.disabled = false;
+                input.focus();
+
                 if (data.success) {
+                    clearSelectedFile();
                     loadMessages(isContactTabActive);
                     loadChats();
                 } else {
@@ -964,40 +989,23 @@ final class ChatPageController extends AbstractController
                 }
             }
 
-            async function uploadSelectedFile(inputEl) {
+            function clearSelectedFile() {
+                const fileInput = document.getElementById('file-input');
+                fileInput.value = '';
+                document.getElementById('file-preview-container').style.display = 'none';
+                document.getElementById('file-preview-name').innerText = '';
+            }
+
+            function uploadSelectedFile(inputEl) {
                 if (!inputEl.files || inputEl.files.length === 0) return;
                 const file = inputEl.files[0];
                 if (!activeChatId && !activePhoneNumber) {
-                    alert('Selecione uma conversa antes de enviar arquivos.');
+                    alert('Selecione uma conversa antes de anexar arquivos.');
+                    inputEl.value = '';
                     return;
                 }
-
-                const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
-                const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
-                const formData = new FormData();
-                formData.append('chat_id', activeChatId || 0);
-                formData.append('phone_number', activePhoneNumber || '');
-                formData.append('file', file);
-                if (csrfToken) {
-                    formData.append('_glpi_csrf_token', csrfToken);
-                }
-
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
-                    body: formData
-                });
-
-                if (data.success) {
-                    loadMessages(isContactTabActive);
-                    loadChats();
-                } else {
-                    alert('Erro ao enviar arquivo: ' + (data.error || 'Falha desconhecida'));
-                }
-                inputEl.value = '';
+                document.getElementById('file-preview-name').innerText = '📎 ' + file.name;
+                document.getElementById('file-preview-container').style.display = 'block';
             }
 
             function toggleOmniPopover(id) {
