@@ -39,43 +39,43 @@ final class WebhookController extends AbstractController
 
             if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
                 self::logDebug("ACESSO_NEGADO_TOKEN", ['provided' => $providedToken]);
-                return new JsonResponse(['success' => false, 'error' => 'Acesso negado: Token de autenticação inválido ou ausente'], 401);
+                return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 401);
             }
 
             if ($request->isMethod('GET')) {
-                return new JsonResponse(['success' => true, 'message' => 'Webhook do WhatsAppSimples autenticado e ativo!']);
+                return new JsonResponse(['success' => true, 'message' => 'Webhook ativo']);
             }
 
             $content = $request->getContent();
             $payload = json_decode($content, true);
 
             if (!$payload || !is_array($payload)) {
-                return new JsonResponse(['success' => false, 'error' => 'Payload JSON inválido'], 400);
+                return new JsonResponse(['success' => false, 'error' => 'JSON inválido'], 400);
             }
+
+            // LOG COMPLETO DO PAYLOAD BRUTO (para diagnóstico)
+            self::logDebug("PAYLOAD_BRUTO_RECEBIDO", ['payload' => $content]);
 
             $event = strtolower($payload['event'] ?? '');
             if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {
-                return new JsonResponse(['success' => true, 'message' => 'Evento ignorado']);
+                return new JsonResponse(['success' => true, 'message' => 'Evento ignorado: ' . $event]);
             }
 
             $data  = $payload['data'] ?? [];
             $key   = $data['key'] ?? [];
             $isFromMe = !empty($key['fromMe']);
 
-            // Extração limpa e segura do número ou JID
-            $rawJid = '';
-            if (!empty($key['remoteJid'])) {
-                $rawJid = $key['remoteJid'];
-            } elseif (!empty($data['sender'])) {
-                $rawJid = $data['sender'];
-            } elseif (!empty($key['participant'])) {
-                $rawJid = $key['participant'];
+            // ══════════════════════════════════════════
+            // RESOLUÇÃO DO NÚMERO — O PONTO CENTRAL
+            // ══════════════════════════════════════════
+            $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
+
+            if (empty($phoneNumber)) {
+                self::logDebug("PHONE_VAZIO_DESCARTANDO", []);
+                return new JsonResponse(['success' => true, 'message' => 'Número de telefone vazio']);
             }
 
-            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-            if (empty($phoneNumber)) {
-                return new JsonResponse(['success' => true, 'message' => 'JID vazio']);
-            }
+            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber, 'isLidFormat' => !EvolutionApiService::isValidBrazilianNumber($phoneNumber)]);
 
             $contactName = $data['pushName'] ?? $phoneNumber;
             $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
@@ -98,12 +98,14 @@ final class WebhookController extends AbstractController
             }
 
             if (empty($text)) {
-                return new JsonResponse(['success' => true, 'message' => 'Mensagem sem conteúdo de texto legível']);
+                return new JsonResponse(['success' => true, 'message' => 'Sem conteúdo de texto']);
             }
 
             $now = date('Y-m-d H:i:s');
 
-            // Localiza se já existe um CHAT ATIVO para este telefone ou JID
+            // ══════════════════════════════════════════
+            // BUSCA OU CRIA O CHAT
+            // ══════════════════════════════════════════
             $activeChat = $DB->request([
                 'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -123,8 +125,9 @@ final class WebhookController extends AbstractController
                     $updateData['contact_name'] = $contactName;
                 }
                 $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
-                self::logDebug("CHAT_ATIVO_ENCONTRADO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'from_me' => $isFromMe]);
+                self::logDebug("CHAT_ATIVO_ENCONTRADO", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
             } else {
+                // Procura chat existente (fechado) para este número
                 $previousChat = $DB->request([
                     'SELECT' => ['id'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -143,7 +146,7 @@ final class WebhookController extends AbstractController
                         $updateData['contact_name'] = $contactName;
                     }
                     $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
-                    self::logDebug("CHAT_REABERTO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'from_me' => $isFromMe]);
+                    self::logDebug("CHAT_REABERTO", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
                 } else {
                     $DB->insert('glpi_plugin_whatsappsimples_chats', [
                         'phone_number'  => $phoneNumber,
@@ -154,10 +157,13 @@ final class WebhookController extends AbstractController
                         'date_mod'      => $now
                     ]);
                     $chatId = (int) $DB->insertId();
-                    self::logDebug("NOVO_CHAT_CRIADO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'from_me' => $isFromMe]);
+                    self::logDebug("NOVO_CHAT_CRIADO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'contactName' => $contactName]);
                 }
             }
 
+            // ══════════════════════════════════════════
+            // GRAVA A MENSAGEM (com deduplicação)
+            // ══════════════════════════════════════════
             if ($chatId > 0) {
                 $senderType = $isFromMe ? 'attendant' : 'user';
 
@@ -177,14 +183,14 @@ final class WebhookController extends AbstractController
                         'message_text'  => $text,
                         'date_creation' => $now
                     ]);
-                    self::logDebug("MENSAGEM_REGISTRADA", ['chat_id' => $chatId, 'sender_type' => $senderType, 'message_text' => $text]);
+                    self::logDebug("MSG_REGISTRADA", ['chat_id' => $chatId, 'sender' => $senderType, 'text' => mb_substr($text, 0, 50)]);
                 }
             }
 
-            return new JsonResponse(['success' => true, 'message' => 'Mensagem processada com sucesso']);
+            return new JsonResponse(['success' => true, 'message' => 'Mensagem processada']);
 
         } catch (\Throwable $e) {
-            self::logDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            self::logDebug("ERRO_EXCEPTION", ['error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile()]);
             return new JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }

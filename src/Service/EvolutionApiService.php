@@ -6,9 +6,10 @@ use Session;
 
 class EvolutionApiService
 {
-    /**
-     * Garantia dinamica de colunas no banco de dados para evitar erro Unknown column
-     */
+    // ──────────────────────────────────────────────────
+    // UTILITÁRIOS DE INFRAESTRUTURA
+    // ──────────────────────────────────────────────────
+
     private static function ensureMessageColumns(): void
     {
         global $DB;
@@ -24,26 +25,205 @@ class EvolutionApiService
         }
     }
 
+    private static function log(string $action, array $data = []): void
+    {
+        $logFile = (defined('GLPI_ROOT') ? GLPI_ROOT : '/var/www/html/glpi') . '/files/_log/whatsappsimples.log';
+        $logDir  = dirname($logFile);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+        $entry = sprintf("[%s] [EvolutionApiService] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
+        @file_put_contents($logFile, $entry, FILE_APPEND);
+    }
+
+    // ──────────────────────────────────────────────────
+    // RESOLUÇÃO DE NÚMERO REAL A PARTIR DO PAYLOAD
+    // ──────────────────────────────────────────────────
+
     /**
-     * Formata o número/JID para envio correto na EvolutionAPI (suportando números 55... e LIDs da Meta)
+     * Verifica se uma string de dígitos é um número brasileiro válido (55 + DDD + 8-9 dígitos).
+     */
+    public static function isValidBrazilianNumber(string $digits): bool
+    {
+        $clean = preg_replace('/[^0-9]/', '', $digits);
+        return str_starts_with($clean, '55') && strlen($clean) >= 12 && strlen($clean) <= 13;
+    }
+
+    /**
+     * EXTRAÇÃO PROFUNDA: varre o JSON inteiro do payload do webhook buscando
+     * um número de celular brasileiro (55XXXXXXXXXXX) em QUALQUER campo.
+     *
+     * Ordem de prioridade:
+     *   1. Campos específicos conhecidos (participant, sender, etc.)
+     *   2. Regex no JSON inteiro procurando 55...@s.whatsapp.net ou @c.us
+     *   3. Regex no JSON inteiro procurando 55... standalone (12-13 dígitos)
+     *
+     * Retorna o número limpo (só dígitos, ex: "5517996194229") ou null.
+     */
+    public static function extractRealPhoneNumberFromPayload(array $payload): ?string
+    {
+        $data = $payload['data'] ?? $payload;
+        $key  = $data['key'] ?? [];
+
+        // Lista de campos onde o número real pode estar escondido
+        $fieldsToCheck = [
+            $key['participant'] ?? '',
+            $data['participant'] ?? '',
+            $data['sender'] ?? '',
+            $data['source'] ?? '',
+            $data['user'] ?? '',
+            $payload['sender'] ?? '',
+            $payload['destination'] ?? '',
+            $key['remoteJid'] ?? '',
+        ];
+
+        // Primeiro: verifica campos individuais
+        foreach ($fieldsToCheck as $field) {
+            if (empty($field) || !is_string($field)) {
+                continue;
+            }
+            $digits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $field));
+            if (self::isValidBrazilianNumber($digits)) {
+                self::log("NUMERO_EXTRAIDO_CAMPO", ['campo' => $field, 'resultado' => $digits]);
+                return $digits;
+            }
+        }
+
+        // Segundo: serializa o payload inteiro e procura via regex
+        $jsonString = json_encode($payload, JSON_UNESCAPED_UNICODE);
+
+        // Padrão mais confiável: número antes de @s.whatsapp.net ou @c.us
+        if (preg_match('/(55\d{10,11})@(?:s\.whatsapp\.net|c\.us)/', $jsonString, $m)) {
+            self::log("NUMERO_EXTRAIDO_REGEX_JID", ['resultado' => $m[1]]);
+            return $m[1];
+        }
+
+        // Padrão standalone: 55 seguido de 10-11 dígitos, não precedido nem seguido por outro dígito
+        if (preg_match('/(?<!\d)(55\d{10,11})(?!\d)/', $jsonString, $m)) {
+            self::log("NUMERO_EXTRAIDO_REGEX_STANDALONE", ['resultado' => $m[1]]);
+            return $m[1];
+        }
+
+        self::log("NENHUM_NUMERO_BR_NO_PAYLOAD", ['payload_size' => strlen($jsonString)]);
+        return null;
+    }
+
+    /**
+     * Consulta a EvolutionAPI para tentar resolver um LID para o número real.
+     * Tenta múltiplos endpoints em cascata.
+     * Retorna o número real (ex: "5517996194229") ou null.
+     */
+    public static function fetchRealJidFromApi(string $lidDigits): ?string
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url') ?? '', '/');
+        $apiToken = self::getConfig('api_token') ?? '';
+        $instance = self::getConfig('instance_name') ?? '';
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return null;
+        }
+
+        // Tentativa 1: /chat/findContacts
+        $endpoints = [
+            ['method' => 'POST', 'url' => "{$baseUrl}/chat/findContacts/{$instance}",    'body' => ['where' => ['id' => "{$lidDigits}@lid"]]],
+            ['method' => 'GET',  'url' => "{$baseUrl}/contact/find/{$instance}?where.id=" . urlencode("{$lidDigits}@lid"), 'body' => null],
+            ['method' => 'POST', 'url' => "{$baseUrl}/chat/fetchProfile/{$instance}",     'body' => ['number' => "{$lidDigits}@lid"]],
+        ];
+
+        foreach ($endpoints as $ep) {
+            $ch = curl_init($ep['url']);
+            $opts = [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken
+                ],
+                CURLOPT_TIMEOUT => 5
+            ];
+            if ($ep['method'] === 'POST' && $ep['body']) {
+                $opts[CURLOPT_POST] = true;
+                $opts[CURLOPT_POSTFIELDS] = json_encode($ep['body']);
+            }
+            curl_setopt_array($ch, $opts);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300 && !empty($response)) {
+                // Procura um número brasileiro na resposta
+                if (preg_match('/(55\d{10,11})/', $response, $m)) {
+                    self::log("LID_RESOLVIDO_API", ['lid' => $lidDigits, 'endpoint' => $ep['url'], 'resultado' => $m[1]]);
+                    return $m[1];
+                }
+            }
+        }
+
+        self::log("LID_NAO_RESOLVIDO_API", ['lid' => $lidDigits]);
+        return null;
+    }
+
+    /**
+     * Método principal: dado um payload de webhook, retorna o melhor número de telefone possível.
+     * Se o payload contiver apenas um LID, tenta resolver via API.
+     * Retorna os dígitos do número real ou, como último recurso, os dígitos brutos do JID.
+     */
+    public static function resolvePhoneNumber(array $payload): string
+    {
+        $data = $payload['data'] ?? $payload;
+        $key  = $data['key'] ?? [];
+
+        // Extrai o JID bruto para ter um fallback
+        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
+        $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+
+        // 1. Tenta extração profunda do payload (0ms, sem chamada de rede)
+        $realNumber = self::extractRealPhoneNumberFromPayload($payload);
+        if (!empty($realNumber) && self::isValidBrazilianNumber($realNumber)) {
+            return $realNumber;
+        }
+
+        // 2. Se o rawDigits já é um número brasileiro válido, usa direto
+        if (self::isValidBrazilianNumber($rawDigits)) {
+            return $rawDigits;
+        }
+
+        // 3. rawDigits é um LID — tenta resolver via API da EvolutionAPI
+        if (!empty($rawDigits)) {
+            $resolved = self::fetchRealJidFromApi($rawDigits);
+            if (!empty($resolved)) {
+                return $resolved;
+            }
+        }
+
+        // 4. Último recurso: retorna os dígitos brutos (pode ser LID)
+        self::log("FALLBACK_RAW_DIGITS", ['rawDigits' => $rawDigits]);
+        return $rawDigits;
+    }
+
+    // ──────────────────────────────────────────────────
+    // FORMATAÇÃO PARA ENVIO
+    // ──────────────────────────────────────────────────
+
+    /**
+     * Formata o número para envio pela EvolutionAPI.
+     * - Números brasileiros (55...): envia como string de dígitos
+     * - LIDs da Meta: envia com sufixo @lid
      */
     public static function formatNumberForSending(string $phoneNumber): string
     {
         $clean = trim(str_replace(['@s.whatsapp.net', '@c.us'], '', $phoneNumber));
 
-        // Se já possui @lid, mantém intacto
         if (str_contains($clean, '@lid')) {
             return $clean;
         }
 
         $digits = preg_replace('/[^0-9]/', '', $clean);
 
-        // Se for um número padrão do Brasil (55 + DDD 2 dígitos + 8 ou 9 dígitos -> 12 ou 13 dígitos)
-        if (str_starts_with($digits, '55') && strlen($digits) >= 12 && strlen($digits) <= 13) {
+        if (self::isValidBrazilianNumber($digits)) {
             return $digits;
         }
 
-        // Se for um ID da Meta / LID (ex: 258522822520959 com 14 ou mais dígitos ou não iniciado por 55)
+        // É um LID ou número não-brasileiro → adiciona @lid
         if (strlen($digits) > 13 || !str_starts_with($digits, '55')) {
             return $digits . '@lid';
         }
@@ -51,9 +231,10 @@ class EvolutionApiService
         return $digits;
     }
 
-    /**
-     * Obtém valor de configuração por chave
-     */
+    // ──────────────────────────────────────────────────
+    // CONFIGURAÇÃO
+    // ──────────────────────────────────────────────────
+
     public static function getConfig(string $key): ?string
     {
         global $DB;
@@ -71,9 +252,6 @@ class EvolutionApiService
         return $row['value'] ?? null;
     }
 
-    /**
-     * Atualiza ou insere valor de configuração
-     */
     public static function setConfig(string $key, string $value): bool
     {
         global $DB;
@@ -94,9 +272,10 @@ class EvolutionApiService
         }
     }
 
-    /**
-     * Consulta estado de conexão da instância na EvolutionAPI
-     */
+    // ──────────────────────────────────────────────────
+    // CONEXÃO
+    // ──────────────────────────────────────────────────
+
     public static function getConnectionState(): array
     {
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
@@ -130,13 +309,13 @@ class EvolutionApiService
         return ['state' => 'close', 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
-    /**
-     * Envia mensagem de texto via EvolutionAPI e grava no banco do GLPI
-     */
+    // ──────────────────────────────────────────────────
+    // ENVIO DE MENSAGEM DE TEXTO
+    // ──────────────────────────────────────────────────
+
     public static function sendMessage(int $chatId, string $phoneNumber, string $text): array
     {
         global $DB;
-
         self::ensureMessageColumns();
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
@@ -147,16 +326,26 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        // Formata o número/JID adequadamente (número padrão 55... ou JID LID ex: 258522822520959@lid)
+        // Se o número armazenado é um LID, tenta resolver antes de enviar
+        if (!self::isValidBrazilianNumber($phoneNumber)) {
+            $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $phoneNumber));
+            $resolved = self::fetchRealJidFromApi($rawDigits);
+            if (!empty($resolved)) {
+                self::log("SEND_LID_RESOLVIDO", ['original' => $phoneNumber, 'resolvido' => $resolved]);
+                // Atualiza o banco com o número correto para que futuras mensagens não precisem resolver novamente
+                $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $resolved], ['id' => $chatId]);
+                $phoneNumber = $resolved;
+            }
+        }
+
         $numberToSend = self::formatNumberForSending($phoneNumber);
+        self::log("SEND_NUMERO_FORMATADO", ['input' => $phoneNumber, 'formatted' => $numberToSend]);
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
             'number'      => $numberToSend,
             'text'        => $text,
-            'textMessage' => [
-                'text' => $text
-            ]
+            'textMessage' => ['text' => $text]
         ];
 
         $ch = curl_init($endpoint);
@@ -175,9 +364,10 @@ class EvolutionApiService
         $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        // Se falhou e era um número sem @lid, tenta fallback enviando com o sufixo @lid
+        // Se falhou e não era @lid, tenta com @lid como fallback
         if ($httpCode >= 400 && !str_contains($numberToSend, '@lid')) {
             $lidNumber = preg_replace('/[^0-9]/', '', $phoneNumber) . '@lid';
+            self::log("SEND_FALLBACK_LID", ['lidNumber' => $lidNumber]);
             $chLid = curl_init($endpoint);
             curl_setopt_array($chLid, [
                 CURLOPT_POST           => true,
@@ -218,9 +408,7 @@ class EvolutionApiService
                 'date_creation' => $now
             ]);
 
-            $DB->update('glpi_plugin_whatsappsimples_chats', [
-                'date_mod' => $now
-            ], ['id' => $chatId]);
+            $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
 
             return ['success' => true, 'message_id' => $messageId];
         }
@@ -228,13 +416,13 @@ class EvolutionApiService
         return ['success' => false, 'error' => "EvolutionAPI retornou HTTP {$httpCode}: {$responseBody}"];
     }
 
-    /**
-     * Envia arquivo de mídia (imagem, PDF, documento) via EvolutionAPI
-     */
+    // ──────────────────────────────────────────────────
+    // ENVIO DE MÍDIA
+    // ──────────────────────────────────────────────────
+
     public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = ''): array
     {
         global $DB;
-
         self::ensureMessageColumns();
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
@@ -243,6 +431,16 @@ class EvolutionApiService
 
         if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
+        }
+
+        // Se o número armazenado é um LID, tenta resolver
+        if (!self::isValidBrazilianNumber($phoneNumber)) {
+            $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $phoneNumber));
+            $resolved = self::fetchRealJidFromApi($rawDigits);
+            if (!empty($resolved)) {
+                $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $resolved], ['id' => $chatId]);
+                $phoneNumber = $resolved;
+            }
         }
 
         $numberToSend = self::formatNumberForSending($phoneNumber);
@@ -296,9 +494,7 @@ class EvolutionApiService
                 'date_creation' => $now
             ]);
 
-            $DB->update('glpi_plugin_whatsappsimples_chats', [
-                'date_mod' => $now
-            ], ['id' => $chatId]);
+            $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
 
             return ['success' => true, 'message_id' => $messageId];
         }
@@ -313,9 +509,7 @@ class EvolutionApiService
             'date_creation' => $now
         ]);
 
-        $DB->update('glpi_plugin_whatsappsimples_chats', [
-            'date_mod' => $now
-        ], ['id' => $chatId]);
+        $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
 
         return ['success' => true, 'message' => 'Arquivo anexado ao chamado com sucesso!'];
     }

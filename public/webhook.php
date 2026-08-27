@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Webhook endpoint (public/) — idêntico ao front/webhook.php
+ * Mantido como fallback alternativo.
+ */
+
 if (!defined('GLPI_ROOT')) {
     define('GLPI_ROOT', dirname(__DIR__, 2));
     include_once(GLPI_ROOT . "/config/config.php");
@@ -9,33 +14,29 @@ use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
 header('Content-Type: application/json');
 
-function logPublicWebhookDebug(string $action, array $data = []): void
+function logPublicWebhook(string $action, array $data = []): void
 {
     $logFile = GLPI_ROOT . '/files/_log/whatsappsimples.log';
     $logDir  = dirname($logFile);
     if (!is_dir($logDir)) {
         @mkdir($logDir, 0775, true);
     }
-    $entry = sprintf("[%s] [public/webhook.php] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
+    $entry = sprintf("[%s] [public/webhook] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
     @file_put_contents($logFile, $entry, FILE_APPEND);
 }
 
 try {
     $expectedToken = EvolutionApiService::getConfig('api_token') ?: 'ure_jales_evolution_token_2026';
-
-    $providedToken = $_SERVER['HTTP_APIKEY'] 
-        ?? $_SERVER['HTTP_X_API_KEY'] 
-        ?? $_GET['token'] 
-        ?? '';
+    $providedToken = $_SERVER['HTTP_APIKEY'] ?? $_SERVER['HTTP_X_API_KEY'] ?? $_GET['token'] ?? '';
 
     if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
         http_response_code(401);
-        echo json_encode(['success' => false, 'error' => 'Acesso negado: Token de autenticacao invalido ou ausente']);
+        echo json_encode(['success' => false, 'error' => 'Acesso negado']);
         exit;
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        echo json_encode(['success' => true, 'message' => 'Webhook publico do WhatsAppSimples autenticado e ativo!']);
+        echo json_encode(['success' => true, 'message' => 'Webhook ativo']);
         exit;
     }
 
@@ -44,9 +45,11 @@ try {
 
     if (!$payload || !is_array($payload)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'error' => 'Payload JSON invalido']);
+        echo json_encode(['success' => false, 'error' => 'JSON inválido']);
         exit;
     }
+
+    logPublicWebhook("PAYLOAD_BRUTO", ['payload' => $content]);
 
     $event = strtolower($payload['event'] ?? '');
     if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {
@@ -58,20 +61,13 @@ try {
     $key   = $data['key'] ?? [];
     $isFromMe = !empty($key['fromMe']);
 
-    $rawJid = '';
-    if (!empty($key['remoteJid'])) {
-        $rawJid = $key['remoteJid'];
-    } elseif (!empty($data['sender'])) {
-        $rawJid = $data['sender'];
-    } elseif (!empty($key['participant'])) {
-        $rawJid = $key['participant'];
-    }
-
-    $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+    $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
     if (empty($phoneNumber)) {
-        echo json_encode(['success' => true, 'message' => 'JID vazio']);
+        echo json_encode(['success' => true, 'message' => 'Número vazio']);
         exit;
     }
+
+    logPublicWebhook("NUMERO_RESOLVIDO", ['phone' => $phoneNumber]);
 
     $contactName = $data['pushName'] ?? $phoneNumber;
     $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
@@ -93,7 +89,7 @@ try {
     }
 
     if (empty($text)) {
-        echo json_encode(['success' => true, 'message' => 'Dados insuficientes para gravar']);
+        echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto']);
         exit;
     }
 
@@ -173,10 +169,10 @@ try {
         }
     }
 
-    echo json_encode(['success' => true, 'message' => 'Mensagem processada com sucesso']);
+    echo json_encode(['success' => true, 'message' => 'Mensagem processada']);
 
 } catch (\Throwable $e) {
-    logPublicWebhookDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage()]);
+    logPublicWebhook("ERRO_EXCEPTION", ['error' => $e->getMessage()]);
     http_response_code(500);
     echo json_encode(['success' => false, 'error' => $e->getMessage()]);
 }
