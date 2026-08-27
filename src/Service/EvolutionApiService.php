@@ -486,6 +486,10 @@ class EvolutionApiService
                 'verifyContact' => false,
                 'validateNumber' => false
             ],
+            'mediatype' => $mediaType,
+            'fileName'  => $fileName,
+            'caption'   => $caption ?: '',
+            'media'     => $pureBase64,
             'mediaMessage' => [
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,

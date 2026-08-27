@@ -34,7 +34,7 @@ class IncomingMessageDTO
 
     public static function fromPayload(array $payload, string $resolvedPhoneNumber): self
     {
-        $data  = $payload['data'] ?? [];
+        $data  = $payload['data'] ?? $payload;
         $key   = $data['key'] ?? [];
         
         $isFromMe = !empty($key['fromMe']);
