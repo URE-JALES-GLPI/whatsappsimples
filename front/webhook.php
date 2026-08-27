@@ -1,8 +1,8 @@
 <?php
 
 /**
- * Webhook endpoint (front/) — idêntico ao WebhookController.php
- * Mantido como fallback caso o GLPI não roteie via Symfony.
+ * Webhook endpoint (front/) — fallback para GLPI.
+ * Usa as novas classes da arquitetura isolada.
  */
 
 if (!defined('GLPI_ROOT')) {
@@ -10,6 +10,10 @@ if (!defined('GLPI_ROOT')) {
     include_once(GLPI_ROOT . "/config/config.php");
 }
 
+use GlpiPlugin\Whatsappsimples\DTO\IncomingMessageDTO;
+use GlpiPlugin\Whatsappsimples\Repository\ChatRepository;
+use GlpiPlugin\Whatsappsimples\Service\ChatLifecycleService;
+use GlpiPlugin\Whatsappsimples\Service\MessageDispatcherService;
 use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
 header('Content-Type: application/json');
@@ -57,12 +61,9 @@ try {
         exit;
     }
 
-    $data  = $payload['data'] ?? [];
-    $key   = $data['key'] ?? [];
-    $isFromMe = !empty($key['fromMe']);
-
-    // RESOLUÇÃO DO NÚMERO — usa o método central
+    // 1. Extração via EvolutionApiService
     $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
+    
     if (empty($phoneNumber)) {
         echo json_encode(['success' => true, 'message' => 'Número vazio']);
         exit;
@@ -70,107 +71,28 @@ try {
 
     logWebhook("NUMERO_RESOLVIDO", ['phone' => $phoneNumber]);
 
-    $contactName = $data['pushName'] ?? $phoneNumber;
-    $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
+    // 2. DTO
+    $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
 
-    $messageData = $data['message'] ?? [];
-    $text = $messageData['conversation'] 
-        ?? $messageData['extendedTextMessage']['text'] 
-        ?? $messageData['imageMessage']['caption'] 
-        ?? $messageData['videoMessage']['caption'] 
-        ?? $messageData['documentMessage']['caption'] 
-        ?? '';
-
-    if (empty($text) && !empty($messageData['imageMessage'])) {
-        $text = '📷 Imagem recebida';
-    } elseif (empty($text) && !empty($messageData['audioMessage'])) {
-        $text = '🎵 Áudio recebido';
-    } elseif (empty($text) && !empty($messageData['documentMessage'])) {
-        $text = '📄 Documento recebido';
-    }
-
-    if (empty($text)) {
+    if (empty($messageDTO->getText())) {
         echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto']);
         exit;
     }
 
-    global $DB;
-    $now = date('Y-m-d H:i:s');
+    // 3. Inicializa Dependências da nova arquitetura
+    $repository = new ChatRepository();
+    $lifecycleService = new ChatLifecycleService($repository);
+    $dispatcher = new MessageDispatcherService($repository, $lifecycleService);
 
-    $activeChat = $DB->request([
-        'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
-        'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-        'WHERE'  => [
-            'phone_number' => $phoneNumber,
-            'status'       => ['pending', 'in_progress']
-        ],
-        'ORDER'  => 'id DESC',
-        'LIMIT'  => 1
-    ])->current();
+    // 4. Delega o processamento
+    $success = $dispatcher->dispatchIncomingMessage($messageDTO);
 
-    $chatId = 0;
-    if ($activeChat) {
-        $chatId = (int) $activeChat['id'];
-        $updateData = ['date_mod' => $now];
-        if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
-            $updateData['contact_name'] = $contactName;
-        }
-        $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
+    if ($success) {
+        echo json_encode(['success' => true, 'message' => 'Mensagem processada']);
     } else {
-        $previousChat = $DB->request([
-            'SELECT' => ['id'],
-            'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => ['phone_number' => $phoneNumber],
-            'ORDER'  => 'id ASC',
-            'LIMIT'  => 1
-        ])->current();
-
-        if ($previousChat) {
-            $chatId = (int) $previousChat['id'];
-            $updateData = [
-                'status'   => $isFromMe ? 'in_progress' : 'pending',
-                'date_mod' => $now
-            ];
-            if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
-                $updateData['contact_name'] = $contactName;
-            }
-            $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
-        } else {
-            $DB->insert('glpi_plugin_whatsappsimples_chats', [
-                'phone_number'  => $phoneNumber,
-                'contact_name'  => $contactName,
-                'users_id'      => 0,
-                'status'        => $isFromMe ? 'in_progress' : 'pending',
-                'date_creation' => $now,
-                'date_mod'      => $now
-            ]);
-            $chatId = (int) $DB->insertId();
-        }
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Falha ao processar mensagem no despachante']);
     }
-
-    if ($chatId > 0) {
-        $senderType = $isFromMe ? 'attendant' : 'user';
-
-        $alreadyExists = $DB->request([
-            'SELECT' => ['id'],
-            'FROM'   => 'glpi_plugin_whatsappsimples_messages',
-            'WHERE'  => ['message_id' => $messageId],
-            'LIMIT'  => 1
-        ])->count() > 0;
-
-        if (!$alreadyExists) {
-            $DB->insert('glpi_plugin_whatsappsimples_messages', [
-                'chats_id'      => $chatId,
-                'users_id'      => 0,
-                'message_id'    => $messageId,
-                'sender_type'   => $senderType,
-                'message_text'  => $text,
-                'date_creation' => $now
-            ]);
-        }
-    }
-
-    echo json_encode(['success' => true, 'message' => 'Mensagem processada']);
 
 } catch (\Throwable $e) {
     logWebhook("ERRO_EXCEPTION", ['error' => $e->getMessage()]);

@@ -2,50 +2,29 @@
 
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
-use Glpi\Controller\AbstractController;
-use Glpi\Http\Firewall;
-use Glpi\Security\Attribute\SecurityStrategy;
-use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use GlpiPlugin\Whatsappsimples\DTO\IncomingMessageDTO;
+use GlpiPlugin\Whatsappsimples\Repository\ChatRepository;
+use GlpiPlugin\Whatsappsimples\Service\ChatLifecycleService;
+use GlpiPlugin\Whatsappsimples\Service\MessageDispatcherService;
+use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
-#[SecurityStrategy(Firewall::STRATEGY_NO_CHECK)]
-final class WebhookController extends AbstractController
+class WebhookController
 {
-    public function isPublic(): bool
+    /**
+     * @param string $action Ação do log (ex: "WEBHOOK_START")
+     * @param array $data Dados extras para o log
+     */
+    private static function logDebug(string $action, array $data = []): void
     {
-        return true;
+        $logStr = "[" . date('Y-m-d H:i:s') . "] [front/webhook] [$action] " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n";
+        \Toolbox::logInFile('whatsappsimples', $logStr, true);
     }
 
-    public function checkAccess(): bool
-    {
-        return true;
-    }
-
-    #[Route('/webhook', name: 'whatsappsimples_webhook', methods: ['GET', 'POST'], options: ['no_login' => true, 'public' => true, 'prevent_csrf' => true])]
-    public function __invoke(Request $request): Response
+    public function handle(Request $request): JsonResponse
     {
         try {
-            global $DB;
-
-            $expectedToken = EvolutionApiService::getConfig('api_token') ?: 'ure_jales_evolution_token_2026';
-
-            $providedToken = $request->headers->get('apikey') 
-                ?? $request->headers->get('x-api-key') 
-                ?? $request->query->get('token') 
-                ?? '';
-
-            if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
-                self::logDebug("ACESSO_NEGADO_TOKEN", ['provided' => $providedToken]);
-                return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 401);
-            }
-
-            if ($request->isMethod('GET')) {
-                return new JsonResponse(['success' => true, 'message' => 'Webhook ativo']);
-            }
-
             $content = $request->getContent();
             $payload = json_decode($content, true);
 
@@ -61,201 +40,38 @@ final class WebhookController extends AbstractController
                 return new JsonResponse(['success' => true, 'message' => 'Evento ignorado: ' . $event]);
             }
 
-            $data  = $payload['data'] ?? [];
-            $key   = $data['key'] ?? [];
-            $isFromMe = !empty($key['fromMe']);
-
-            // ══════════════════════════════════════════
-            // RESOLUÇÃO DO NÚMERO — O PONTO CENTRAL
-            // ══════════════════════════════════════════
+            // 1. Extração via EvolutionApiService
             $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
-
+            
             if (empty($phoneNumber)) {
-                self::logDebug("PHONE_VAZIO_DESCARTANDO", []);
                 return new JsonResponse(['success' => true, 'message' => 'Número de telefone vazio']);
             }
 
-            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber, 'isValidBR' => EvolutionApiService::isValidBrazilianNumber($phoneNumber)]);
+            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber]);
 
-            $contactName = $data['pushName'] ?? $phoneNumber;
-            $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
+            // 2. DTO
+            $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
 
-            // Extração do conteúdo da mensagem
-            $messageData = $data['message'] ?? [];
-            $text = $messageData['conversation'] 
-                ?? $messageData['extendedTextMessage']['text'] 
-                ?? $messageData['imageMessage']['caption'] 
-                ?? $messageData['videoMessage']['caption'] 
-                ?? $messageData['documentMessage']['caption'] 
-                ?? '';
-
-            if (empty($text) && !empty($messageData['imageMessage'])) {
-                $text = '📷 Imagem recebida';
-            } elseif (empty($text) && !empty($messageData['audioMessage'])) {
-                $text = '🎵 Áudio recebido';
-            } elseif (empty($text) && !empty($messageData['documentMessage'])) {
-                $text = '📄 Documento recebido';
-            }
-
-            if (empty($text)) {
+            if (empty($messageDTO->getText())) {
                 return new JsonResponse(['success' => true, 'message' => 'Sem conteúdo de texto']);
             }
 
-            $now = date('Y-m-d H:i:s');
+            // 3. Inicializa Dependências
+            $repository = new ChatRepository();
+            $lifecycleService = new ChatLifecycleService($repository);
+            $dispatcher = new MessageDispatcherService($repository, $lifecycleService);
 
-            // ══════════════════════════════════════════
-            // BUSCA OU CRIA O CHAT — sem duplicatas
-            // ══════════════════════════════════════════
+            // 4. Delega tudo para o Service (A mágica da amarração de LID e gravação de histórico acontece aqui)
+            $success = $dispatcher->dispatchIncomingMessage($messageDTO);
 
-            // 1. Busca por número exato OU pelo linked_lid
-            $activeChat = $DB->request([
-                'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'WHERE'  => [
-                    'OR' => [
-                        'phone_number' => $phoneNumber,
-                        'linked_lid'   => $phoneNumber
-                    ],
-                    'status'       => ['pending', 'in_progress']
-                ],
-                'ORDER'  => 'id DESC',
-                'LIMIT'  => 1
-            ])->current();
+            return new JsonResponse([
+                'success' => $success,
+                'message' => $success ? 'Mensagem processada e salva no banco' : 'Falha ao processar mensagem'
+            ]);
 
-            // 2. Se não encontrou e o número é um LID, tenta busca parcial (retrocompatibilidade)
-            if (!$activeChat && !empty($phoneNumber) && str_contains($phoneNumber, '@lid')) {
-                $rawLidDigits = preg_replace('/[^0-9]/', '', $phoneNumber);
-                $activeChat = $DB->request([
-                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number', 'linked_lid'],
-                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'  => [
-                        'phone_number' => ['LIKE', '%' . $rawLidDigits . '%'],
-                        'status'       => ['pending', 'in_progress']
-                    ],
-                    'ORDER'  => 'id DESC',
-                    'LIMIT'  => 1
-                ])->current();
-                if ($activeChat) {
-                    $phoneNumber = $activeChat['phone_number'];
-                    self::logDebug("CHAT_ENCONTRADO_POR_LID_PARCIAL", ['phone' => $phoneNumber, 'chat_id' => $activeChat['id']]);
-                }
-            }
-
-            // 3. Fallback inteligente: se AINDA não achou, é um LID, e temos o nome do contato,
-            // verifica se existe UM chat aberto com esse exato nome. Se sim, assume que é ele e vincula o LID!
-            if (!$activeChat && !empty($phoneNumber) && str_contains($phoneNumber, '@lid') && !empty($contactName) && $contactName !== $phoneNumber) {
-                $possibleChats = $DB->request([
-                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number', 'linked_lid'],
-                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'  => [
-                        'contact_name' => $contactName,
-                        'status'       => ['pending', 'in_progress']
-                    ],
-                    'ORDER'  => 'id DESC'
-                ]);
-
-                // Só faz o vinculo se encontrou EXATAMENTE UM chat com esse nome para evitar conflitos de homônimos
-                if ($possibleChats->count() === 1) {
-                    $activeChat = $possibleChats->current();
-                    self::logDebug("CHAT_ENCONTRADO_POR_NOME", ['name' => $contactName, 'chat_id' => $activeChat['id'], 'vinculando_lid' => $phoneNumber]);
-                    
-                    // Vincula o LID a este chat para as próximas mensagens acharem direto na etapa 1
-                    $DB->update('glpi_plugin_whatsappsimples_chats', [
-                        'linked_lid' => $phoneNumber
-                    ], [
-                        'id' => $activeChat['id']
-                    ]);
-
-                    $phoneNumber = $activeChat['phone_number']; // Usa o número real que já estava no banco
-                }
-            }
-
-            $chatId = 0;
-            if ($activeChat) {
-                $chatId = (int) $activeChat['id'];
-                $updateData = ['date_mod' => $now];
-                if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
-                    $updateData['contact_name'] = $contactName;
-                }
-                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
-                self::logDebug("CHAT_ATIVO_ENCONTRADO", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
-            } else {
-                // Procura chat existente (fechado) para este número
-                $previousChat = $DB->request([
-                    'SELECT' => ['id'],
-                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'  => ['phone_number' => $phoneNumber],
-                    'ORDER'  => 'id ASC',
-                    'LIMIT'  => 1
-                ])->current();
-
-                if ($previousChat) {
-                    $chatId = (int) $previousChat['id'];
-                    $updateData = [
-                        'status'   => $isFromMe ? 'in_progress' : 'pending',
-                        'date_mod' => $now
-                    ];
-                    if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
-                        $updateData['contact_name'] = $contactName;
-                    }
-                    $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
-                    self::logDebug("CHAT_REABERTO", ['chat_id' => $chatId, 'phone' => $phoneNumber]);
-                } else {
-                    $DB->insert('glpi_plugin_whatsappsimples_chats', [
-                        'phone_number'  => $phoneNumber,
-                        'contact_name'  => $contactName,
-                        'users_id'      => 0,
-                        'status'        => $isFromMe ? 'in_progress' : 'pending',
-                        'date_creation' => $now,
-                        'date_mod'      => $now
-                    ]);
-                    $chatId = (int) $DB->insertId();
-                    self::logDebug("NOVO_CHAT_CRIADO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'contactName' => $contactName]);
-                }
-            }
-
-            // ══════════════════════════════════════════
-            // GRAVA A MENSAGEM (com deduplicação)
-            // ══════════════════════════════════════════
-            if ($chatId > 0) {
-                $senderType = $isFromMe ? 'attendant' : 'user';
-
-                $alreadyExists = $DB->request([
-                    'SELECT' => ['id'],
-                    'FROM'   => 'glpi_plugin_whatsappsimples_messages',
-                    'WHERE'  => ['message_id' => $messageId],
-                    'LIMIT'  => 1
-                ])->count() > 0;
-
-                if (!$alreadyExists) {
-                    $DB->insert('glpi_plugin_whatsappsimples_messages', [
-                        'chats_id'      => $chatId,
-                        'users_id'      => 0,
-                        'message_id'    => $messageId,
-                        'sender_type'   => $senderType,
-                        'message_text'  => $text,
-                        'date_creation' => $now
-                    ]);
-                    self::logDebug("MSG_REGISTRADA", ['chat_id' => $chatId, 'sender' => $senderType, 'text' => mb_substr($text, 0, 50)]);
-                }
-            }
-
-            return new JsonResponse(['success' => true, 'message' => 'Mensagem processada']);
-
-        } catch (\Throwable $e) {
-            self::logDebug("ERRO_EXCEPTION", ['error' => $e->getMessage(), 'line' => $e->getLine(), 'file' => $e->getFile()]);
+        } catch (\Exception $e) {
+            self::logDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage()]);
             return new JsonResponse(['success' => false, 'error' => $e->getMessage()], 500);
         }
-    }
-
-    private static function logDebug(string $action, array $data = []): void
-    {
-        $logFile = GLPI_ROOT . '/files/_log/whatsappsimples.log';
-        $logDir  = dirname($logFile);
-        if (!is_dir($logDir)) {
-            @mkdir($logDir, 0775, true);
-        }
-        $entry = sprintf("[%s] [WebhookController] [%s] %s\n", date('Y-m-d H:i:s'), $action, json_encode($data, JSON_UNESCAPED_UNICODE));
-        @file_put_contents($logFile, $entry, FILE_APPEND);
     }
 }

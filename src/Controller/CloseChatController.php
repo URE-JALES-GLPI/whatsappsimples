@@ -15,24 +15,22 @@ final class CloseChatController extends AbstractController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
-        global $DB;
-
         $chatId = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id', 0));
         if ($chatId <= 0) {
             return new JsonResponse(['success' => false, 'error' => 'Chat inválido'], 400);
         }
 
-        if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
-            return new JsonResponse(['success' => false, 'error' => 'Tabela de chats não existe'], 400);
+        $userId = \Session::getLoginUserID();
+        
+        $repository = new \GlpiPlugin\Whatsappsimples\Repository\ChatRepository();
+        $lifecycleService = new \GlpiPlugin\Whatsappsimples\Service\ChatLifecycleService($repository);
+        
+        $success = $lifecycleService->closeChat($chatId, $userId);
+
+        if ($success) {
+            return new JsonResponse(['success' => true, 'message' => 'Atendimento encerrado com sucesso']);
         }
 
-        $now = date('Y-m-d H:i:s');
-        $DB->update('glpi_plugin_whatsappsimples_chats', [
-            'status'      => 'closed',
-            'date_closed' => $now,
-            'date_mod'    => $now
-        ], ['id' => $chatId]);
-
-        return new JsonResponse(['success' => true, 'message' => 'Atendimento encerrado com sucesso']);
+        return new JsonResponse(['success' => false, 'message' => 'Erro ao encerrar chat']);
     }
 }
