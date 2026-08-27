@@ -75,7 +75,7 @@ final class WebhookController extends AbstractController
                 return new JsonResponse(['success' => true, 'message' => 'Número de telefone vazio']);
             }
 
-            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber, 'isLidFormat' => !EvolutionApiService::isValidBrazilianNumber($phoneNumber)]);
+            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber, 'isValidBR' => EvolutionApiService::isValidBrazilianNumber($phoneNumber)]);
 
             $contactName = $data['pushName'] ?? $phoneNumber;
             $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
@@ -104,8 +104,10 @@ final class WebhookController extends AbstractController
             $now = date('Y-m-d H:i:s');
 
             // ══════════════════════════════════════════
-            // BUSCA OU CRIA O CHAT
+            // BUSCA OU CRIA O CHAT — sem duplicatas
             // ══════════════════════════════════════════
+
+            // Busca por número exato primeiro
             $activeChat = $DB->request([
                 'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
@@ -116,6 +118,27 @@ final class WebhookController extends AbstractController
                 'ORDER'  => 'id DESC',
                 'LIMIT'  => 1
             ])->current();
+
+            // Se não encontrou por número exato e o número é um LID, tenta busca parcial
+            // (LID pode variar entre sessões, mas os dígitos ficam iguais)
+            if (!$activeChat && !empty($phoneNumber)) {
+                $rawLidDigits = preg_replace('/[^0-9]/', '', $phoneNumber);
+                $activeChat = $DB->request([
+                    'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
+                    'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                    'WHERE'  => [
+                        'phone_number' => ['LIKE', '%' . $rawLidDigits . '%'],
+                        'status'       => ['pending', 'in_progress']
+                    ],
+                    'ORDER'  => 'id DESC',
+                    'LIMIT'  => 1
+                ])->current();
+                if ($activeChat) {
+                    // Usa o telefone já cadastrado (pode ser o real)
+                    $phoneNumber = $activeChat['phone_number'];
+                    self::logDebug("CHAT_ENCONTRADO_POR_LID_PARCIAL", ['phone' => $phoneNumber, 'chat_id' => $activeChat['id']]);
+                }
+            }
 
             $chatId = 0;
             if ($activeChat) {

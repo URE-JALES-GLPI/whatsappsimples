@@ -50,62 +50,65 @@ class EvolutionApiService
     }
 
     /**
-     * EXTRAÇÃO PROFUNDA: varre o JSON inteiro do payload do webhook buscando
-     * um número de celular brasileiro (55XXXXXXXXXXX) em QUALQUER campo.
+     * RESOLUÇÃO DO NÚMERO DO CONTATO A PARTIR DO PAYLOAD DA EVOLUTIONAPI
      *
-     * Ordem de prioridade:
-     *   1. Campos específicos conhecidos (participant, sender, etc.)
-     *   2. Regex no JSON inteiro procurando 55...@s.whatsapp.net ou @c.us
-     *   3. Regex no JSON inteiro procurando 55... standalone (12-13 dígitos)
+     * IMPORTANTE: No payload da EvolutionAPI:
+     *   - data.key.remoteJid  = JID do CONTATO (quem enviou/recebeu a mensagem)
+     *   - sender (root)       = NOSSO número (o WhatsApp Business conectado à instância)
      *
-     * Retorna o número limpo (só dígitos, ex: "5517996194229") ou null.
+     * Portanto NUNCA usamos o campo root 'sender' como identificador do contato.
+     *
+     * Ordem de resolução:
+     *   1. data.key.remoteJid → se já é número BR válido, usa direto
+     *   2. data.key.remoteJid → se é LID, consulta API para resolver
+     *   3. Fallback: dígitos brutos do LID (evita usar número errado)
      */
-    public static function extractRealPhoneNumberFromPayload(array $payload): ?string
+    public static function resolvePhoneNumber(array $payload): string
     {
         $data = $payload['data'] ?? $payload;
         $key  = $data['key'] ?? [];
 
-        // Lista de campos onde o número real pode estar escondido
-        $fieldsToCheck = [
-            $key['participant'] ?? '',
-            $data['participant'] ?? '',
-            $data['sender'] ?? '',
-            $data['source'] ?? '',
-            $data['user'] ?? '',
-            $payload['sender'] ?? '',
-            $payload['destination'] ?? '',
-            $key['remoteJid'] ?? '',
-        ];
+        // O JID do contato está SEMPRE em data.key.remoteJid
+        // Para grupos, o remetente individual fica em data.key.participant
+        $contactJid = $key['participant'] ?? $key['remoteJid'] ?? '';
 
-        // Primeiro: verifica campos individuais
-        foreach ($fieldsToCheck as $field) {
-            if (empty($field) || !is_string($field)) {
-                continue;
+        if (empty($contactJid)) {
+            self::log("CONTACT_JID_VAZIO", ['key' => $key]);
+            return '';
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $contactJid));
+
+        // 1. Já é número brasileiro válido?
+        if (self::isValidBrazilianNumber($digits)) {
+            self::log("NUMERO_DIRETO_DO_JID", ['jid' => $contactJid, 'numero' => $digits]);
+            return $digits;
+        }
+
+        // 2. É um LID — tenta resolver via API
+        if (!empty($digits)) {
+            self::log("LID_DETECTADO_BUSCANDO_API", ['jid' => $contactJid, 'digits' => $digits]);
+            $resolved = self::fetchRealJidFromApi($digits);
+            if (!empty($resolved)) {
+                self::log("LID_RESOLVIDO_COM_SUCESSO", ['lid' => $digits, 'numero_real' => $resolved]);
+                return $resolved;
             }
-            $digits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $field));
-            if (self::isValidBrazilianNumber($digits)) {
-                self::log("NUMERO_EXTRAIDO_CAMPO", ['campo' => $field, 'resultado' => $digits]);
-                return $digits;
-            }
         }
 
-        // Segundo: serializa o payload inteiro e procura via regex
-        $jsonString = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        // 3. Fallback: retorna os dígitos brutos do LID
+        // Melhor ter o LID como chave única do que usar o número errado da linha
+        self::log("FALLBACK_LID_BRUTO", ['digits' => $digits]);
+        return $digits;
+    }
 
-        // Padrão mais confiável: número antes de @s.whatsapp.net ou @c.us
-        if (preg_match('/(55\d{10,11})@(?:s\.whatsapp\.net|c\.us)/', $jsonString, $m)) {
-            self::log("NUMERO_EXTRAIDO_REGEX_JID", ['resultado' => $m[1]]);
-            return $m[1];
-        }
-
-        // Padrão standalone: 55 seguido de 10-11 dígitos, não precedido nem seguido por outro dígito
-        if (preg_match('/(?<!\d)(55\d{10,11})(?!\d)/', $jsonString, $m)) {
-            self::log("NUMERO_EXTRAIDO_REGEX_STANDALONE", ['resultado' => $m[1]]);
-            return $m[1];
-        }
-
-        self::log("NENHUM_NUMERO_BR_NO_PAYLOAD", ['payload_size' => strlen($jsonString)]);
-        return null;
+    /**
+     * @deprecated Use resolvePhoneNumber() em vez desta função.
+     * Mantido apenas por compatibilidade.
+     */
+    public static function extractRealPhoneNumberFromPayload(array $payload): ?string
+    {
+        $result = self::resolvePhoneNumber($payload);
+        return !empty($result) ? $result : null;
     }
 
     /**
