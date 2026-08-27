@@ -59,32 +59,40 @@ try {
     $isFromMe = !empty($key['fromMe']);
 
     $rawJid = '';
-    if (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
+    if (!empty($key['remoteJid'])) {
         $rawJid = $key['remoteJid'];
-    } elseif (!empty($data['sender']) && str_contains($data['sender'], '@s.whatsapp.net')) {
+    } elseif (!empty($data['sender'])) {
         $rawJid = $data['sender'];
-    } elseif (!empty($key['participant']) && str_contains($key['participant'], '@s.whatsapp.net')) {
+    } elseif (!empty($key['participant'])) {
         $rawJid = $key['participant'];
-    } else {
-        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
     }
 
     $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-
-    if (!empty($phoneNumber) && (!str_starts_with($phoneNumber, '55') || strlen($phoneNumber) > 13)) {
-        $resolved = EvolutionApiService::fetchRealJid($rawJid);
-        if (!empty($resolved)) {
-            $phoneNumber = $resolved;
-        }
+    if (empty($phoneNumber)) {
+        echo json_encode(['success' => true, 'message' => 'JID vazio']);
+        exit;
     }
 
-    $contactName = $data['pushName'] ?? 'Contato não salvo';
-    $messageId   = $key['id'] ?? '';
+    $contactName = $data['pushName'] ?? $phoneNumber;
+    $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
 
     $messageData = $data['message'] ?? [];
-    $text        = $messageData['conversation'] ?? $messageData['extendedTextMessage']['text'] ?? '';
+    $text = $messageData['conversation'] 
+        ?? $messageData['extendedTextMessage']['text'] 
+        ?? $messageData['imageMessage']['caption'] 
+        ?? $messageData['videoMessage']['caption'] 
+        ?? $messageData['documentMessage']['caption'] 
+        ?? '';
 
-    if (empty($phoneNumber) || empty($text)) {
+    if (empty($text) && !empty($messageData['imageMessage'])) {
+        $text = '📷 Imagem recebida';
+    } elseif (empty($text) && !empty($messageData['audioMessage'])) {
+        $text = '🎵 Áudio recebido';
+    } elseif (empty($text) && !empty($messageData['documentMessage'])) {
+        $text = '📄 Documento recebido';
+    }
+
+    if (empty($text)) {
         echo json_encode(['success' => true, 'message' => 'Dados insuficientes para gravar']);
         exit;
     }
@@ -93,7 +101,7 @@ try {
     $now = date('Y-m-d H:i:s');
 
     $activeChat = $DB->request([
-        'SELECT' => ['id', 'status', 'users_id'],
+        'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
         'FROM'   => 'glpi_plugin_whatsappsimples_chats',
         'WHERE'  => [
             'phone_number' => $phoneNumber,
@@ -106,10 +114,11 @@ try {
     $chatId = 0;
     if ($activeChat) {
         $chatId = (int) $activeChat['id'];
-        $DB->update('glpi_plugin_whatsappsimples_chats', [
-            'contact_name' => ($isFromMe && !empty($activeChat['contact_name'])) ? $activeChat['contact_name'] : $contactName,
-            'date_mod'     => $now
-        ], ['id' => $chatId]);
+        $updateData = ['date_mod' => $now];
+        if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
+            $updateData['contact_name'] = $contactName;
+        }
+        $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
     } else {
         $previousChat = $DB->request([
             'SELECT' => ['id'],
@@ -121,10 +130,14 @@ try {
 
         if ($previousChat) {
             $chatId = (int) $previousChat['id'];
-            $DB->update('glpi_plugin_whatsappsimples_chats', [
+            $updateData = [
                 'status'   => $isFromMe ? 'in_progress' : 'pending',
                 'date_mod' => $now
-            ], ['id' => $chatId]);
+            ];
+            if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
+                $updateData['contact_name'] = $contactName;
+            }
+            $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
         } else {
             $DB->insert('glpi_plugin_whatsappsimples_chats', [
                 'phone_number'  => $phoneNumber,

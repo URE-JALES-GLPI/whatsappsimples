@@ -62,32 +62,50 @@ final class WebhookController extends AbstractController
             $key   = $data['key'] ?? [];
             $isFromMe = !empty($key['fromMe']);
 
-            // 1. Extração profunda e infalível do número de celular real (55...) diretamente do payload
-            $phoneNumber = EvolutionApiService::extractRealPhoneNumberFromPayload($payload);
-
-            // 2. Se o payload continha apenas um LID e o número extraído não inicia com 55, consulta a EvolutionAPI ao vivo
-            if (!empty($phoneNumber) && (!str_starts_with($phoneNumber, '55') || strlen($phoneNumber) > 13)) {
-                $resolved = EvolutionApiService::fetchRealJid($phoneNumber);
-                if (!empty($resolved)) {
-                    $phoneNumber = $resolved;
-                }
+            // Extração limpa e segura do número ou JID
+            $rawJid = '';
+            if (!empty($key['remoteJid'])) {
+                $rawJid = $key['remoteJid'];
+            } elseif (!empty($data['sender'])) {
+                $rawJid = $data['sender'];
+            } elseif (!empty($key['participant'])) {
+                $rawJid = $key['participant'];
             }
 
-            $contactName = $data['pushName'] ?? 'Contato não salvo';
-            $messageId   = $key['id'] ?? '';
+            $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+            if (empty($phoneNumber)) {
+                return new JsonResponse(['success' => true, 'message' => 'JID vazio']);
+            }
 
+            $contactName = $data['pushName'] ?? $phoneNumber;
+            $messageId   = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
+
+            // Extração do conteúdo da mensagem
             $messageData = $data['message'] ?? [];
-            $text        = $messageData['conversation'] ?? $messageData['extendedTextMessage']['text'] ?? '';
+            $text = $messageData['conversation'] 
+                ?? $messageData['extendedTextMessage']['text'] 
+                ?? $messageData['imageMessage']['caption'] 
+                ?? $messageData['videoMessage']['caption'] 
+                ?? $messageData['documentMessage']['caption'] 
+                ?? '';
 
-            if (empty($phoneNumber) || empty($text)) {
-                return new JsonResponse(['success' => true, 'message' => 'Dados insuficientes para gravar']);
+            if (empty($text) && !empty($messageData['imageMessage'])) {
+                $text = '📷 Imagem recebida';
+            } elseif (empty($text) && !empty($messageData['audioMessage'])) {
+                $text = '🎵 Áudio recebido';
+            } elseif (empty($text) && !empty($messageData['documentMessage'])) {
+                $text = '📄 Documento recebido';
+            }
+
+            if (empty($text)) {
+                return new JsonResponse(['success' => true, 'message' => 'Mensagem sem conteúdo de texto legível']);
             }
 
             $now = date('Y-m-d H:i:s');
 
-            // 3. Localiza se já existe um CHAT ATIVO para este número de telefone
+            // Localiza se já existe um CHAT ATIVO para este telefone ou JID
             $activeChat = $DB->request([
-                'SELECT' => ['id', 'status', 'users_id', 'contact_name', 'phone_number'],
+                'SELECT' => ['id', 'status', 'users_id', 'contact_name'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'WHERE'  => [
                     'phone_number' => $phoneNumber,
@@ -100,10 +118,11 @@ final class WebhookController extends AbstractController
             $chatId = 0;
             if ($activeChat) {
                 $chatId = (int) $activeChat['id'];
-                $DB->update('glpi_plugin_whatsappsimples_chats', [
-                    'contact_name' => ($isFromMe && !empty($activeChat['contact_name'])) ? $activeChat['contact_name'] : $contactName,
-                    'date_mod'     => $now
-                ], ['id' => $chatId]);
+                $updateData = ['date_mod' => $now];
+                if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
+                    $updateData['contact_name'] = $contactName;
+                }
+                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
                 self::logDebug("CHAT_ATIVO_ENCONTRADO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'from_me' => $isFromMe]);
             } else {
                 $previousChat = $DB->request([
@@ -116,10 +135,14 @@ final class WebhookController extends AbstractController
 
                 if ($previousChat) {
                     $chatId = (int) $previousChat['id'];
-                    $DB->update('glpi_plugin_whatsappsimples_chats', [
+                    $updateData = [
                         'status'   => $isFromMe ? 'in_progress' : 'pending',
                         'date_mod' => $now
-                    ], ['id' => $chatId]);
+                    ];
+                    if (!$isFromMe && !empty($contactName) && $contactName !== $phoneNumber) {
+                        $updateData['contact_name'] = $contactName;
+                    }
+                    $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => $chatId]);
                     self::logDebug("CHAT_REABERTO", ['chat_id' => $chatId, 'phone' => $phoneNumber, 'from_me' => $isFromMe]);
                 } else {
                     $DB->insert('glpi_plugin_whatsappsimples_chats', [
@@ -154,7 +177,7 @@ final class WebhookController extends AbstractController
                         'message_text'  => $text,
                         'date_creation' => $now
                     ]);
-                    self::logDebug("MENSAGEM_REGISTRADA", ['chat_id' => $chatId, 'sender_type' => $senderType, 'message_id' => $messageId]);
+                    self::logDebug("MENSAGEM_REGISTRADA", ['chat_id' => $chatId, 'sender_type' => $senderType, 'message_text' => $text]);
                 }
             }
 
