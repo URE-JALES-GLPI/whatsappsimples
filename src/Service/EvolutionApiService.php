@@ -362,6 +362,12 @@ class EvolutionApiService
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
             'number'      => $numberToSend,
+            'options'     => [
+                'delay'          => 1200,
+                'presence'       => 'composing',
+                'verifyContact'  => false,
+                'validateNumber' => false
+            ],
             'text'        => $text,
             'textMessage' => ['text' => $text]
         ];
@@ -475,8 +481,10 @@ class EvolutionApiService
         $bodyData = [
             'number'       => $numberToSend,
             'options'      => [
-                'delay'    => 1000,
-                'presence' => 'composing'
+                'delay'    => 1200,
+                'presence' => 'composing',
+                'verifyContact' => false,
+                'validateNumber' => false
             ],
             'mediaMessage' => [
                 'mediatype' => $mediaType,
