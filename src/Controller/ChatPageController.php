@@ -728,7 +728,7 @@ final class ChatPageController extends AbstractController
             }
 
             async function loadChats() {
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats?tab=${currentTab}`);
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${currentTab}`);
                 allLoadedChats = data.chats || [];
 
                 if (currentTab === 'mine') {
@@ -808,7 +808,7 @@ final class ChatPageController extends AbstractController
                 formData.append('chat_id', chatId);
                 if (csrfToken) formData.append('_glpi_csrf_token', csrfToken);
 
-                await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/reset-unread`, {
+                await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/reset-unread.php`, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -864,7 +864,7 @@ final class ChatPageController extends AbstractController
                     formData.append('_glpi_csrf_token', csrfToken);
                 }
 
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close`, {
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close.php`, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -890,8 +890,8 @@ final class ChatPageController extends AbstractController
             async function loadMessages(isContactTab = false) {
                 if (!activeChatId && !activePhoneNumber) return;
                 const url = isContactTab 
-                    ? `${rootDoc}/plugins/whatsappsimples/ajax/messages?phone_number=${encodeURIComponent(activePhoneNumber)}`
-                    : `${rootDoc}/plugins/whatsappsimples/ajax/messages?chat_id=${activeChatId}`;
+                    ? `${rootDoc}/plugins/whatsappsimples/ajax/messages.php?phone_number=${encodeURIComponent(activePhoneNumber)}`
+                    : `${rootDoc}/plugins/whatsappsimples/ajax/messages.php?chat_id=${activeChatId}`;
 
                 const data = await safeFetchJson(url);
                 const box = document.getElementById('messages-box');
@@ -934,7 +934,7 @@ final class ChatPageController extends AbstractController
                     formData.append('_glpi_csrf_token', csrfToken);
                 }
 
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -969,7 +969,7 @@ final class ChatPageController extends AbstractController
                     formData.append('_glpi_csrf_token', csrfToken);
                 }
 
-                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send`, {
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                     method: 'POST',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
