@@ -1,11 +1,10 @@
 <?php
+use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
 include_once(__DIR__ . '/../../../inc/includes.php');
 
 Session::checkLoginUser();
 header('Content-Type: application/json');
-
-use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 
 global $CFG_GLPI;
 
