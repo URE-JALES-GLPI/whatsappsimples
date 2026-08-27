@@ -132,4 +132,16 @@ class ChatRepository
         
         return 0;
     }
+
+    public function incrementUnreadCount(int $chatId): bool
+    {
+        global $DB;
+        return $DB->doQuery("UPDATE `glpi_plugin_whatsappsimples_chats` SET `unread_count` = `unread_count` + 1 WHERE `id` = $chatId");
+    }
+
+    public function resetUnreadCount(int $chatId): bool
+    {
+        global $DB;
+        return $DB->update('glpi_plugin_whatsappsimples_chats', ['unread_count' => 0], ['id' => $chatId]);
+    }
 }

@@ -739,6 +739,12 @@ final class ChatPageController extends AbstractController
 
                 // Auto-atualiza a janela principal se houver um chat aberto
                 if (activeChatId || activePhoneNumber) {
+                    // Verifica se o chat ativo recebeu mensagens novas no poll para zerar o badge silenciosamente
+                    const activeObj = allLoadedChats.find(c => c.id === activeChatId || c.phone_number === activePhoneNumber);
+                    if (activeObj && activeObj.unread_count > 0) {
+                        activeObj.unread_count = 0;
+                        resetUnreadCount(activeObj.id);
+                    }
                     loadMessages(isContactTabActive);
                 }
             }
@@ -778,7 +784,10 @@ final class ChatPageController extends AbstractController
                             <div class="omni-card-info">
                                 <div class="omni-card-row1">
                                     <div class="omni-card-name">${c.contact_name}</div>
-                                    <div class="omni-card-time">${formatTime(c.date_mod)}</div>
+                                    <div style="display:flex; align-items:center; gap:6px;">
+                                        ${(!isSelected && c.unread_count > 0) ? `<span style="background:#ef4444; color:#fff; font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:10px;">${c.unread_count}</span>` : ''}
+                                        <div class="omni-card-time">${formatTime(c.date_mod)}</div>
+                                    </div>
                                 </div>
                                 <div class="omni-card-row2">
                                     <span>✓✓</span> ${c.phone_number}
@@ -789,9 +798,34 @@ final class ChatPageController extends AbstractController
                 }).join('');
             }
 
+            async function resetUnreadCount(chatId) {
+                if (!chatId || chatId <= 0) return;
+                const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
+                const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
+                const formData = new FormData();
+                formData.append('chat_id', chatId);
+                if (csrfToken) formData.append('_glpi_csrf_token', csrfToken);
+
+                await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/reset-unread`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Glpi-Csrf-Token': csrfToken
+                    },
+                    body: formData
+                });
+            }
+
             async function openChat(chatId, name, phone, isContactTab = false) {
                 activeChatId = chatId;
                 activePhoneNumber = phone;
+
+                // Zera o contador visualmente e no banco
+                const chatObj = allLoadedChats.find(c => c.id === chatId);
+                if (chatObj && chatObj.unread_count > 0) {
+                    chatObj.unread_count = 0;
+                    resetUnreadCount(chatId);
+                }
 
                 document.getElementById('main-chat-header').style.display = 'flex';
                 document.getElementById('header-title').innerText = name;

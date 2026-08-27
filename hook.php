@@ -48,6 +48,7 @@ function plugin_whatsappsimples_ensureTables(): void
             `contact_name` varchar(255) DEFAULT '',
             `users_id` int(11) NOT NULL DEFAULT 0,
             `status` varchar(20) NOT NULL DEFAULT 'pending',
+            `unread_count` int(11) NOT NULL DEFAULT 0,
             `first_response_date` datetime DEFAULT NULL,
             `date_closed` datetime DEFAULT NULL,
             `date_creation` datetime NOT NULL,
@@ -62,6 +63,9 @@ function plugin_whatsappsimples_ensureTables(): void
     } else {
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'date_closed')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `date_closed` datetime DEFAULT NULL AFTER `first_response_date`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'unread_count')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `unread_count` int(11) NOT NULL DEFAULT 0 AFTER `status`");
         }
     }
 

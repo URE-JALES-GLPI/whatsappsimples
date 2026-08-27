@@ -30,7 +30,7 @@ final class GetChatsController extends AbstractController
         try {
             // 1. Busca os registros mais recentes por numero de telefone
             $iterator = $DB->request([
-                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod'],
+                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod', 'unread_count'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                 'ORDER'  => 'date_mod DESC, id DESC'
             ]);
@@ -52,6 +52,7 @@ final class GetChatsController extends AbstractController
                         'users_id'     => (int) $row['users_id'],
                         'status'       => $row['status'],
                         'date_mod'     => $row['date_mod'],
+                        'unread_count' => (int) ($row['unread_count'] ?? 0),
                     ];
                 }
             }

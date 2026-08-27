@@ -28,6 +28,9 @@ class EvolutionApiService
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `linked_lid` varchar(50) DEFAULT NULL AFTER `phone_number`");
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD INDEX `linked_lid_idx` (`linked_lid`)");
             }
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'unread_count')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `unread_count` int(11) NOT NULL DEFAULT 0 AFTER `status`");
+            }
         }
     }
 

@@ -54,6 +54,11 @@ class MessageDispatcherService
 
         $result = $this->repository->saveMessage($messageData);
         
+        // 4. Incrementa o contador de mensagens não lidas
+        if ($result > 0) {
+            $this->repository->incrementUnreadCount($chatId);
+        }
+        
         return $result > 0;
     }
 }
