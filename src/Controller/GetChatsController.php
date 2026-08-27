@@ -42,21 +42,13 @@ final class GetChatsController extends AbstractController
                     continue;
                 }
 
-                // Se o telefone armazenado no banco for um LID (não inicia com 55), tenta resolver dinamicamente via API
-                if (!str_starts_with($phone, '55') || strlen($phone) > 13) {
-                    $realPhone = EvolutionApiService::fetchRealJid($phone);
-                    if (!empty($realPhone) && str_starts_with($realPhone, '55')) {
-                        $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $realPhone], ['id' => (int) $row['id']]);
-                        $phone = $realPhone;
-                        $row['phone_number'] = $realPhone;
-                    }
-                }
-
                 if (!isset($latestByPhone[$phone])) {
+                    $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
+
                     $latestByPhone[$phone] = [
                         'id'           => (int) $row['id'],
                         'phone_number' => $row['phone_number'],
-                        'contact_name' => !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'],
+                        'contact_name' => $displayName,
                         'users_id'     => (int) $row['users_id'],
                         'status'       => $row['status'],
                         'date_mod'     => $row['date_mod'],

@@ -25,120 +25,30 @@ class EvolutionApiService
     }
 
     /**
-     * Extrai o número de celular real (55...) diretamente do payload do Webhook por inspecao profunda do JSON
+     * Formata o número/JID para envio correto na EvolutionAPI (suportando números 55... e LIDs da Meta)
      */
-    public static function extractRealPhoneNumberFromPayload(array $payload): string
+    public static function formatNumberForSending(string $phoneNumber): string
     {
-        $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
+        $clean = trim(str_replace(['@s.whatsapp.net', '@c.us'], '', $phoneNumber));
 
-        // 1. Procura por JID completo no formato 55179xxxxxxx@s.whatsapp.net ou @c.us
-        if (preg_match('/(55\d{10,11})@(s\.whatsapp\.net|c\.us)/', $json, $matches)) {
-            return $matches[1];
-        }
-
-        // 2. Procura por sequência numérica brasileira de 12 a 13 dígitos iniciada com 55
-        if (preg_match('/(?<!\d)(55\d{10,11})(?!\d)/', $json, $matches)) {
-            return $matches[1];
-        }
-
-        // 3. Fallback: extrai do remoteJid ou sender
-        $data   = $payload['data'] ?? [];
-        $key    = $data['key'] ?? [];
-        $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
-
-        return preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
-    }
-
-    /**
-     * Tenta resolver um LID do WhatsApp Meta para o numero de celular real (55...) via EvolutionAPI de forma 100% dinamica e escalavel
-     */
-    public static function fetchRealJid(string $numberOrLid): string
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        $clean = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $numberOrLid));
-        if (empty($clean)) {
-            return $numberOrLid;
-        }
-
-        // Se já é um número brasileiro válido de celular (inicia com 55 e tem pelo menos 12 dígitos)
-        if (str_starts_with($clean, '55') && strlen($clean) >= 12 && strlen($clean) <= 13) {
+        // Se já possui @lid, mantém intacto
+        if (str_contains($clean, '@lid')) {
             return $clean;
         }
 
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return $clean;
+        $digits = preg_replace('/[^0-9]/', '', $clean);
+
+        // Se for um número padrão do Brasil (55 + DDD 2 dígitos + 8 ou 9 dígitos -> 12 ou 13 dígitos)
+        if (str_starts_with($digits, '55') && strlen($digits) >= 12 && strlen($digits) <= 13) {
+            return $digits;
         }
 
-        // Tentativas com formato limpo e com sufixo @lid
-        $targetsToTest = [$clean . '@lid', $clean];
-
-        foreach ($targetsToTest as $targetNumber) {
-            // 1. Consulta perfil do contato na EvolutionAPI (/chat/fetchProfile)
-            $endpoint = "{$baseUrl}/chat/fetchProfile/{$instance}";
-            $ch = curl_init($endpoint);
-            curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPHEADER     => [
-                    'Content-Type: application/json',
-                    'apikey: ' . $apiToken
-                ],
-                CURLOPT_POSTFIELDS     => json_encode(['number' => $targetNumber]),
-                CURLOPT_TIMEOUT        => 4
-            ]);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode >= 200 && $httpCode < 300) {
-                $data = json_decode($response, true);
-                $realJid = $data['jid'] ?? $data['number'] ?? '';
-                if (!empty($realJid)) {
-                    $cleanReal = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $realJid));
-                    if (!empty($cleanReal) && str_starts_with($cleanReal, '55') && strlen($cleanReal) >= 12) {
-                        return $cleanReal;
-                    }
-                }
-            }
+        // Se for um ID da Meta / LID (ex: 258522822520959 com 14 ou mais dígitos ou não iniciado por 55)
+        if (strlen($digits) > 13 || !str_starts_with($digits, '55')) {
+            return $digits . '@lid';
         }
 
-        // 2. Fallback: Consulta validação de número (/chat/findWhatsappNumber)
-        $endpointCheck = "{$baseUrl}/chat/findWhatsappNumber/{$instance}";
-        $ch2 = curl_init($endpointCheck);
-        curl_setopt_array($ch2, [
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_POSTFIELDS     => json_encode(['numbers' => [$clean . '@lid', $clean]]),
-            CURLOPT_TIMEOUT        => 4
-        ]);
-
-        $response2 = curl_exec($ch2);
-        $httpCode2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
-        curl_close($ch2);
-
-        if ($httpCode2 >= 200 && $httpCode2 < 300) {
-            $data2 = json_decode($response2, true);
-            if (is_array($data2)) {
-                foreach ($data2 as $item) {
-                    if (!empty($item['exists']) && !empty($item['jid'])) {
-                        $cleanFound = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $item['jid']));
-                        if (!empty($cleanFound) && str_starts_with($cleanFound, '55') && strlen($cleanFound) >= 12) {
-                            return $cleanFound;
-                        }
-                    }
-                }
-            }
-        }
-
-        return $clean;
+        return $digits;
     }
 
     /**
@@ -237,13 +147,8 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        // Tenta resolver o LID para o número real de celular antes de disparar
-        $numberToSend = self::fetchRealJid($phoneNumber);
-
-        // Se após a consulta for um número resolvido (começa com 55), atualiza no banco do chat para manter limpo
-        if (str_starts_with($numberToSend, '55') && $numberToSend !== $phoneNumber) {
-            $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $numberToSend], ['id' => $chatId]);
-        }
+        // Formata o número/JID adequadamente (número padrão 55... ou JID LID ex: 258522822520959@lid)
+        $numberToSend = self::formatNumberForSending($phoneNumber);
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
@@ -270,15 +175,10 @@ class EvolutionApiService
         $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        // Se falhou com HTTP 400, faz uma segunda tentativa enviando com sufixo @lid se necessário
-        if ($httpCode >= 400 && !str_contains($numberToSend, '@')) {
-            $lidEndpoint = "{$baseUrl}/message/sendText/{$instance}";
-            $lidBody = [
-                'number'      => $phoneNumber . '@lid',
-                'text'        => $text,
-                'textMessage' => ['text' => $text]
-            ];
-            $chLid = curl_init($lidEndpoint);
+        // Se falhou e era um número sem @lid, tenta fallback enviando com o sufixo @lid
+        if ($httpCode >= 400 && !str_contains($numberToSend, '@lid')) {
+            $lidNumber = preg_replace('/[^0-9]/', '', $phoneNumber) . '@lid';
+            $chLid = curl_init($endpoint);
             curl_setopt_array($chLid, [
                 CURLOPT_POST           => true,
                 CURLOPT_RETURNTRANSFER => true,
@@ -286,7 +186,11 @@ class EvolutionApiService
                     'Content-Type: application/json',
                     'apikey: ' . $apiToken
                 ],
-                CURLOPT_POSTFIELDS     => json_encode($lidBody),
+                CURLOPT_POSTFIELDS     => json_encode([
+                    'number'      => $lidNumber,
+                    'text'        => $text,
+                    'textMessage' => ['text' => $text]
+                ]),
                 CURLOPT_TIMEOUT        => 15
             ]);
             $responseBodyLid = curl_exec($chLid);
@@ -341,11 +245,7 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        $numberToSend = self::fetchRealJid($phoneNumber);
-
-        if (str_starts_with($numberToSend, '55') && $numberToSend !== $phoneNumber) {
-            $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $numberToSend], ['id' => $chatId]);
-        }
+        $numberToSend = self::formatNumberForSending($phoneNumber);
 
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
         $bodyData = [
