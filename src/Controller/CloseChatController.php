@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class CloseChatController extends AbstractController
+final class CloseChatController
 {
     #[Route('/ajax/close', name: 'whatsappsimples_api_close', methods: ['POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response

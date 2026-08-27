@@ -2,7 +2,6 @@
 
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
-use Glpi\Controller\AbstractController;
 use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
 use Session;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -10,9 +9,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class SendMessageController extends AbstractController
+final class SendMessageController
 {
-    #[Route('/ajax/send', name: 'whatsappsimples_api_send', methods: ['GET', 'POST'], options: ['prevent_csrf' => true])]
+    #[Route('/ajax/send', name: 'whatsappsimples_api_send', methods: ['POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response
     {
         try {

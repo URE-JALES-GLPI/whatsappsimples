@@ -2,7 +2,6 @@
 
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
-use Glpi\Controller\AbstractController;
 use Session;
 use User;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -10,7 +9,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
-final class GetMessagesController extends AbstractController
+final class GetMessagesController
 {
     #[Route('/ajax/messages', name: 'whatsappsimples_api_messages', methods: ['GET', 'POST'], options: ['prevent_csrf' => true])]
     public function __invoke(Request $request): Response
