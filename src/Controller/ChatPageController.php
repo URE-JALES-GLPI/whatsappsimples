@@ -736,6 +736,11 @@ final class ChatPageController extends AbstractController
                 }
 
                 renderChatList(allLoadedChats);
+
+                // Auto-atualiza a janela principal se houver um chat aberto
+                if (activeChatId || activePhoneNumber) {
+                    loadMessages(isContactTabActive);
+                }
             }
 
             function filterChatList() {
