@@ -70,6 +70,14 @@ try {
     }
 
     $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+
+    if (!empty($phoneNumber) && (!str_starts_with($phoneNumber, '55') || strlen($phoneNumber) > 13)) {
+        $resolved = EvolutionApiService::fetchRealJid($rawJid);
+        if (!empty($resolved)) {
+            $phoneNumber = $resolved;
+        }
+    }
+
     $contactName = $data['pushName'] ?? 'Contato não salvo';
     $messageId   = $key['id'] ?? '';
 

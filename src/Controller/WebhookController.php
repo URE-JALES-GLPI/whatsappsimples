@@ -62,7 +62,7 @@ final class WebhookController extends AbstractController
             $key   = $data['key'] ?? [];
             $isFromMe = !empty($key['fromMe']);
 
-            // Extração do número de telefone do destinatário/remetente remoto
+            // Extração prioritária do JID com @s.whatsapp.net ou fallback
             $rawJid = '';
             if (!empty($key['remoteJid']) && str_contains($key['remoteJid'], '@s.whatsapp.net')) {
                 $rawJid = $key['remoteJid'];
@@ -74,7 +74,16 @@ final class WebhookController extends AbstractController
                 $rawJid = $key['remoteJid'] ?? $data['sender'] ?? $key['participant'] ?? '';
             }
 
+            // Tenta obter o número de telefone limpo ou resolve via EvolutionAPI se for LID
             $phoneNumber = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $rawJid));
+
+            if (!empty($phoneNumber) && (!str_starts_with($phoneNumber, '55') || strlen($phoneNumber) > 13)) {
+                $resolved = EvolutionApiService::fetchRealJid($rawJid);
+                if (!empty($resolved)) {
+                    $phoneNumber = $resolved;
+                }
+            }
+
             $contactName = $data['pushName'] ?? 'Contato não salvo';
             $messageId   = $key['id'] ?? '';
 
@@ -139,8 +148,7 @@ final class WebhookController extends AbstractController
 
             if ($chatId > 0) {
                 $senderType = $isFromMe ? 'attendant' : 'user';
-                
-                // Evita duplicar mensagens enviadas via web interface que já possuem message_id registrado no DB
+
                 $alreadyExists = $DB->request([
                     'SELECT' => ['id'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_messages',

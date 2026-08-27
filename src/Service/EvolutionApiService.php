@@ -25,6 +25,93 @@ class EvolutionApiService
     }
 
     /**
+     * Tenta resolver um LID do WhatsApp Meta para o numero de celular real (55...) via EvolutionAPI de forma 100% dinamica e escalavel
+     */
+    public static function fetchRealJid(string $numberOrLid): string
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        $clean = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $numberOrLid));
+        if (empty($clean)) {
+            return $numberOrLid;
+        }
+
+        // Se já é um número brasileiro válido de celular (inicia com 55 e tem pelo menos 12 dígitos)
+        if (str_starts_with($clean, '55') && strlen($clean) >= 12 && strlen($clean) <= 13) {
+            return $clean;
+        }
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return $clean;
+        }
+
+        // 1. Consulta perfil do contato na EvolutionAPI (/chat/fetchProfile)
+        $endpoint = "{$baseUrl}/chat/fetchProfile/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode(['number' => $clean]),
+            CURLOPT_TIMEOUT        => 4
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            $realJid = $data['jid'] ?? $data['number'] ?? '';
+            if (!empty($realJid)) {
+                $cleanReal = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $realJid));
+                if (!empty($cleanReal) && str_starts_with($cleanReal, '55') && strlen($cleanReal) >= 12) {
+                    return $cleanReal;
+                }
+            }
+        }
+
+        // 2. Fallback: Consulta validação de número (/chat/findWhatsappNumber)
+        $endpointCheck = "{$baseUrl}/chat/findWhatsappNumber/{$instance}";
+        $ch2 = curl_init($endpointCheck);
+        curl_setopt_array($ch2, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode(['numbers' => [$clean, $clean . '@lid']]),
+            CURLOPT_TIMEOUT        => 4
+        ]);
+
+        $response2 = curl_exec($ch2);
+        $httpCode2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+        curl_close($ch2);
+
+        if ($httpCode2 >= 200 && $httpCode2 < 300) {
+            $data2 = json_decode($response2, true);
+            if (is_array($data2)) {
+                foreach ($data2 as $item) {
+                    if (!empty($item['exists']) && !empty($item['jid'])) {
+                        $cleanFound = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $item['jid']));
+                        if (!empty($cleanFound) && str_starts_with($cleanFound, '55') && strlen($cleanFound) >= 12) {
+                            return $cleanFound;
+                        }
+                    }
+                }
+            }
+        }
+
+        return $clean;
+    }
+
+    /**
      * Obtém valor de configuração por chave
      */
     public static function getConfig(string $key): ?string
@@ -104,90 +191,6 @@ class EvolutionApiService
     }
 
     /**
-     * Obtém QR Code para emparelhamento WhatsApp
-     */
-    public static function getQrCode(): array
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['error' => 'Configurações incompletas'];
-        }
-
-        $endpoint = "{$baseUrl}/instance/connect/{$instance}";
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => ['apikey: ' . $apiToken],
-            CURLOPT_TIMEOUT        => 15
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 200 && $httpCode < 300) {
-            $data = json_decode($response, true);
-            return [
-                'base64' => $data['base64'] ?? $data['code'] ?? '',
-                'code'   => $data['code'] ?? '',
-                'data'   => $data
-            ];
-        }
-
-        return ['error' => "HTTP {$httpCode}: {$response}"];
-    }
-
-    /**
-     * Configura Webhook da EvolutionAPI
-     */
-    public static function setWebhook(string $webhookUrl): array
-    {
-        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
-        $apiToken = self::getConfig('api_token');
-        $instance = self::getConfig('instance_name');
-
-        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
-            return ['success' => false, 'error' => 'Configurações incompletas'];
-        }
-
-        $endpoint = "{$baseUrl}/webhook/set/{$instance}";
-        $bodyData = [
-            'webhook' => [
-                'enabled'      => true,
-                'url'          => $webhookUrl,
-                'byEvents'     => false,
-                'base64'       => false,
-                'events'       => ['MESSAGES_UPSERT', 'CONNECTION_UPDATE']
-            ]
-        ];
-
-        $ch = curl_init($endpoint);
-        curl_setopt_array($ch, [
-            CURLOPT_POST           => true,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'Content-Type: application/json',
-                'apikey: ' . $apiToken
-            ],
-            CURLOPT_POSTFIELDS     => json_encode($bodyData),
-            CURLOPT_TIMEOUT        => 15
-        ]);
-
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-
-        if ($httpCode >= 200 && $httpCode < 300) {
-            return ['success' => true, 'data' => json_decode($response, true)];
-        }
-
-        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
-    }
-
-    /**
      * Envia mensagem de texto via EvolutionAPI e grava no banco do GLPI
      */
     public static function sendMessage(int $chatId, string $phoneNumber, string $text): array
@@ -204,11 +207,12 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        $numberToSend = trim($phoneNumber);
-        if (!str_contains($numberToSend, '@')) {
-            if (!str_starts_with($numberToSend, '55') && strlen($numberToSend) > 12) {
-                $numberToSend .= '@lid';
-            }
+        // Tenta resolver o LID para o número real de celular antes de disparar
+        $numberToSend = self::fetchRealJid($phoneNumber);
+
+        // Se após a consulta for um número resolvido (começa com 55), atualiza no banco do chat para manter limpo
+        if (str_starts_with($numberToSend, '55') && $numberToSend !== $phoneNumber) {
+            $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $numberToSend], ['id' => $chatId]);
         }
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
@@ -235,6 +239,35 @@ class EvolutionApiService
         $responseBody = curl_exec($ch);
         $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        // Se falhou com HTTP 400, faz uma segunda tentativa enviando com sufixo @lid se necessário
+        if ($httpCode >= 400 && !str_contains($numberToSend, '@')) {
+            $lidEndpoint = "{$baseUrl}/message/sendText/{$instance}";
+            $lidBody = [
+                'number'      => $phoneNumber . '@lid',
+                'text'        => $text,
+                'textMessage' => ['text' => $text]
+            ];
+            $chLid = curl_init($lidEndpoint);
+            curl_setopt_array($chLid, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken
+                ],
+                CURLOPT_POSTFIELDS     => json_encode($lidBody),
+                CURLOPT_TIMEOUT        => 15
+            ]);
+            $responseBodyLid = curl_exec($chLid);
+            $httpCodeLid     = curl_getinfo($chLid, CURLINFO_HTTP_CODE);
+            curl_close($chLid);
+
+            if ($httpCodeLid >= 200 && $httpCodeLid < 300) {
+                $responseBody = $responseBodyLid;
+                $httpCode     = $httpCodeLid;
+            }
+        }
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $responseData = json_decode($responseBody, true);
@@ -278,11 +311,10 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
         }
 
-        $numberToSend = trim($phoneNumber);
-        if (!str_contains($numberToSend, '@')) {
-            if (!str_starts_with($numberToSend, '55') && strlen($numberToSend) > 12) {
-                $numberToSend .= '@lid';
-            }
+        $numberToSend = self::fetchRealJid($phoneNumber);
+
+        if (str_starts_with($numberToSend, '55') && $numberToSend !== $phoneNumber) {
+            $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $numberToSend], ['id' => $chatId]);
         }
 
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
@@ -341,7 +373,6 @@ class EvolutionApiService
             return ['success' => true, 'message_id' => $messageId];
         }
 
-        // Se falhar na API externa, grava no histórico do chamado no GLPI
         $DB->insert('glpi_plugin_whatsappsimples_messages', [
             'chats_id'      => $chatId,
             'users_id'      => $currentUserId,
