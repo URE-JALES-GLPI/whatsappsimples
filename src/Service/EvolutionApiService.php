@@ -10,7 +10,7 @@ class EvolutionApiService
     // UTILITÁRIOS DE INFRAESTRUTURA
     // ──────────────────────────────────────────────────
 
-    private static function ensureMessageColumns(): void
+    public static function ensureMessageColumns(): void
     {
         global $DB;
         if ($DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
