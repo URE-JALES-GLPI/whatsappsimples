@@ -473,11 +473,16 @@ class EvolutionApiService
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
         $bodyData = [
             'number'       => $numberToSend,
-            'mediatype'    => $mediaType,
-            'mimetype'     => $mimeType,
-            'caption'      => $caption ?: '',
-            'media'        => $base64Data,
-            'fileName'     => $fileName
+            'options'      => [
+                'delay'    => 1000,
+                'presence' => 'composing'
+            ],
+            'mediaMessage' => [
+                'mediatype' => $mediaType,
+                'fileName'  => $fileName,
+                'caption'   => $caption ?: '',
+                'media'     => $base64Data
+            ]
         ];
 
         $ch = curl_init($endpoint);
