@@ -4,11 +4,11 @@ if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access this file directly");
 }
 
-class PluginWhatsappsimplesProfile extends CommonDBTM
+class PluginWhatsappsimplesProfile
 {
     public static $rightname = 'profile';
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public static function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         if ($item->getType() === 'Profile') {
             return __('WhatsApp', 'whatsappsimples');
