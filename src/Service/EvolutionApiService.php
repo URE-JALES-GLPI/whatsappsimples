@@ -80,10 +80,18 @@ class EvolutionApiService
         $data = !empty($payload['data']) ? $payload['data'] : $payload;
         $key  = !empty($data['key']) ? $data['key'] : [];
 
+        $remoteJid = !empty($key['remoteJid']) ? $key['remoteJid'] : '';
+        
+        // IGNORAR GRUPOS E LISTAS DE TRANSMISSÃO
+        if (str_ends_with($remoteJid, '@g.us') || str_ends_with($remoteJid, '@broadcast')) {
+            self::log("MENSAGEM_IGNORADA_GRUPO", ['jid' => $remoteJid]);
+            return '';
+        }
+
         // O JID do contato está SEMPRE em data.key.remoteJid
         // Para grupos, o remetente individual fica em data.key.participant
         // root-level 'sender' = NOSSO número (linha da URE), NUNCA usar como identificador do contato
-        $contactJid = !empty($key['participant']) ? $key['participant'] : (!empty($key['remoteJid']) ? $key['remoteJid'] : '');
+        $contactJid = !empty($key['participant']) ? $key['participant'] : $remoteJid;
 
         if (empty($contactJid)) {
             self::log("CONTACT_JID_VAZIO", ['key' => $key]);
