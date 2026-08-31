@@ -4,7 +4,7 @@ if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access this file directly");
 }
 
-class PluginWhatsappsimplesProfile extends CommonGLPI
+class PluginWhatsappsimplesProfile extends CommonDBTM
 {
     public static $rightname = 'plugin_whatsappsimples';
 
@@ -106,9 +106,10 @@ class PluginWhatsappsimplesProfile extends CommonGLPI
         ];
     }
 
-    public function showForm($profiles_id)
+    public function showForm($ID, array $options = [])
     {
         global $DB;
+        $profiles_id = $ID;
 
         echo "<form name='form_whatsappsimples_profile' action='" . Plugin::getWebDir('whatsappsimples') . "/front/profile.form.php' method='post'>";
         Html::generateCsrfToken();
