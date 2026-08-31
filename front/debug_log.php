@@ -1,7 +1,5 @@
 <?php
-include("../../../inc/includes.php");
-
-$logFile = GLPI_ROOT . '/files/_log/php-errors.log';
+$logFile = '/var/www/html/glpi/files/_log/php-errors.log';
 
 if (file_exists($logFile)) {
     $lines = file($logFile);
