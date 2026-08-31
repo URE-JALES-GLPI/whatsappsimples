@@ -1258,6 +1258,12 @@ final class ChatPageController extends AbstractController
                 const formData = new FormData();
                 formData.append('chat_id', activeChatId);
                 formData.append('user_id', newUserId);
+                
+                // Add GLPI CSRF Token
+                const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
+                if (csrfMeta) {
+                    formData.append('_glpi_csrf_token', csrfMeta.getAttribute('content'));
+                }
 
                 const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/transfer.php`, {
                     method: 'POST',
