@@ -774,18 +774,21 @@ final class ChatPageController extends AbstractController
                     if (csrfMeta) {
                         const token = csrfMeta.getAttribute('content');
                         
-                        // Garante que o PHP recebe via $_REQUEST pela URL, caso o FormData falhe ou os headers sejam dropados
+                        // 1. Sempre adiciona na URL
                         if (url.includes('?')) {
                             url += '&_glpi_csrf_token=' + token;
                         } else {
                             url += '?_glpi_csrf_token=' + token;
                         }
 
+                        // 2. Sempre adiciona no Header (O GLPI as vezes depende exclusivamente dele)
+                        options.headers = options.headers || {};
+                        options.headers['X-Glpi-Csrf-Token'] = token;
+                        options.headers['X-Requested-With'] = 'XMLHttpRequest'; // Garante que o GLPI saiba que é AJAX
+
+                        // 3. Sempre adiciona no FormData se aplicável
                         if (options.body && typeof options.body.append === 'function') {
                             options.body.append('_glpi_csrf_token', token);
-                        } else {
-                            options.headers = options.headers || {};
-                            options.headers['X-Glpi-Csrf-Token'] = token;
                         }
                     }
                     const res = await fetch(url, options);
