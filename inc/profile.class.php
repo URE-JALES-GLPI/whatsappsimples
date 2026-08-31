@@ -6,16 +6,16 @@ if (!defined('GLPI_ROOT')) {
 
 class PluginWhatsappsimplesProfile extends CommonGLPI
 {
-    public static $rightname = 'profile';
+    public static $rightname = 'plugin_whatsappsimples';
 
     public static function canView()
     {
-        return Session::haveRight('profile', READ);
+        return Session::haveRight('plugin_whatsappsimples', READ);
     }
 
     public static function canCreate()
     {
-        return Session::haveRight('profile', UPDATE);
+        return Session::haveRight('plugin_whatsappsimples', UPDATE);
     }
 
     public static function getTypeName($nb = 0)
