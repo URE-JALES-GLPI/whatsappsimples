@@ -80,10 +80,22 @@ class EvolutionApiService
         $data = !empty($payload['data']) ? $payload['data'] : $payload;
         $key  = !empty($data['key']) ? $data['key'] : [];
 
-        $remoteJid = !empty($key['remoteJid']) ? $key['remoteJid'] : '';
+        // Busca recursiva por remoteJid para garantir que pegamos o JID do grupo
+        $findRemoteJid = function(array $arr) use (&$findRemoteJid) {
+            if (isset($arr['remoteJid'])) return $arr['remoteJid'];
+            foreach ($arr as $v) {
+                if (is_array($v)) {
+                    $res = $findRemoteJid($v);
+                    if ($res) return $res;
+                }
+            }
+            return '';
+        };
+
+        $remoteJid = $findRemoteJid($payload);
         
         // IGNORAR GRUPOS E LISTAS DE TRANSMISSÃO
-        if (str_ends_with($remoteJid, '@g.us') || str_ends_with($remoteJid, '@broadcast')) {
+        if (strpos($remoteJid, '@g.us') !== false || strpos($remoteJid, '@broadcast') !== false) {
             self::log("MENSAGEM_IGNORADA_GRUPO", ['jid' => $remoteJid]);
             return '';
         }

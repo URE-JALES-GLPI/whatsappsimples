@@ -772,8 +772,12 @@ final class ChatPageController extends AbstractController
                 try {
                     const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
                     if (csrfMeta) {
-                        options.headers = options.headers || {};
-                        options.headers['X-Glpi-Csrf-Token'] = csrfMeta.getAttribute('content');
+                        if (options.body && options.body instanceof FormData) {
+                            options.body.append('_glpi_csrf_token', csrfMeta.getAttribute('content'));
+                        } else {
+                            options.headers = options.headers || {};
+                            options.headers['X-Glpi-Csrf-Token'] = csrfMeta.getAttribute('content');
+                        }
                     }
                     const res = await fetch(url, options);
                     const text = await res.text();
