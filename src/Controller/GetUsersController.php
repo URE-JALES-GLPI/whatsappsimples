@@ -18,15 +18,21 @@ final class GetUsersController
 
         global $DB;
 
-        // Fetch users who are active and not deleted
+        // Fetch users who are active and have the plugin_whatsappsimples right
         $iterator = $DB->request([
-            'SELECT' => ['id', 'firstname', 'realname', 'name'],
+            'SELECT' => ['DISTINCT' => 'glpi_users.id', 'glpi_users.firstname', 'glpi_users.realname', 'glpi_users.name'],
             'FROM'   => 'glpi_users',
-            'WHERE'  => [
-                'is_active' => 1,
-                'is_deleted' => 0
+            'INNER JOIN' => [
+                'glpi_profiles_users' => ['FKEY' => ['glpi_profiles_users' => 'users_id', 'glpi_users' => 'id']],
+                'glpi_profilerights'  => ['FKEY' => ['glpi_profilerights' => 'profiles_id', 'glpi_profiles_users' => 'profiles_id']]
             ],
-            'ORDER'  => 'realname ASC, firstname ASC, name ASC'
+            'WHERE'  => [
+                'glpi_users.is_active' => 1,
+                'glpi_users.is_deleted' => 0,
+                'glpi_profilerights.name' => 'plugin_whatsappsimples',
+                'glpi_profilerights.rights' => ['>', 0]
+            ],
+            'ORDER'  => 'glpi_users.realname ASC, glpi_users.firstname ASC, glpi_users.name ASC'
         ]);
 
         $users = [];

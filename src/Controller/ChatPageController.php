@@ -20,6 +20,7 @@ final class ChatPageController extends AbstractController
         include_once GLPI_ROOT . '/inc/includes.php';
         \Html::header('WhatsApp', $_SERVER['PHP_SELF'], 'tools', 'whatsappsimples');
 
+        $canTransfer = Session::haveRight('plugin_whatsappsimples_transfer', READ);
         ?>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -712,6 +713,26 @@ final class ChatPageController extends AbstractController
             </div>
         </div>
 
+        <!-- MODAL DE TRANSFERÊNCIA -->
+        <div id="transfer-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">🔄 Transferir Chat</h3>
+                    <button onclick="closeTransferModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b;">&times;</button>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Selecione o destino:</label>
+                    <select id="transfer-user-select" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                        <option value="0">📥 Fila (Desvincular)</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button onclick="closeTransferModal()" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
+                    <button id="transfer-submit-btn" onclick="submitTransfer()" style="padding:8px 16px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
         <script>
             let currentTab = 'mine';
             let activeChatId = 0;
@@ -720,6 +741,8 @@ final class ChatPageController extends AbstractController
             let allLoadedChats = [];
             let stagedFiles = [];
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
+            const CAN_TRANSFER = <?= json_encode($canTransfer) ?>;
+            let transferUsersLoaded = false;
 
             function switchTab(tab, btn) {
                 currentTab = tab;
@@ -862,10 +885,16 @@ final class ChatPageController extends AbstractController
                 document.getElementById('header-sub').innerText = displayPhone;
                 document.getElementById('header-avatar').innerText = getInitials(name);
 
+                let transferBtnHtml = '';
+                if (CAN_TRANSFER) {
+                    transferBtnHtml = `<button onclick="openTransferModal()" style="margin-left:10px; padding:4px 10px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem; cursor:pointer; font-weight:600; color:#334155; display:flex; align-items:center; gap:4px;"><span style="font-size:1rem;">🔄</span> Transferir</button>`;
+                }
+
                 const actionsBox = document.getElementById('header-actions');
                 if (!isContactTab && chatId > 0) {
                     actionsBox.innerHTML = `
                         <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
+                        ${transferBtnHtml}
                     `;
                 } else if (isContactTab) {
                     actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
@@ -1076,12 +1105,13 @@ final class ChatPageController extends AbstractController
                 inputEl.value = ''; // Limpa o input para poder selecionar mais depois
             }
 
-            function toggleOmniPopover(id) {
-                const popover = document.getElementById(id);
-                const isVisible = popover.style.display === 'block';
-                closeAllPopovers();
-                if (!isVisible) {
-                    popover.style.display = 'block';
+            async function toggleOmniPopover(id) {
+                const pop = document.getElementById(id);
+                if (pop.style.display === 'block') {
+                    pop.style.display = 'none';
+                } else {
+                    document.querySelectorAll('.omni-popover').forEach(p => p.style.display = 'none');
+                    pop.style.display = 'block';
                 }
             }
 
@@ -1154,6 +1184,87 @@ final class ChatPageController extends AbstractController
             function escapeJs(str) {
                 if (!str) return '';
                 return str.replace(/'/g, "\\'");
+            }
+
+            // Transfer Logic
+            async function openTransferModal() {
+                if (!activeChatId && !activePhoneNumber) return;
+                const modal = document.getElementById('transfer-modal');
+                modal.style.display = 'flex';
+                
+                if (!transferUsersLoaded) {
+                    const select = document.getElementById('transfer-user-select');
+                    select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option><option disabled>Carregando técnicos...</option>';
+                    
+                    const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/users.php`);
+                    select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option>';
+                    
+                    if (res && res.users) {
+                        res.users.forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = `👤 ${u.name}`;
+                            select.appendChild(opt);
+                        });
+                        transferUsersLoaded = true;
+                    } else {
+                        select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option><option disabled>Erro ao carregar técnicos</option>';
+                    }
+                }
+            }
+
+            function closeTransferModal() {
+                document.getElementById('transfer-modal').style.display = 'none';
+            }
+
+            async function submitTransfer() {
+                if (!activeChatId && !activePhoneNumber) return;
+                
+                // If chat isn't initialized yet (just clicking in Contacts before any message), activeChatId might be 0, but we need it.
+                // However, in contacts, we fetch history by phone, but usually there's a chat ID if it exists.
+                if (activeChatId === 0) {
+                    alert('Este chat ainda não existe no banco de dados. Envie uma mensagem primeiro.');
+                    return;
+                }
+
+                const select = document.getElementById('transfer-user-select');
+                const newUserId = select.value;
+                const btn = document.getElementById('transfer-submit-btn');
+                
+                btn.innerText = 'Transferindo...';
+                btn.disabled = true;
+                
+                const formData = new FormData();
+                formData.append('chat_id', activeChatId);
+                formData.append('user_id', newUserId);
+
+                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/transfer.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                btn.innerText = 'Confirmar';
+                btn.disabled = false;
+                
+                if (res && res.success) {
+                    closeTransferModal();
+                    // Limpa chat ativo da tela
+                    activeChatId = 0;
+                    activePhoneNumber = '';
+                    document.getElementById('main-chat-header').style.display = 'none';
+                    document.getElementById('messages-box').innerHTML = `
+                        <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
+                            <div style="font-size:3rem; margin-bottom:10px;">💬</div>
+                            <div>Chat transferido com sucesso!</div>
+                        </div>
+                    `;
+                    document.getElementById('message-input').disabled = true;
+                    document.getElementById('send-btn').disabled = true;
+                    
+                    loadChats();
+                } else {
+                    alert(res.error || 'Erro ao transferir chat.');
+                }
             }
 
             loadChats();
