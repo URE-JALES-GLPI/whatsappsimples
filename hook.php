@@ -14,7 +14,7 @@ function plugin_whatsappsimples_uninstall(): bool
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_configs`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_chats`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_messages`");
-    $DB->doQuery("DELETE FROM `glpi_profilerights` WHERE `name` = 'plugin_whatsappsimples'");
+    PluginWhatsappsimplesProfile::uninstall();
     return true;
 }
 

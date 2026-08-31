@@ -13,6 +13,7 @@ final class ChatPageController extends AbstractController
     public function __invoke(): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         global $CFG_GLPI;
 
         ob_start();
