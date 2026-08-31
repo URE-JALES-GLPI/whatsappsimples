@@ -33,17 +33,11 @@ class PluginWhatsappsimplesProfile extends CommonGLPI
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
-        try {
-            if ($item->getType() === 'Profile') {
-                $profile = new self();
-                $profile->showForm($item->getID());
-            }
-            return true;
-        } catch (\Throwable $e) {
-            file_put_contents(__DIR__ . '/../debug_ajax_error.txt', $e->getMessage() . "\n" . $e->getTraceAsString());
-            echo "<h1>Erro Capturado!</h1><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
-            return false;
+        if ($item->getType() === 'Profile') {
+            $profile = new self();
+            $profile->showForm($item->getID());
         }
+        return true;
     }
 
     public static function install(): bool
@@ -118,7 +112,7 @@ class PluginWhatsappsimplesProfile extends CommonGLPI
         $profiles_id = $ID;
 
         echo "<form name='form_whatsappsimples_profile' action='" . Plugin::getWebDir('whatsappsimples') . "/front/profile.form.php' method='post'>";
-        Html::generateCsrfToken();
+        echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
         echo "<input type='hidden' name='profiles_id' value='$profiles_id'>";
 
         echo "<table class='tab_cadre_fixehov'>";
