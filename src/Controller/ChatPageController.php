@@ -877,14 +877,8 @@ final class ChatPageController extends AbstractController
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
-                if (csrfToken) formData.append('_glpi_csrf_token', csrfToken);
-
                 await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/reset-unread.php`, {
                     method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
                     body: formData
                 });
             }
@@ -952,16 +946,8 @@ final class ChatPageController extends AbstractController
                 
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
-                if (csrfToken) {
-                    formData.append('_glpi_csrf_token', csrfToken);
-                }
-
                 const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close.php`, {
                     method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
                     body: formData
                 });
 
@@ -1263,12 +1249,6 @@ final class ChatPageController extends AbstractController
                 formData.append('chat_id', activeChatId);
                 formData.append('user_id', newUserId);
                 
-                // Add GLPI CSRF Token
-                const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
-                if (csrfMeta) {
-                    formData.append('_glpi_csrf_token', csrfMeta.getAttribute('content'));
-                }
-
                 const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/transfer.php`, {
                     method: 'POST',
                     body: formData
