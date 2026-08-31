@@ -927,7 +927,12 @@ final class ChatPageController extends AbstractController
                     ${transferBtnHtml}
                     `;
                 } else if (isContactTab) {
-                    actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
+                    actionsBox.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>
+                            ${transferBtnHtml}
+                        </div>
+                    `;
                 } else {
                     actionsBox.innerHTML = '';
                 }
@@ -1010,7 +1015,7 @@ final class ChatPageController extends AbstractController
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
-                if (isContactTab) {
+                if (isContactTabActive) {
                     alert('Você está visualizando o Histórico deste Contato.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
                     openTransferModal();
                     return;
