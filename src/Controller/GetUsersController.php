@@ -20,8 +20,9 @@ final class GetUsersController
 
         // Fetch users who are active and have the plugin_whatsappsimples right
         $iterator = $DB->request([
-            'SELECT' => ['DISTINCT' => 'glpi_users.id', 'glpi_users.firstname', 'glpi_users.realname', 'glpi_users.name'],
-            'FROM'   => 'glpi_users',
+            'SELECT'   => ['glpi_users.id', 'glpi_users.firstname', 'glpi_users.realname', 'glpi_users.name'],
+            'DISTINCT' => true,
+            'FROM'     => 'glpi_users',
             'INNER JOIN' => [
                 'glpi_profiles_users' => ['FKEY' => ['glpi_profiles_users' => 'users_id', 'glpi_users' => 'id']],
                 'glpi_profilerights'  => ['FKEY' => ['glpi_profilerights' => 'profiles_id', 'glpi_profiles_users' => 'profiles_id']]

@@ -377,6 +377,22 @@ final class ChatPageController extends AbstractController
             }
             .omni-finish-btn:hover { background: #dc2626; }
 
+            .omni-transfer-btn {
+                padding: 6px 14px;
+                background: #3b82f6;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: background 0.15s;
+            }
+            .omni-transfer-btn:hover { background: #2563eb; }
+
             /* MESSAGES AREA */
             .omni-messages-area {
                 flex: 1;
@@ -632,7 +648,7 @@ final class ChatPageController extends AbstractController
                         <div class="omni-header-tags">
                             <span class="omni-tag-badge omni-tag-whatsapp">🟢 Central WhatsApp</span>
                             <span class="omni-tag-badge omni-tag-dept">🏷️ Suporte URE TI</span>
-                            <div id="header-actions"></div>
+                            <div id="header-actions" style="display:flex; gap:8px; margin-left:12px;"></div>
                         </div>
                     </div>
 
@@ -887,14 +903,19 @@ final class ChatPageController extends AbstractController
 
                 let transferBtnHtml = '';
                 if (CAN_TRANSFER) {
-                    transferBtnHtml = `<button onclick="openTransferModal()" style="margin-left:10px; padding:4px 10px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; font-size:0.8rem; cursor:pointer; font-weight:600; color:#334155; display:flex; align-items:center; gap:4px;"><span style="font-size:1rem;">🔄</span> Transferir</button>`;
+                    transferBtnHtml = `
+                    <button class="omni-transfer-btn" onclick="openTransferModal()" title="Transferir Atendimento">
+                        <span>🔄</span> Transferir
+                    </button>`;
                 }
 
                 const actionsBox = document.getElementById('header-actions');
                 if (!isContactTab && chatId > 0) {
                     actionsBox.innerHTML = `
-                        <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
-                        ${transferBtnHtml}
+                    <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})" title="Encerrar Atendimento">
+                        <span style="font-size: 1.1em;">📵</span> Encerrar
+                    </button>
+                    ${transferBtnHtml}
                     `;
                 } else if (isContactTab) {
                     actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
