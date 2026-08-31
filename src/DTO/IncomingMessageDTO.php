@@ -41,7 +41,7 @@ class IncomingMessageDTO
         $pushName = $data['pushName'] ?? $resolvedPhoneNumber;
         $messageId = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
         $timestamp = $data['messageTimestamp'] ?? time();
-        $originalJid = $key['participant'] ?? $key['remoteJid'] ?? '';
+        $originalJid = !empty($key['participant']) ? $key['participant'] : (!empty($key['remoteJid']) ? $key['remoteJid'] : '');
 
         // Extração do conteúdo da mensagem
         $messageData = $data['message'] ?? [];

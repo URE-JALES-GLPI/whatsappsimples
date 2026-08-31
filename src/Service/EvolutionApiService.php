@@ -77,13 +77,13 @@ class EvolutionApiService
      */
     public static function resolvePhoneNumber(array $payload): string
     {
-        $data = $payload['data'] ?? $payload;
-        $key  = $data['key'] ?? [];
+        $data = !empty($payload['data']) ? $payload['data'] : $payload;
+        $key  = !empty($data['key']) ? $data['key'] : [];
 
         // O JID do contato está SEMPRE em data.key.remoteJid
         // Para grupos, o remetente individual fica em data.key.participant
         // root-level 'sender' = NOSSO número (linha da URE), NUNCA usar como identificador do contato
-        $contactJid = $key['participant'] ?? $key['remoteJid'] ?? '';
+        $contactJid = !empty($key['participant']) ? $key['participant'] : (!empty($key['remoteJid']) ? $key['remoteJid'] : '');
 
         if (empty($contactJid)) {
             self::log("CONTACT_JID_VAZIO", ['key' => $key]);
