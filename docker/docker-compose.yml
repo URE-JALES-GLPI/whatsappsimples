@@ -26,9 +26,7 @@ services:
       - DEL_INSTANCE=false
       - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
       - WEBHOOK_EVENTS_MESSAGE_ACK=true
-      - WEBHOOK_GLOBAL_ENABLED=true
-      - WEBHOOK_GLOBAL_URL=http://10.180.152.27/glpi/plugins/whatsappsimples/front/webhook.php?token=ure_jales_evolution_token_2026
-      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
+      - WEBHOOK_GLOBAL_ENABLED=false
     volumes:
       - evolution_instances:/evolution/instances
     networks:
