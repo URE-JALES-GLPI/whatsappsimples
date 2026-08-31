@@ -1043,16 +1043,8 @@ final class ChatPageController extends AbstractController
                             formData.append('text', text);
                         }
                         formData.append('file', stagedFiles[i]);
-                        if (csrfToken) {
-                            formData.append('_glpi_csrf_token', csrfToken);
-                        }
-
                         const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                             method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-Glpi-Csrf-Token': csrfToken
-                            },
                             body: formData
                         });
 
@@ -1066,16 +1058,8 @@ final class ChatPageController extends AbstractController
                     formData.append('chat_id', activeChatId || 0);
                     formData.append('phone_number', activePhoneNumber || '');
                     formData.append('text', text);
-                    if (csrfToken) {
-                        formData.append('_glpi_csrf_token', csrfToken);
-                    }
-
                     const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                         method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-Glpi-Csrf-Token': csrfToken
-                        },
                         body: formData
                     });
 
