@@ -597,9 +597,12 @@ final class ChatPageController extends AbstractController
             <div class="omni-body">
                 <!-- SIDEBAR ESQUERDA -->
                 <div class="omni-sidebar">
-                    <div class="omni-sidebar-header">
+                    <div class="omni-sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Conversas</span>
-                        <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;">&lt;</span>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="openNewChatModal()" style="background: #3b82f6; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo</button>
+                            <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;" onclick="loadChats()">🔄</span>
+                        </div>
                     </div>
 
                     <div class="omni-search-box">
@@ -745,6 +748,30 @@ final class ChatPageController extends AbstractController
                 <div style="display:flex; justify-content:flex-end; gap:10px;">
                     <button onclick="closeTransferModal()" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
                     <button id="transfer-submit-btn" onclick="submitTransfer()" style="padding:8px 16px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE NOVO CHAT -->
+        <div id="new-chat-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">➕ Iniciar Nova Conversa</h3>
+                    <button onclick="closeNewChatModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b;">&times;</button>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Número do WhatsApp (com DDI e DDD):</label>
+                    <input type="text" id="new-chat-phone" placeholder="Ex: 5517999999999" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                    <small style="color:#64748b; font-size:0.75rem;">Apenas números. Ex: 55 para Brasil.</small>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Nome do Contato (Opcional):</label>
+                    <input type="text" id="new-chat-name" placeholder="Ex: João Silva" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div id="new-chat-error" style="color:red; font-size:0.85rem; margin-bottom:10px; display:none;"></div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button onclick="closeNewChatModal()" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
+                    <button id="new-chat-submit-btn" onclick="submitNewChat()" style="padding:8px 16px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Iniciar</button>
                 </div>
             </div>
         </div>
@@ -1290,8 +1317,63 @@ final class ChatPageController extends AbstractController
                 }
             }
 
-            loadChats();
+            function openNewChatModal() {
+                document.getElementById('new-chat-phone').value = '';
+                document.getElementById('new-chat-name').value = '';
+                document.getElementById('new-chat-error').style.display = 'none';
+                document.getElementById('new-chat-modal').style.display = 'flex';
+                setTimeout(() => document.getElementById('new-chat-phone').focus(), 100);
+            }
+
+            function closeNewChatModal() {
+                document.getElementById('new-chat-modal').style.display = 'none';
+            }
+
+            async function submitNewChat() {
+                const phoneInput = document.getElementById('new-chat-phone').value.trim();
+                const nameInput = document.getElementById('new-chat-name').value.trim();
+                const errorEl = document.getElementById('new-chat-error');
+                const btn = document.getElementById('new-chat-submit-btn');
+
+                if (!phoneInput) {
+                    errorEl.innerText = 'O número de telefone é obrigatório.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                errorEl.style.display = 'none';
+                btn.innerText = 'Iniciando...';
+                btn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('phone_number', phoneInput);
+                formData.append('contact_name', nameInput);
+
+                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/new-chat.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                btn.innerText = 'Iniciar';
+                btn.disabled = false;
+
+                if (res && res.success) {
+                    closeNewChatModal();
+                    // Muda para a aba "Meus Chats" para ver a conversa recém adicionada
+                    document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]').click();
+                    await loadChats();
+                    
+                    // Abre o chat recém criado
+                    openChat(res.chat_id, res.contact_name, res.phone_number, false, 'Você');
+                } else {
+                    errorEl.innerText = res.error || 'Erro desconhecido ao iniciar conversa.';
+                    errorEl.style.display = 'block';
+                }
+            }
+
+            // Inicia o app
             setInterval(loadChats, 5000);
+            loadChats();
         </script>
         <?php
 
