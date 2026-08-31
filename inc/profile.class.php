@@ -33,11 +33,17 @@ class PluginWhatsappsimplesProfile extends CommonGLPI
 
     public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
-        if ($item->getType() === 'Profile') {
-            $profile = new self();
-            $profile->showForm($item->getID());
+        try {
+            if ($item->getType() === 'Profile') {
+                $profile = new self();
+                $profile->showForm($item->getID());
+            }
+            return true;
+        } catch (\Throwable $e) {
+            file_put_contents(__DIR__ . '/../debug_ajax_error.txt', $e->getMessage() . "\n" . $e->getTraceAsString());
+            echo "<h1>Erro Capturado!</h1><pre>" . htmlspecialchars($e->getMessage()) . "</pre>";
+            return false;
         }
-        return true;
     }
 
     public static function install(): bool
