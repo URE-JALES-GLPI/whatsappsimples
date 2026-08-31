@@ -37,7 +37,7 @@ function plugin_init_whatsappsimples(): void
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     }
 
-    Plugin::registerClass('PluginWhatsappsimplesProfile', ['addtabon' => 'Profile']);
+    Plugin::registerClass('PluginWhatsappsimplesProfile', ['addtabon' => ['Profile']]);
 
     if (Session::getLoginUserID()) {
         if (Session::haveRight('plugin_whatsappsimples', READ)) {

@@ -4,11 +4,26 @@ if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access this file directly");
 }
 
-class PluginWhatsappsimplesProfile
+class PluginWhatsappsimplesProfile extends CommonGLPI
 {
     public static $rightname = 'profile';
 
-    public static function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public static function canView()
+    {
+        return Session::haveRight('profile', READ);
+    }
+
+    public static function canCreate()
+    {
+        return Session::haveRight('profile', UPDATE);
+    }
+
+    public static function getTypeName($nb = 0)
+    {
+        return __('WhatsApp', 'whatsappsimples');
+    }
+
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
     {
         if ($item->getType() === 'Profile') {
             return __('WhatsApp', 'whatsappsimples');
