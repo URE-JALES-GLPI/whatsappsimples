@@ -861,7 +861,7 @@ final class ChatPageController extends AbstractController
                     }
 
                     return `
-                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
+                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}')">
                             <div class="omni-avatar-wrap">
                                 <div class="omni-avatar">${initials}</div>
                                 <div class="omni-avatar-icon">💬</div>
@@ -895,7 +895,7 @@ final class ChatPageController extends AbstractController
                 });
             }
 
-            async function openChat(chatId, name, phone, isContactTab = false) {
+            async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente') {
                 activeChatId = chatId;
                 activePhoneNumber = phone;
 
@@ -935,7 +935,7 @@ final class ChatPageController extends AbstractController
                 } else if (isContactTab) {
                     actionsBox.innerHTML = `
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>
+                            <span style="font-size:0.78rem; color:#64748b; font-weight:600;">👤 Resp: ${escapeHtml(technicianName)}</span>
                             ${transferBtnHtml}
                         </div>
                     `;
