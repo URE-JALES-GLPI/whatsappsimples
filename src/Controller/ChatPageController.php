@@ -772,11 +772,20 @@ final class ChatPageController extends AbstractController
                 try {
                     const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
                     if (csrfMeta) {
-                        if (options.body && options.body instanceof FormData) {
-                            options.body.append('_glpi_csrf_token', csrfMeta.getAttribute('content'));
+                        const token = csrfMeta.getAttribute('content');
+                        
+                        // Garante que o PHP recebe via $_REQUEST pela URL, caso o FormData falhe ou os headers sejam dropados
+                        if (url.includes('?')) {
+                            url += '&_glpi_csrf_token=' + token;
+                        } else {
+                            url += '?_glpi_csrf_token=' + token;
+                        }
+
+                        if (options.body && typeof options.body.append === 'function') {
+                            options.body.append('_glpi_csrf_token', token);
                         } else {
                             options.headers = options.headers || {};
-                            options.headers['X-Glpi-Csrf-Token'] = csrfMeta.getAttribute('content');
+                            options.headers['X-Glpi-Csrf-Token'] = token;
                         }
                     }
                     const res = await fetch(url, options);
