@@ -58,6 +58,7 @@ try {
     }
 
     logWebhook("PAYLOAD_BRUTO", ['payload' => $content]);
+    @file_put_contents(__DIR__ . '/debug.txt', date('Y-m-d H:i:s') . "\n" . $content . "\n\n", FILE_APPEND);
 
     $event = strtolower($payload['event'] ?? '');
     if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {

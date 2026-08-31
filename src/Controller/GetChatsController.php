@@ -15,6 +15,7 @@ final class GetChatsController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         global $DB;
 
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
@@ -60,7 +61,7 @@ final class GetChatsController
             foreach ($latestByPhone as $c) {
                 if ($tab === 'mine') {
                     // Chats: Atendimentos ativos vinculados ao técnico logado
-                    if (($c['users_id'] === $currentUserId || $c['users_id'] > 0) && $c['status'] !== 'closed') {
+                    if ($c['users_id'] === $currentUserId && $c['status'] !== 'closed') {
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'queue') {
