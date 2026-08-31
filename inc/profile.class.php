@@ -4,34 +4,34 @@ if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access this file directly");
 }
 
-class PluginWhatsappsimplesProfile extends CommonDBTM
+class PluginWhatsappsimplesProfile extends CommonGLPI
 {
     public static $rightname = 'plugin_whatsappsimples';
 
-    public static function canView()
+    public static function canView(): bool
     {
-        return Session::haveRight('plugin_whatsappsimples', READ);
+        return (bool) Session::haveRight('plugin_whatsappsimples', READ);
     }
 
-    public static function canCreate()
+    public static function canCreate(): bool
     {
-        return Session::haveRight('plugin_whatsappsimples', UPDATE);
+        return (bool) Session::haveRight('plugin_whatsappsimples', UPDATE);
     }
 
-    public static function getTypeName($nb = 0)
+    public static function getTypeName($nb = 0): string
     {
-        return __('WhatsApp', 'whatsappsimples');
+        return (string) __('WhatsApp', 'whatsappsimples');
     }
 
-    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)
+    public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0): string
     {
         if ($item->getType() === 'Profile') {
-            return __('WhatsApp', 'whatsappsimples');
+            return (string) __('WhatsApp', 'whatsappsimples');
         }
         return '';
     }
 
-    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0)
+    public static function displayTabContentForItem(CommonGLPI $item, $tabnum = 1, $withtemplate = 0): bool
     {
         if ($item->getType() === 'Profile') {
             $profile = new self();
@@ -155,5 +155,6 @@ class PluginWhatsappsimplesProfile extends CommonDBTM
 
         echo "</table>";
         echo "</form>";
+        return true;
     }
 }
