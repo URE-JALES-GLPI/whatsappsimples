@@ -14,8 +14,12 @@ final class TransferChatController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
-        Session::checkRight('plugin_whatsappsimples', READ);
-        Session::checkRight('plugin_whatsappsimples_transfer', READ); // Must have transfer right
+        if (!Session::haveRight('plugin_whatsappsimples', READ)) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado: Permissão de leitura ausente'], 403);
+        }
+        if (!Session::haveRight('plugin_whatsappsimples_transfer', READ)) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado: Sem permissão de transferência'], 403);
+        }
 
         global $DB;
 

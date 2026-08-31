@@ -1,4 +1,5 @@
 <?php
+define('GLPI_KEEP_CSRF_TOKEN', true);
 
 include_once(__DIR__ . '/../../../inc/includes.php');
 

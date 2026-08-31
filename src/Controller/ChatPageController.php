@@ -770,6 +770,11 @@ final class ChatPageController extends AbstractController
 
             async function safeFetchJson(url, options = {}) {
                 try {
+                    const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
+                    if (csrfMeta) {
+                        options.headers = options.headers || {};
+                        options.headers['X-Glpi-Csrf-Token'] = csrfMeta.getAttribute('content');
+                    }
                     const res = await fetch(url, options);
                     const text = await res.text();
                     try {
