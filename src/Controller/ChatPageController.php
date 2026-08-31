@@ -1010,6 +1010,12 @@ final class ChatPageController extends AbstractController
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
+                if (isContactTab) {
+                    alert('Você está visualizando o Histórico deste Contato.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
+                    openTransferModal();
+                    return;
+                }
+
                 // Bloqueia o input durante envio para evitar duplicação
                 document.getElementById('send-btn').disabled = true;
                 input.disabled = true;
