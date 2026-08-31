@@ -34,14 +34,14 @@ class IncomingMessageDTO
 
     public static function fromPayload(array $payload, string $resolvedPhoneNumber): self
     {
-        $data  = $payload['data'] ?? [];
+        $data  = $payload['data'] ?? $payload;
         $key   = $data['key'] ?? [];
         
         $isFromMe = !empty($key['fromMe']);
         $pushName = $data['pushName'] ?? $resolvedPhoneNumber;
         $messageId = $key['id'] ?? ('msg_' . time() . '_' . rand(100, 999));
         $timestamp = $data['messageTimestamp'] ?? time();
-        $originalJid = $key['participant'] ?? $key['remoteJid'] ?? '';
+        $originalJid = !empty($key['participant']) ? $key['participant'] : (!empty($key['remoteJid']) ? $key['remoteJid'] : '');
 
         // Extração do conteúdo da mensagem
         $messageData = $data['message'] ?? [];

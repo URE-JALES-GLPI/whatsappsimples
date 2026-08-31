@@ -793,6 +793,11 @@ final class ChatPageController extends AbstractController
                 listEl.innerHTML = chats.map(c => {
                     const initials = getInitials(c.contact_name || c.phone_number);
                     const isSelected = (c.id === activeChatId || c.phone_number === activePhoneNumber);
+                    
+                    let displayPhone = c.phone_number;
+                    if (displayPhone && displayPhone.includes('@lid')) {
+                        displayPhone = 'Número Privado (Meta)';
+                    }
 
                     return `
                         <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
@@ -809,7 +814,7 @@ final class ChatPageController extends AbstractController
                                     </div>
                                 </div>
                                 <div class="omni-card-row2">
-                                    <span>✓✓</span> ${c.phone_number}
+                                    <span>✓✓</span> ${displayPhone}
                                 </div>
                             </div>
                         </div>
@@ -847,8 +852,13 @@ final class ChatPageController extends AbstractController
                 }
 
                 document.getElementById('main-chat-header').style.display = 'flex';
-                document.getElementById('header-title').innerText = name;
-                document.getElementById('header-sub').innerText = phone;
+                let displayPhone = phone;
+                if (displayPhone && displayPhone.includes('@lid')) {
+                    displayPhone = 'Número Privado (Meta)';
+                }
+                
+                document.getElementById('header-title').innerText = name || displayPhone;
+                document.getElementById('header-sub').innerText = displayPhone;
                 document.getElementById('header-avatar').innerText = getInitials(name);
 
                 const actionsBox = document.getElementById('header-actions');
