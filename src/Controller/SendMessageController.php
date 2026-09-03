@@ -90,7 +90,17 @@ final class SendMessageController
                 'LIMIT'  => 1
             ])->current();
             
-            $attendantName = mb_strtoupper(trim(($userQuery['firstname'] ?? '') . ' ' . ($userQuery['realname'] ?? '')));
+            $fullName = trim(($userQuery['firstname'] ?? '') . ' ' . ($userQuery['realname'] ?? ''));
+            $nameParts = array_values(array_filter(explode(' ', $fullName)));
+            
+            if (count($nameParts) >= 2) {
+                $attendantName = $nameParts[0] . ' ' . end($nameParts);
+            } else {
+                $attendantName = $fullName;
+            }
+            
+            $attendantName = mb_strtoupper($attendantName);
+            
             if (empty($attendantName)) {
                 $attendantName = 'ATENDENTE';
             }

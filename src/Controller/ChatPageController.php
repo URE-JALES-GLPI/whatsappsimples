@@ -1044,7 +1044,7 @@ final class ChatPageController extends AbstractController
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
-                            <div>${escapeHtml(m.message_text)}</div>
+                            <div>${formatMessageHtml(m.message_text)}</div>
                             <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                         </div>
                     `).join('')}
@@ -1248,6 +1248,18 @@ final class ChatPageController extends AbstractController
             function escapeHtml(str) {
                 if (!str) return '';
                 return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+            }
+
+            function formatMessageHtml(str) {
+                if (!str) return '';
+                let escaped = escapeHtml(str);
+                // Bold: *text*
+                escaped = escaped.replace(/\*([^\*]+)\*/g, "<strong>$1</strong>");
+                // Italic: _text_
+                escaped = escaped.replace(/_([^_]+)_/g, "<em>$1</em>");
+                // Strikethrough: ~text~
+                escaped = escaped.replace(/~([^~]+)~/g, "<del>$1</del>");
+                return escaped;
             }
 
             function escapeJs(str) {
