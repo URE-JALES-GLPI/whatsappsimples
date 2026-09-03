@@ -588,7 +588,7 @@ final class ChatPageController extends AbstractController
                     <div class="omni-nav-icon active" title="Conversas / Chat">💬</div>
                     <div class="omni-nav-icon" title="Contatos">👥</div>
                     <div class="omni-nav-icon" title="Tags / Etiquetas">🏷️</div>
-                    <div class="omni-nav-icon" title="Configurações">⚙️</div>
+                    <div class="omni-nav-icon" title="Configurações" style="cursor:pointer;" onclick="openSettingsModal()">⚙️</div>
                     <div class="omni-user-badge">TI</div>
                 </div>
             </div>
@@ -600,7 +600,6 @@ final class ChatPageController extends AbstractController
                     <div class="omni-sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Conversas</span>
                         <div style="display: flex; gap: 8px;">
-                            <button onclick="openNewChatModal()" style="background: #3b82f6; color: #fff; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600;">+ Novo</button>
                             <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;" onclick="loadChats()">🔄</span>
                         </div>
                     </div>
@@ -752,26 +751,46 @@ final class ChatPageController extends AbstractController
             </div>
         </div>
 
-        <!-- MODAL DE NOVO CHAT -->
-        <div id="new-chat-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
-            <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
-                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">➕ Iniciar Nova Conversa</h3>
-                    <button onclick="closeNewChatModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b;">&times;</button>
+        <!-- MODAL DE CONFIGURAÇÕES -->
+        <div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; border-radius:8px; width:800px; max-width:95%; height:600px; max-height:90vh; box-shadow:0 10px 25px rgba(0,0,0,0.2); display:flex; flex-direction:column; overflow:hidden;">
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b; display:flex; align-items:center; gap:8px;">⚙️ Configurações</h3>
+                    <button onclick="closeSettingsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b; line-height:1;">&times;</button>
                 </div>
-                <div style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Número do WhatsApp (com DDI e DDD):</label>
-                    <input type="text" id="new-chat-phone" placeholder="Ex: 5517999999999" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
-                    <small style="color:#64748b; font-size:0.75rem;">Apenas números. Ex: 55 para Brasil.</small>
-                </div>
-                <div style="margin-bottom:15px;">
-                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Nome do Contato (Opcional):</label>
-                    <input type="text" id="new-chat-name" placeholder="Ex: João Silva" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
-                </div>
-                <div id="new-chat-error" style="color:red; font-size:0.85rem; margin-bottom:10px; display:none;"></div>
-                <div style="display:flex; justify-content:flex-end; gap:10px;">
-                    <button onclick="closeNewChatModal()" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
-                    <button id="new-chat-submit-btn" onclick="submitNewChat()" style="padding:8px 16px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Iniciar</button>
+                <!-- Body -->
+                <div style="display:flex; flex:1; overflow:hidden;">
+                    <!-- Menu lateral -->
+                    <div style="width:220px; background:#f1f5f9; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; padding:15px 0;">
+                        <button class="settings-tab-btn active" onclick="switchSettingsTab('settings-tab-newchat')" style="padding:10px 20px; text-align:left; background:#e0f2fe; border:none; border-right:3px solid #0284c7; color:#0369a1; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            ➕ Novo Contato
+                        </button>
+                        <button class="settings-tab-btn" style="padding:10px 20px; text-align:left; background:transparent; border:none; border-right:3px solid transparent; color:#475569; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            🤖 Respostas Rápidas
+                        </button>
+                    </div>
+                    <!-- Conteúdo -->
+                    <div style="flex:1; padding:25px; overflow-y:auto; background:#fff;">
+                        <!-- ABA NOVO CONTATO -->
+                        <div id="settings-tab-newchat" class="settings-content-pane">
+                            <h4 style="margin-top:0; margin-bottom:20px; color:#1e293b; font-size:1.1rem;">Iniciar Nova Conversa</h4>
+                            <p style="color:#64748b; font-size:0.9rem; margin-bottom:20px;">Envie uma mensagem ativa para um contato que ainda não está no sistema.</p>
+                            
+                            <div style="margin-bottom:15px;">
+                                <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Número do WhatsApp (com DDI e DDD):</label>
+                                <input type="text" id="new-chat-phone" placeholder="Ex: 5517999999999" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                                <small style="display:block; color:#64748b; font-size:0.8rem; margin-top:5px;">Apenas números. Ex: 55 para Brasil.</small>
+                            </div>
+                            <div style="margin-bottom:25px;">
+                                <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Nome do Contato (Opcional):</label>
+                                <input type="text" id="new-chat-name" placeholder="Ex: João Silva" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                            </div>
+                            <div id="new-chat-error" style="color:#ef4444; font-size:0.85rem; margin-bottom:15px; display:none; background:#fef2f2; padding:10px; border-radius:4px; border:1px solid #fecaca; max-width:400px;"></div>
+                            
+                            <button id="new-chat-submit-btn" onclick="submitNewChat()" style="padding:10px 24px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:600; transition:background 0.2s;">Iniciar Conversa</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1317,16 +1336,21 @@ final class ChatPageController extends AbstractController
                 }
             }
 
-            function openNewChatModal() {
+            function openSettingsModal() {
                 document.getElementById('new-chat-phone').value = '';
                 document.getElementById('new-chat-name').value = '';
                 document.getElementById('new-chat-error').style.display = 'none';
-                document.getElementById('new-chat-modal').style.display = 'flex';
+                
+                document.getElementById('settings-modal').style.display = 'flex';
                 setTimeout(() => document.getElementById('new-chat-phone').focus(), 100);
             }
 
-            function closeNewChatModal() {
-                document.getElementById('new-chat-modal').style.display = 'none';
+            function closeSettingsModal() {
+                document.getElementById('settings-modal').style.display = 'none';
+            }
+            
+            function switchSettingsTab(tabId) {
+                // Future use when we have more tabs
             }
 
             async function submitNewChat() {
@@ -1358,7 +1382,7 @@ final class ChatPageController extends AbstractController
                 btn.disabled = false;
 
                 if (res && res.success) {
-                    closeNewChatModal();
+                    closeSettingsModal();
                     // Muda para a aba "Meus Chats" para ver a conversa recém adicionada
                     document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]').click();
                     await loadChats();
