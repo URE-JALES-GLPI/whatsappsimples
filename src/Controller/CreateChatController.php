@@ -34,19 +34,6 @@ final class CreateChatController
                 return new JsonResponse(['success' => false, 'error' => 'Número de telefone inválido. O formato deve conter DDI e DDD (ex: 5517999999999).'], 400);
             }
 
-            // Append standard whatsapp net suffix
-            if (!str_ends_with($rawPhone, '@s.whatsapp.net') && !str_ends_with($rawPhone, '@lid') && !str_ends_with($rawPhone, '@g.us')) {
-                $cleanPhone .= '@s.whatsapp.net';
-            } else {
-                if (str_ends_with($rawPhone, '@s.whatsapp.net')) {
-                    $cleanPhone .= '@s.whatsapp.net';
-                } elseif (str_ends_with($rawPhone, '@lid')) {
-                    $cleanPhone .= '@lid';
-                } else {
-                    $cleanPhone .= '@g.us';
-                }
-            }
-
             if (empty($contactName)) {
                 $contactName = $cleanPhone; // default name to number
             }
