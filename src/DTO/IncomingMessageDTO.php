@@ -64,9 +64,38 @@ class IncomingMessageDTO
         }
 
         $mediaUrl = null;
+        $extractedBase64 = '';
+        $mimetype = '';
+        
         if (!empty($data['base64'])) {
-            $mediaUrl = $data['base64'];
-            if ($text === '📷 Imagem recebida') {
+            $extractedBase64 = $data['base64'];
+            $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+        } elseif (!empty($messageData['imageMessage']['base64'])) {
+            $extractedBase64 = $messageData['imageMessage']['base64'];
+            $mimetype = $messageData['imageMessage']['mimetype'] ?? 'image/jpeg';
+        } elseif (!empty($messageData['videoMessage']['base64'])) {
+            $extractedBase64 = $messageData['videoMessage']['base64'];
+            $mimetype = $messageData['videoMessage']['mimetype'] ?? 'video/mp4';
+        } elseif (!empty($messageData['audioMessage']['base64'])) {
+            $extractedBase64 = $messageData['audioMessage']['base64'];
+            $mimetype = $messageData['audioMessage']['mimetype'] ?? 'audio/ogg';
+        } elseif (!empty($messageData['documentMessage']['base64'])) {
+            $extractedBase64 = $messageData['documentMessage']['base64'];
+            $mimetype = $messageData['documentMessage']['mimetype'] ?? 'application/pdf';
+        }
+
+        if (!empty($extractedBase64)) {
+            // Se o base64 não vier com o prefixo 'data:', a gente coloca.
+            if (!str_starts_with($extractedBase64, 'data:')) {
+                // A evolution API envia o mimetype como "image/jpeg; charset=utf-8" às vezes, o ideal é limpar depois do ; se precisasse, 
+                // mas podemos só montar a string.
+                $mediaUrl = 'data:' . $mimetype . ';base64,' . $extractedBase64;
+            } else {
+                $mediaUrl = $extractedBase64;
+            }
+            
+            // Limpa o texto padrao de placeholder pra nao poluir a tela se não houver legenda de verdade
+            if (in_array($text, ['📷 Imagem recebida', '🎵 Áudio recebido', '📄 Documento recebido'])) {
                 $text = ''; 
             }
         }
