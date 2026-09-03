@@ -13,6 +13,7 @@ class IncomingMessageDTO
     
     // O JID que chegou originalmente no webhook
     private string $originalJid;
+    private ?string $mediaUrl;
 
     public function __construct(
         string $remoteJid,
@@ -21,7 +22,8 @@ class IncomingMessageDTO
         string $messageId,
         bool $isFromMe,
         int $timestamp,
-        string $originalJid
+        string $originalJid,
+        ?string $mediaUrl = null
     ) {
         $this->remoteJid = $remoteJid;
         $this->pushName = $pushName;
@@ -30,6 +32,7 @@ class IncomingMessageDTO
         $this->isFromMe = $isFromMe;
         $this->timestamp = $timestamp;
         $this->originalJid = $originalJid;
+        $this->mediaUrl = $mediaUrl;
     }
 
     public static function fromPayload(array $payload, string $resolvedPhoneNumber): self
@@ -60,6 +63,14 @@ class IncomingMessageDTO
             $text = '📄 Documento recebido';
         }
 
+        $mediaUrl = null;
+        if (!empty($data['base64'])) {
+            $mediaUrl = $data['base64'];
+            if ($text === '📷 Imagem recebida') {
+                $text = ''; 
+            }
+        }
+
         return new self(
             $resolvedPhoneNumber,
             $pushName,
@@ -67,7 +78,8 @@ class IncomingMessageDTO
             $messageId,
             $isFromMe,
             $timestamp,
-            $originalJid
+            $originalJid,
+            $mediaUrl
         );
     }
 
@@ -104,5 +116,10 @@ class IncomingMessageDTO
     public function getOriginalJid(): string
     {
         return $this->originalJid;
+    }
+
+    public function getMediaUrl(): ?string
+    {
+        return $this->mediaUrl;
     }
 }

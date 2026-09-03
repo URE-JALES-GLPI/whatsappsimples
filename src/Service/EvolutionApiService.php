@@ -352,7 +352,7 @@ class EvolutionApiService
                 'enabled' => true,
                 'url' => $url,
                 'byEvents' => false,
-                'base64' => false,
+                'base64' => true,
                 'events' => ['MESSAGES_UPSERT']
             ]
         ];

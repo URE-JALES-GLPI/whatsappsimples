@@ -50,6 +50,7 @@ class MessageDispatcherService
             'message_id'   => $message->getMessageId(),
             'sender_type'  => 'contact',
             'message_text' => $message->getText(),
+            'media_url'    => $message->getMediaUrl(),
         ];
 
         $result = $this->repository->saveMessage($messageData);

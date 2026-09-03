@@ -1039,15 +1039,29 @@ final class ChatPageController extends AbstractController
 
                 box.innerHTML = `
                     <div class="omni-divider-badge">Atendimento Iniciado</div>
-                    ${data.messages.map(m => `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
-                            <div class="omni-bubble-sender">
-                                <span>${m.sender_name || ''}</span>
+                    ${data.messages.map(m => {
+                        let mediaHtml = '';
+                        if (m.media_url && m.media_url.startsWith('data:')) {
+                            if (m.media_url.startsWith('data:image/')) {
+                                mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;" alt="Imagem" /><br>`;
+                            } else if (m.media_url.startsWith('data:video/')) {
+                                mediaHtml = `<video src="${m.media_url}" controls style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                            } else if (m.media_url.startsWith('data:audio/')) {
+                                mediaHtml = `<audio src="${m.media_url}" controls style="max-width: 250px; margin-bottom: 8px;"></audio><br>`;
+                            } else {
+                                mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                            }
+                        }
+                        return `
+                            <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
+                                <div class="omni-bubble-sender">
+                                    <span>${m.sender_name || ''}</span>
+                                </div>
+                                <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                             </div>
-                            <div>${formatMessageHtml(m.message_text)}</div>
-                            <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
-                        </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 `;
 
                 box.scrollTop = box.scrollHeight;
