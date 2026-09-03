@@ -84,11 +84,23 @@ class IncomingMessageDTO
             $mimetype = $messageData['documentMessage']['mimetype'] ?? 'application/pdf';
         }
 
+        if (empty($extractedBase64)) {
+            // Tenta buscar da API usando o endpoint se o webhook não enviou
+            $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
+            if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
+                $apiRes = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getBase64FromMediaMessage($messageId);
+                if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
+                    $extractedBase64 = $apiRes['base64'];
+                    
+                    // Como não veio do payload, tentamos extrair o mimetype de novo
+                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                }
+            }
+        }
+
         if (!empty($extractedBase64)) {
             // Se o base64 não vier com o prefixo 'data:', a gente coloca.
             if (!str_starts_with($extractedBase64, 'data:')) {
-                // A evolution API envia o mimetype como "image/jpeg; charset=utf-8" às vezes, o ideal é limpar depois do ; se precisasse, 
-                // mas podemos só montar a string.
                 $mediaUrl = 'data:' . $mimetype . ';base64,' . $extractedBase64;
             } else {
                 $mediaUrl = $extractedBase64;
