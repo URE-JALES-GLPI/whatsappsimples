@@ -82,6 +82,23 @@ final class SendMessageController
 
             $phoneToUpdate = (string) $chat['phone_number'];
 
+            // Busca nome do atendente para assinatura
+            $userQuery = $DB->request([
+                'SELECT' => ['firstname', 'realname'],
+                'FROM'   => 'glpi_users',
+                'WHERE'  => ['id' => $currentUserId],
+                'LIMIT'  => 1
+            ])->current();
+            
+            $attendantName = mb_strtoupper(trim(($userQuery['firstname'] ?? '') . ' ' . ($userQuery['realname'] ?? '')));
+            if (empty($attendantName)) {
+                $attendantName = 'ATENDENTE';
+            }
+
+            if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {
+                $text = "*{$attendantName}*\n\n" . $text;
+            }
+
             // 1. Envio de Arquivos de Mídia
             $uploadedFile = $request->files->get('file');
             if ($uploadedFile) {
