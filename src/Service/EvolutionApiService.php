@@ -421,6 +421,7 @@ class EvolutionApiService
             return ['success' => true, 'base64' => $data['base64'] ?? ''];
         }
 
+        self::log("ERRO_GET_BASE64", ['httpCode' => $httpCode, 'response' => $response]);
         return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
