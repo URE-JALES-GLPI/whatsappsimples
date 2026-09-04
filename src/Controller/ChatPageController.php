@@ -732,9 +732,13 @@ final class ChatPageController extends AbstractController
         </div>
 
         <!-- LIGHTBOX MODAL (ZOOM IMAGEM) -->
-        <div id="lightbox-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s;" onclick="closeLightbox()">
-            <span style="position:absolute; top:20px; right:30px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5);" onclick="closeLightbox()">&times;</span>
-            <img id="lightbox-img" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform:scale(0.9); transition:transform 0.2s;" src="" onclick="event.stopPropagation()">
+        <div id="lightbox-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s;" onclick="closeLightbox()" onwheel="handleLightboxScroll(event)">
+            <div style="position:absolute; top:20px; right:30px; display:flex; gap:15px; align-items:center;">
+                <span style="color:#fff; font-size:30px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5);" onclick="event.stopPropagation(); zoomLightbox(0.2)" title="Mais Zoom (Ou use o scroll do mouse)">+</span>
+                <span style="color:#fff; font-size:35px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); line-height: 25px;" onclick="event.stopPropagation(); zoomLightbox(-0.2)" title="Menos Zoom (Ou use o scroll do mouse)">-</span>
+                <span style="color:#fff; font-size:40px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); margin-left: 20px;" onclick="closeLightbox()" title="Fechar">&times;</span>
+            </div>
+            <img id="lightbox-img" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform:scale(0.9); transition:transform 0.15s ease-out;" src="" onclick="event.stopPropagation()">
         </div>
 
         <!-- MODAL DE TRANSFERÊNCIA -->
@@ -811,16 +815,18 @@ final class ChatPageController extends AbstractController
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
             const CAN_TRANSFER = <?= json_encode($canTransfer) ?>;
             let transferUsersLoaded = false;
+            let currentLightboxZoom = 1;
 
             function openLightbox(src) {
                 const modal = document.getElementById('lightbox-modal');
                 const img = document.getElementById('lightbox-img');
                 img.src = src;
+                currentLightboxZoom = 1;
                 modal.style.display = 'flex';
                 // Trigger reflow for CSS animation
                 void modal.offsetWidth;
                 modal.style.opacity = '1';
-                img.style.transform = 'scale(1)';
+                img.style.transform = `scale(${currentLightboxZoom})`;
             }
 
             function closeLightbox() {
@@ -832,6 +838,20 @@ final class ChatPageController extends AbstractController
                     modal.style.display = 'none';
                     img.src = '';
                 }, 200);
+            }
+
+            function zoomLightbox(delta) {
+                currentLightboxZoom += delta;
+                if (currentLightboxZoom < 0.2) currentLightboxZoom = 0.2;
+                if (currentLightboxZoom > 5) currentLightboxZoom = 5;
+                const img = document.getElementById('lightbox-img');
+                img.style.transform = `scale(${currentLightboxZoom})`;
+            }
+
+            function handleLightboxScroll(e) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                zoomLightbox(delta);
             }
 
             function switchTab(tab, btn) {
