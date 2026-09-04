@@ -67,6 +67,14 @@ class IncomingMessageDTO
         $extractedBase64 = '';
         $mimetype = '';
         
+        // IGNORAR o base64 que vem no webhook para áudio e vídeo, pois a Evolution API frequentemente envia ele truncado (pela metade).
+        // Isso forçará o sistema a entrar no "fallback" e baixar o arquivo completo pela rota dedicada getBase64FromMediaMessage.
+        if (!empty($messageData['audioMessage']) || !empty($messageData['videoMessage'])) {
+            unset($data['base64']);
+            unset($messageData['audioMessage']['base64']);
+            unset($messageData['videoMessage']['base64']);
+        }
+        
 
 
         if (!empty($data['base64'])) {
