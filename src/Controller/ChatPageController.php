@@ -731,6 +731,12 @@ final class ChatPageController extends AbstractController
             </div>
         </div>
 
+        <!-- LIGHTBOX MODAL (ZOOM IMAGEM) -->
+        <div id="lightbox-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s;" onclick="closeLightbox()">
+            <span style="position:absolute; top:20px; right:30px; color:#fff; font-size:40px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5);" onclick="closeLightbox()">&times;</span>
+            <img id="lightbox-img" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform:scale(0.9); transition:transform 0.2s;" src="" onclick="event.stopPropagation()">
+        </div>
+
         <!-- MODAL DE TRANSFERÊNCIA -->
         <div id="transfer-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
             <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
@@ -805,6 +811,28 @@ final class ChatPageController extends AbstractController
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
             const CAN_TRANSFER = <?= json_encode($canTransfer) ?>;
             let transferUsersLoaded = false;
+
+            function openLightbox(src) {
+                const modal = document.getElementById('lightbox-modal');
+                const img = document.getElementById('lightbox-img');
+                img.src = src;
+                modal.style.display = 'flex';
+                // Trigger reflow for CSS animation
+                void modal.offsetWidth;
+                modal.style.opacity = '1';
+                img.style.transform = 'scale(1)';
+            }
+
+            function closeLightbox() {
+                const modal = document.getElementById('lightbox-modal');
+                const img = document.getElementById('lightbox-img');
+                modal.style.opacity = '0';
+                img.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    img.src = '';
+                }, 200);
+            }
 
             function switchTab(tab, btn) {
                 currentTab = tab;
@@ -1043,7 +1071,7 @@ final class ChatPageController extends AbstractController
                         let mediaHtml = '';
                         if (m.media_url && m.media_url.startsWith('data:')) {
                             if (m.media_url.startsWith('data:image/')) {
-                                mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;" alt="Imagem" /><br>`;
+                                mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
                             } else if (m.media_url.startsWith('data:video/')) {
                                 mediaHtml = `<video src="${m.media_url}" controls style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                             } else if (m.media_url.startsWith('data:audio/')) {
