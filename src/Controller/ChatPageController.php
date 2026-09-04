@@ -822,7 +822,7 @@ final class ChatPageController extends AbstractController
                 if (audioBlobCache[dataUrl]) return audioBlobCache[dataUrl];
                 try {
                     const parts = dataUrl.split(',');
-                    const mime = parts[0].split(':')[1].split(';')[0];
+                    const mime = parts[0].split(':')[1].replace(';base64', '');
                     const bstr = atob(parts[1]);
                     const n = bstr.length;
                     const u8arr = new Uint8Array(n);
@@ -1117,7 +1117,7 @@ final class ChatPageController extends AbstractController
                             } else if (m.media_url.startsWith('data:video/')) {
                                 mediaHtml = `<video src="${m.media_url}" controls style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                             } else if (m.media_url.startsWith('data:audio/')) {
-                                mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls style="max-width: 250px; margin-bottom: 8px;"></audio><br>`;
+                                mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
                             } else {
                                 mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
                             }
