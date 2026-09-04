@@ -817,6 +817,28 @@ final class ChatPageController extends AbstractController
             let transferUsersLoaded = false;
             let currentLightboxZoom = 1;
 
+            const audioBlobCache = {};
+            function getAudioBlobUrl(dataUrl) {
+                if (audioBlobCache[dataUrl]) return audioBlobCache[dataUrl];
+                try {
+                    const parts = dataUrl.split(',');
+                    const mime = parts[0].split(':')[1].split(';')[0];
+                    const bstr = atob(parts[1]);
+                    const n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    for (let i = 0; i < n; i++) {
+                        u8arr[i] = bstr.charCodeAt(i);
+                    }
+                    const blob = new Blob([u8arr], { type: mime });
+                    const url = URL.createObjectURL(blob);
+                    audioBlobCache[dataUrl] = url;
+                    return url;
+                } catch(e) {
+                    console.error("Falha ao converter audio dataURI para Blob", e);
+                    return dataUrl;
+                }
+            }
+
             function openLightbox(src) {
                 const modal = document.getElementById('lightbox-modal');
                 const img = document.getElementById('lightbox-img');
@@ -1095,7 +1117,7 @@ final class ChatPageController extends AbstractController
                             } else if (m.media_url.startsWith('data:video/')) {
                                 mediaHtml = `<video src="${m.media_url}" controls style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                             } else if (m.media_url.startsWith('data:audio/')) {
-                                mediaHtml = `<audio src="${m.media_url}" controls style="max-width: 250px; margin-bottom: 8px;"></audio><br>`;
+                                mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls style="max-width: 250px; margin-bottom: 8px;"></audio><br>`;
                             } else {
                                 mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
                             }
