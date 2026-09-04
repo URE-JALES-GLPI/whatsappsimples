@@ -67,14 +67,7 @@ class IncomingMessageDTO
         $extractedBase64 = '';
         $mimetype = '';
         
-        // Forçar busca de áudio e vídeo pela API para evitar o bug de truncamento do Webhook na Evolution API
-        if (!empty($messageData['audioMessage'])) {
-            unset($data['base64']);
-            unset($messageData['audioMessage']['base64']);
-        } elseif (!empty($messageData['videoMessage'])) {
-            unset($data['base64']);
-            unset($messageData['videoMessage']['base64']);
-        }
+
 
         if (!empty($data['base64'])) {
             $extractedBase64 = $data['base64'];
@@ -101,8 +94,8 @@ class IncomingMessageDTO
                 if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
                     $extractedBase64 = $apiRes['base64'];
                     
-                    // Como usamos convertToMp4 = true na API, forçamos o mimetype para audio/mp4 no caso de áudios
-                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? (!empty($messageData['audioMessage']) ? 'audio/mp4' : null) ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                    // Como não veio do payload, tentamos extrair o mimetype de novo
+                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
                 }
             }
         }
