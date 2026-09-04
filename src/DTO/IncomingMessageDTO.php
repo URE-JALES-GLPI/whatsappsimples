@@ -92,8 +92,8 @@ class IncomingMessageDTO
                 if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
                     $extractedBase64 = $apiRes['base64'];
                     
-                    // Como não veio do payload, tentamos extrair o mimetype de novo
-                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                    // Como usamos convertToMp4 = true na API, forçamos o mimetype para audio/mp4 no caso de áudios
+                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? (!empty($messageData['audioMessage']) ? 'audio/mp4' : null) ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
                 }
             }
         }

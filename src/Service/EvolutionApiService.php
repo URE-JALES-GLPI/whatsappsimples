@@ -397,7 +397,7 @@ class EvolutionApiService
                     'id' => $messageId
                 ]
             ],
-            'convertToMp4' => false
+            'convertToMp4' => true
         ];
 
         $ch = curl_init($endpoint);
