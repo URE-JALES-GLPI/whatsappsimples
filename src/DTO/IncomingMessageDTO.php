@@ -67,6 +67,15 @@ class IncomingMessageDTO
         $extractedBase64 = '';
         $mimetype = '';
         
+        // Forçar busca de áudio e vídeo pela API para evitar o bug de truncamento do Webhook na Evolution API
+        if (!empty($messageData['audioMessage'])) {
+            unset($data['base64']);
+            unset($messageData['audioMessage']['base64']);
+        } elseif (!empty($messageData['videoMessage'])) {
+            unset($data['base64']);
+            unset($messageData['videoMessage']['base64']);
+        }
+
         if (!empty($data['base64'])) {
             $extractedBase64 = $data['base64'];
             $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
