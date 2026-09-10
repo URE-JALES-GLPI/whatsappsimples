@@ -98,6 +98,10 @@ class IncomingMessageDTO
             // Tenta buscar da API usando o endpoint se o webhook não enviou
             $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
             if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
+                // Aguarda 4 segundos para evitar que a API Evolution devolva a midia pela metade (Race Condition)
+                if (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage'])) {
+                    sleep(4);
+                }
                 $apiRes = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getBase64FromMediaMessage($messageId);
                 if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
                     $extractedBase64 = $apiRes['base64'];
