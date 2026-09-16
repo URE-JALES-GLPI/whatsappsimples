@@ -113,11 +113,33 @@ class IncomingMessageDTO
         }
 
         if (!empty($extractedBase64)) {
-            // Se o base64 não vier com o prefixo 'data:', a gente coloca.
-            if (!str_starts_with($extractedBase64, 'data:')) {
-                $mediaUrl = 'data:' . $mimetype . ';base64,' . $extractedBase64;
+            $rawBase64 = str_starts_with($extractedBase64, 'data:') ? explode(',', $extractedBase64)[1] : $extractedBase64;
+            $binaryData = base64_decode($rawBase64);
+            
+            if ($binaryData) {
+                $ext = 'bin';
+                if (str_contains($mimetype, 'image/jpeg')) $ext = 'jpg';
+                elseif (str_contains($mimetype, 'image/png')) $ext = 'png';
+                elseif (str_contains($mimetype, 'video/mp4')) $ext = 'mp4';
+                elseif (str_contains($mimetype, 'audio/ogg')) $ext = 'ogg';
+                elseif (str_contains($mimetype, 'audio/mp4')) $ext = 'm4a';
+                elseif (str_contains($mimetype, 'audio/mpeg')) $ext = 'mp3';
+                elseif (str_contains($mimetype, 'application/pdf')) $ext = 'pdf';
+                
+                $filename = uniqid('media_') . '_' . time() . '.' . $ext;
+                
+                $mediaDir = GLPI_PLUGIN_DOC_DIR . '/whatsappsimples/media';
+                if (!is_dir($mediaDir)) {
+                    @mkdir($mediaDir, 0777, true);
+                }
+                
+                $filepath = $mediaDir . '/' . $filename;
+                file_put_contents($filepath, $binaryData);
+                
+                // Salva apenas o nome do arquivo no banco (prefixo doc_ para indicar que esta no GLPI_PLUGIN_DOC_DIR)
+                $mediaUrl = 'doc_' . $filename;
             } else {
-                $mediaUrl = $extractedBase64;
+                $mediaUrl = null;
             }
             
             // Limpa o texto padrao de placeholder pra nao poluir a tela se não houver legenda de verdade

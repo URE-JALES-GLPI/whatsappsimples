@@ -1121,6 +1121,18 @@ final class ChatPageController extends AbstractController
                             } else {
                                 mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
                             }
+                        } else if (m.media_url && m.media_url.startsWith('doc_')) {
+                            const filename = m.media_url.substring(4);
+                            const fullUrl = `${rootDoc}/plugins/whatsappsimples/front/media.php?file=${filename}`;
+                            if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
+                                mediaHtml = `<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
+                            } else if (filename.endsWith('.mp4')) {
+                                mediaHtml = `<video src="${fullUrl}" controls style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                            } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
+                                mediaHtml = `<audio src="${fullUrl}" controls style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                            } else {
+                                mediaHtml = `<a href="${fullUrl}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                            }
                         }
                         return `
                             <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
