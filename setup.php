@@ -56,7 +56,7 @@ function plugin_version_whatsappsimples(): array
 {
     return [
         'name'         => 'WhatsApp',
-        'version'      => '1.0.0',
+        'version'      => '1.0.1',
         'author'       => 'Equipe de TI',
         'license'      => 'GPLv3+',
         'homepage'     => '',
