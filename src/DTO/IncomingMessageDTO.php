@@ -4,36 +4,6 @@ namespace GlpiPlugin\Whatsappsimples\DTO;
 
 class IncomingMessageDTO
 {
-    private string $remoteJid;
-    private string $pushName;
-    private string $text;
-    private string $messageId;
-    private bool $isFromMe;
-    private int $timestamp;
-    
-    // O JID que chegou originalmente no webhook
-    private string $originalJid;
-    private ?string $mediaUrl;
-
-    public function __construct(
-        string $remoteJid,
-        string $pushName,
-        string $text,
-        string $messageId,
-        bool $isFromMe,
-        int $timestamp,
-        string $originalJid,
-        ?string $mediaUrl = null
-    ) {
-        $this->remoteJid = $remoteJid;
-        $this->pushName = $pushName;
-        $this->text = $text;
-        $this->messageId = $messageId;
-        $this->isFromMe = $isFromMe;
-        $this->timestamp = $timestamp;
-        $this->originalJid = $originalJid;
-        $this->mediaUrl = $mediaUrl;
-    }
 
     public static function fromPayload(array $payload, string $resolvedPhoneNumber): self
     {

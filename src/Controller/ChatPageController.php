@@ -1102,63 +1102,72 @@ final class ChatPageController extends AbstractController
                 const data = await safeFetchJson(url);
                 const box = document.getElementById('messages-box');
 
-                const isPlaying = Array.from(box.querySelectorAll('audio, video')).some(media => !media.paused && !media.ended);
-                if (isPlaying) {
-                    // Pula a atualização visual para não interromper a mídia.
-                    return;
-                }
-
                 if (!data.messages || data.messages.length === 0) {
                     box.innerHTML = '<div style="margin:auto; color:#94a3b8; font-size:0.85rem;">Sem mensagens registradas</div>';
                     return;
                 }
 
-                box.innerHTML = `
-                    <div class="omni-divider-badge">Atendimento Iniciado</div>
-                    ${data.messages.map(m => {
-                        let mediaHtml = '';
-                        if (m.media_url && m.media_url.startsWith('data:')) {
-                            if (m.media_url.startsWith('data:image/')) {
-                                mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
-                            } else if (m.media_url.startsWith('data:video/')) {
-                                mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
-                            } else if (m.media_url.startsWith('data:audio/')) {
-                                mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
-                            } else {
-                                mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
-                            }
-                        } else if (m.media_url && m.media_url.startsWith('doc_')) {
-                            const filename = m.media_url.substring(4);
-                            const fullUrl = `${rootDoc}/plugins/whatsappsimples/front/media.php?id=${m.id}&file=${filename}`;
-                            
-                            let warningHtml = '';
-                            if (m.media_status === 'incomplete') {
-                                warningHtml = `<div style="color: #ef4444; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px;">⚠️ Mídia Incompleta (Cortada na Origem)</div>`;
-                            }
+                if (box.innerHTML.includes('Sem mensagens registradas')) {
+                    box.innerHTML = '';
+                }
 
-                            if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
-                                mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
-                            } else if (filename.endsWith('.mp4')) {
-                                mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
-                            } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
-                                mediaHtml = `${warningHtml}<audio src="${fullUrl}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
-                            } else {
-                                mediaHtml = `<a href="${fullUrl}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
-                            }
+                if (!box.querySelector('.omni-divider-badge')) {
+                    box.insertAdjacentHTML('afterbegin', '<div class="omni-divider-badge">Atendimento Iniciado</div>');
+                }
+
+                let addedNew = false;
+
+                data.messages.forEach(m => {
+                    const existingNode = box.querySelector(`[data-msg-id="${m.id}"]`);
+                    if (existingNode) return;
+
+                    addedNew = true;
+                    let mediaHtml = '';
+                    if (m.media_url && m.media_url.startsWith('data:')) {
+                        if (m.media_url.startsWith('data:image/')) {
+                            mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
+                        } else if (m.media_url.startsWith('data:video/')) {
+                            mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                        } else if (m.media_url.startsWith('data:audio/')) {
+                            mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                        } else {
+                            mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
                         }
-                        return `
-                            <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
-                                <div class="omni-bubble-sender">
-                                    <span>${m.sender_name || ''}</span>
-                                </div>
-                                <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
-                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
-                            </div>
-                        `;
-                    }).join('')}
-                `;
+                    } else if (m.media_url && m.media_url.startsWith('doc_')) {
+                        const filename = m.media_url.substring(4);
+                        const fullUrl = `${rootDoc}/plugins/whatsappsimples/front/media.php?id=${m.id}&file=${filename}`;
+                        
+                        let warningHtml = '';
+                        if (m.media_status === 'incomplete') {
+                            warningHtml = `<div style="color: #ef4444; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px;">⚠️ Mídia Incompleta (Cortada na Origem)</div>`;
+                        }
 
-                box.scrollTop = box.scrollHeight;
+                        if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
+                            mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
+                        } else if (filename.endsWith('.mp4')) {
+                            mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                        } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
+                            mediaHtml = `${warningHtml}<audio src="${fullUrl}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                        } else {
+                            mediaHtml = `<a href="${fullUrl}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                        }
+                    }
+
+                    const msgHtml = `
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}">
+                            <div class="omni-bubble-sender">
+                                <span>${m.sender_name || ''}</span>
+                            </div>
+                            <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                            <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
+                        </div>
+                    `;
+                    box.insertAdjacentHTML('beforeend', msgHtml);
+                });
+
+                if (addedNew) {
+                    box.scrollTop = box.scrollHeight;
+                }
             }
 
             async function sendCurrentMessage() {
