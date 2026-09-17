@@ -1014,6 +1014,10 @@ final class ChatPageController extends AbstractController
             }
 
             async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente', ownerId = 0) {
+                if (activeChatId !== chatId || activePhoneNumber !== phone) {
+                    document.getElementById('messages-box').innerHTML = '';
+                }
+                
                 activeChatId = chatId;
                 activePhoneNumber = phone;
                 activeChatOwnerId = ownerId;
