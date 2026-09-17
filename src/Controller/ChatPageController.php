@@ -810,6 +810,8 @@ final class ChatPageController extends AbstractController
             let activeChatId = 0;
             let activePhoneNumber = '';
             let isContactTabActive = false;
+            let activeChatOwnerId = 0;
+            const currentUserId = <?= json_encode((int) Session::getLoginUserID()) ?>;
             let allLoadedChats = [];
             let stagedFiles = [];
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
@@ -977,7 +979,7 @@ final class ChatPageController extends AbstractController
                     }
 
                     return `
-                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}')">
+                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}', ${c.users_id})">
                             <div class="omni-avatar-wrap">
                                 <div class="omni-avatar">${initials}</div>
                                 <div class="omni-avatar-icon">💬</div>
@@ -1011,9 +1013,10 @@ final class ChatPageController extends AbstractController
                 });
             }
 
-            async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente') {
+            async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente', ownerId = 0) {
                 activeChatId = chatId;
                 activePhoneNumber = phone;
+                activeChatOwnerId = ownerId;
 
                 // Zera o contador visualmente e no banco
                 const chatObj = allLoadedChats.find(c => c.id === chatId);
@@ -1176,8 +1179,8 @@ final class ChatPageController extends AbstractController
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
-                if (isContactTabActive) {
-                    alert('Você está visualizando o Histórico deste Contato.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
+                if (isContactTabActive && activeChatOwnerId !== currentUserId) {
+                    alert('Você está visualizando o Histórico deste Contato e este atendimento NÃO está atribuído a você.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
                     openTransferModal();
                     return;
                 }
