@@ -1179,8 +1179,8 @@ final class ChatPageController extends AbstractController
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
-                if (isContactTabActive && activeChatOwnerId !== currentUserId) {
-                    alert('Você está visualizando o Histórico deste Contato e este atendimento NÃO está atribuído a você.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
+                if (isContactTabActive && activeChatOwnerId > 0 && activeChatOwnerId !== currentUserId) {
+                    alert('Você está visualizando o Histórico deste Contato e este atendimento está atribuído a OUTRO atendente.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
                     openTransferModal();
                     return;
                 }

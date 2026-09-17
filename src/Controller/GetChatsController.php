@@ -57,11 +57,14 @@ final class GetChatsController
                     $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
 
                     $technicianName = null;
-                    if (!empty($row['users_id'])) {
+                    if (!empty($row['users_id']) && $row['status'] !== 'closed') {
                         $technicianName = trim(($row['firstname'] ?? '') . ' ' . ($row['realname'] ?? ''));
                         if (empty($technicianName)) {
                             $technicianName = 'Técnico ID ' . $row['users_id'];
                         }
+                    } elseif ($row['status'] === 'closed') {
+                        $technicianName = 'Histórico (Encerrado)';
+                        $row['users_id'] = 0;
                     }
 
                     $latestByPhone[$phone] = [

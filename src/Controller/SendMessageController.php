@@ -39,23 +39,32 @@ final class SendMessageController
             $chat = null;
             if ($chatId > 0) {
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id', 'status'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                     'WHERE'  => ['id' => $chatId],
                     'LIMIT'  => 1
                 ])->current();
+                
+                if ($chat && $chat['status'] === 'closed') {
+                    if (empty($phoneNumber)) {
+                        $phoneNumber = $chat['phone_number'];
+                    }
+                    $chat = null;
+                }
             }
 
             if (!$chat && !empty($phoneNumber)) {
+                // Tenta achar um chat ativo para esse número
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id', 'status'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'  => ['phone_number' => $phoneNumber],
+                    'WHERE'  => ['phone_number' => $phoneNumber, 'status' => ['pending', 'in_progress']],
                     'ORDER'  => 'id DESC',
                     'LIMIT'  => 1
                 ])->current();
 
                 if (!$chat) {
+                    // Cria um novo atendimento
                     $DB->insert('glpi_plugin_whatsappsimples_chats', [
                         'phone_number'  => $phoneNumber,
                         'contact_name'  => $phoneNumber,
@@ -69,7 +78,8 @@ final class SendMessageController
                         'id'                  => $chatId,
                         'phone_number'        => $phoneNumber,
                         'first_response_date' => null,
-                        'users_id'            => $currentUserId
+                        'users_id'            => $currentUserId,
+                        'status'        => 'in_progress'
                     ];
                 } else {
                     $chatId = (int) $chat['id'];
