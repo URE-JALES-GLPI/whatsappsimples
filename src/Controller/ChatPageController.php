@@ -576,6 +576,76 @@ final class ChatPageController extends AbstractController
                 border-color: #0284c7;
                 color: #0369a1;
             }
+            .omni-vcard {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                margin-top: 8px;
+                margin-bottom: 8px;
+                width: 280px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+            .omni-vcard-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            .omni-vcard-avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #0ea5e9, #0284c7);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 1.1rem;
+            }
+            .omni-vcard-info {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .omni-vcard-name {
+                font-weight: 600;
+                color: #1e293b;
+                font-size: 0.95rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .omni-vcard-phone {
+                color: #64748b;
+                font-size: 0.8rem;
+            }
+            .omni-vcard-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .omni-vcard-btn {
+                flex: 1;
+                padding: 6px;
+                background: #e2e8f0;
+                color: #475569;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                cursor: pointer;
+                text-align: center;
+                transition: all 0.15s;
+            }
+            .omni-vcard-btn:hover { background: #cbd5e1; }
+            .omni-vcard-btn-primary {
+                background: #0ea5e9;
+                color: #fff;
+            }
+            .omni-vcard-btn-primary:hover {
+                background: #0284c7;
+            }
         </style>
 
         <div class="omni-app">
@@ -1376,6 +1446,37 @@ final class ChatPageController extends AbstractController
 
             function formatMessageHtml(str) {
                 if (!str) return '';
+
+                if (str.startsWith('[VCARD_SHARE:') && str.endsWith(']')) {
+                    try {
+                        const jsonStr = str.substring(13, str.length - 1);
+                        const data = JSON.parse(jsonStr);
+                        let html = '<div class="omni-contact-cards-container">';
+                        data.contacts.forEach(c => {
+                            const initial = getInitials(c.name);
+                            html += `
+                                <div class="omni-vcard">
+                                    <div class="omni-vcard-header">
+                                        <div class="omni-vcard-avatar">${initial}</div>
+                                        <div class="omni-vcard-info">
+                                            <div class="omni-vcard-name">${escapeHtml(c.name)}</div>
+                                            <div class="omni-vcard-phone">${escapeHtml(c.phone)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="omni-vcard-actions">
+                                        <button class="omni-vcard-btn" onclick="copyContactPhone('${c.phone}')">📋 Copiar</button>
+                                        <button class="omni-vcard-btn omni-vcard-btn-primary" onclick="openChat(0, '${escapeJs(c.name)}', '${escapeJs(c.phone)}', true)">💬 Conversar</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        return html;
+                    } catch(e) {
+                        console.error('Error parsing VCARD_SHARE:', e);
+                    }
+                }
+
                 let escaped = escapeHtml(str);
                 // Bold: *text*
                 escaped = escaped.replace(/\*([^\*]+)\*/g, "<strong>$1</strong>");
@@ -1384,6 +1485,15 @@ final class ChatPageController extends AbstractController
                 // Strikethrough: ~text~
                 escaped = escaped.replace(/~([^~]+)~/g, "<del>$1</del>");
                 return escaped;
+            }
+
+            function copyContactPhone(phone) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(phone);
+                    alert('Número copiado: ' + phone);
+                } else {
+                    prompt('Copie o número abaixo:', phone);
+                }
             }
 
             function escapeJs(str) {

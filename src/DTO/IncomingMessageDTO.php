@@ -31,6 +31,24 @@ class IncomingMessageDTO
             $text = '🎵 Áudio recebido';
         } elseif (empty($text) && !empty($messageData['documentMessage'])) {
             $text = '📄 Documento recebido';
+        } elseif (empty($text) && !empty($messageData['contactMessage'])) {
+            $vcardText = self::parseVcard($messageData['contactMessage']['vcard'] ?? '');
+            if ($vcardText) {
+                $text = '[VCARD_SHARE:' . json_encode(['contacts' => [$vcardText]], JSON_UNESCAPED_UNICODE) . ']';
+            } else {
+                $text = '👤 Contato recebido';
+            }
+        } elseif (empty($text) && !empty($messageData['contactsArrayMessage']['contacts'])) {
+            $contactsList = [];
+            foreach ($messageData['contactsArrayMessage']['contacts'] as $c) {
+                $v = self::parseVcard($c['vcard'] ?? '');
+                if ($v) $contactsList[] = $v;
+            }
+            if (!empty($contactsList)) {
+                $text = '[VCARD_SHARE:' . json_encode(['contacts' => $contactsList], JSON_UNESCAPED_UNICODE) . ']';
+            } else {
+                $text = '👤 Contatos recebidos';
+            }
         }
 
         $mediaUrl = null;
@@ -169,5 +187,29 @@ class IncomingMessageDTO
     public function getMediaData(): ?array
     {
         return $this->mediaData;
+    }
+
+    private static function parseVcard(string $vcard): ?array
+    {
+        if (empty($vcard)) return null;
+
+        $name = 'Contato';
+        $phone = '';
+
+        if (preg_match('/FN:(.*)/', $vcard, $matches)) {
+            $name = trim($matches[1]);
+        }
+
+        if (preg_match('/waid=([0-9]+)/', $vcard, $matches)) {
+            $phone = $matches[1];
+        } elseif (preg_match('/TEL.*:([+0-9\s\-]+)/', $vcard, $matches)) {
+            $phone = preg_replace('/[^0-9]/', '', $matches[1]);
+        }
+
+        if (empty($phone)) {
+            return null;
+        }
+
+        return ['name' => $name, 'phone' => $phone];
     }
 }
