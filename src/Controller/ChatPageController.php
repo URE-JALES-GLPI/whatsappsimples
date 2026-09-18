@@ -1447,9 +1447,10 @@ final class ChatPageController extends AbstractController
             function formatMessageHtml(str) {
                 if (!str) return '';
 
-                if (str.startsWith('[VCARD_SHARE:') && str.endsWith(']')) {
+                const trimmedStr = str.trim();
+                if (trimmedStr.startsWith('[VCARD_SHARE:') && trimmedStr.endsWith(']')) {
                     try {
-                        const jsonStr = str.substring(13, str.length - 1);
+                        const jsonStr = trimmedStr.substring(13, trimmedStr.length - 1);
                         const data = JSON.parse(jsonStr);
                         let html = '<div class="omni-contact-cards-container">';
                         data.contacts.forEach(c => {
