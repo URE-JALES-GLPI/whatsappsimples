@@ -64,6 +64,20 @@ class WebhookController
             // 4. Delega tudo para o Service (A mágica da amarração de LID e gravação de histórico acontece aqui)
             $success = $dispatcher->dispatchIncomingMessage($messageDTO);
 
+            // 5. Injeta o evento de Tempo Real (Push para o Navegador)
+            if ($success) {
+                try {
+                    $mercure = new \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService();
+                    $mercure->publish('chats_ure_jales', [
+                        'action'       => 'new_message',
+                        'phone_number' => $phoneNumber,
+                        'text'         => current(explode("\n", wordwrap(strip_tags($messageDTO->getText()), 50))) // Manda uma prévia rápida
+                    ]);
+                } catch (\Exception $e) {
+                    self::logDebug("ERRO_MERCURE_PUSH", ['error' => $e->getMessage()]);
+                }
+            }
+
             return new JsonResponse([
                 'success' => $success,
                 'message' => $success ? 'Mensagem processada e salva no banco' : 'Falha ao processar mensagem'
