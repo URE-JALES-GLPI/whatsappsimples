@@ -51,6 +51,8 @@ class RedisWorker
         try {
             $this->redis = new \Redis();
             $this->redis->connect($this->redisHost, $this->redisPort);
+            // Configuração vital: Evita que o PHP corte a conexão após 60 segundos de ócio na fila
+            $this->redis->setOption(\Redis::OPT_READ_TIMEOUT, -1);
         } catch (\Exception $e) {
             echo "[" . date('Y-m-d H:i:s') . "] Falha ao conectar no Redis: " . $e->getMessage() . "\n";
         }
