@@ -881,7 +881,30 @@
     function startPoll() {
         clearInterval(pollTimer);
         poll();
-        pollTimer = setInterval(poll, 2000);
+        
+        // -----------------------------------------------------------------
+        // NOVA CONEXÃO REAL-TIME (Substitui o setInterval de 2 segundos)
+        // -----------------------------------------------------------------
+        const mercureUrl = new URL('http://10.180.152.29:3001/.well-known/mercure');
+        mercureUrl.searchParams.append('topic', 'chats_ure_jales');
+
+        const eventSource = new EventSource(mercureUrl);
+
+        eventSource.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log("Chegou do Mercure em Tempo Real!", data);
+                if (data.action === 'new_message') {
+                    poll(); // Busca as mensagens instantaneamente!
+                }
+            } catch (e) {}
+        };
+
+        eventSource.onerror = (err) => {
+            console.error("Erro no Mercure, tentando reconectar...", err);
+        };
+        // -----------------------------------------------------------------
+
         // Poll de pendentes a cada 5s
         if (!pendingPollTimer) {
             pollPending();
