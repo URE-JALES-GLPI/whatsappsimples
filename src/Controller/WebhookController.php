@@ -40,48 +40,17 @@ class WebhookController
                 return new JsonResponse(['success' => true, 'message' => 'Evento ignorado: ' . $event]);
             }
 
-            // 1. Extração via EvolutionApiService
-            $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
-            
-            if (empty($phoneNumber)) {
-                return new JsonResponse(['success' => true, 'message' => 'Número de telefone vazio']);
+            // Envia o payload puro para a Fila no Redis (Worker assíncrono processará)
+            try {
+                $redis = new \Redis();
+                $redis->connect('10.180.152.29', 6380);
+                $redis->rPush('ure_mensagens_fila', json_encode($payload));
+                
+                return new JsonResponse(['success' => true, 'message' => 'Enfileirado com sucesso']);
+            } catch (\Exception $e) {
+                self::logDebug("ERRO_FILA_REDIS", ['error' => $e->getMessage()]);
+                return new JsonResponse(['success' => false, 'error' => 'Falha ao conectar na Fila Redis'], 500);
             }
-
-            self::logDebug("NUMERO_RESOLVIDO", ['phoneNumber' => $phoneNumber]);
-
-            // 2. DTO
-            $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
-
-            if (empty($messageDTO->getText()) && empty($messageDTO->getMediaUrl())) {
-                return new JsonResponse(['success' => true, 'message' => 'Sem conteúdo de texto ou mídia']);
-            }
-
-            // 3. Inicializa Dependências
-            $repository = new ChatRepository();
-            $lifecycleService = new ChatLifecycleService($repository);
-            $dispatcher = new MessageDispatcherService($repository, $lifecycleService);
-
-            // 4. Delega tudo para o Service (A mágica da amarração de LID e gravação de histórico acontece aqui)
-            $success = $dispatcher->dispatchIncomingMessage($messageDTO);
-
-            // 5. Injeta o evento de Tempo Real (Push para o Navegador)
-            if ($success) {
-                try {
-                    $mercure = new \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService();
-                    $mercure->publish('chats_ure_jales', [
-                        'action'       => 'new_message',
-                        'phone_number' => $phoneNumber,
-                        'text'         => current(explode("\n", wordwrap(strip_tags($messageDTO->getText()), 50))) // Manda uma prévia rápida
-                    ]);
-                } catch (\Exception $e) {
-                    self::logDebug("ERRO_MERCURE_PUSH", ['error' => $e->getMessage()]);
-                }
-            }
-
-            return new JsonResponse([
-                'success' => $success,
-                'message' => $success ? 'Mensagem processada e salva no banco' : 'Falha ao processar mensagem'
-            ]);
 
         } catch (\Exception $e) {
             self::logDebug("ERRO_WEBHOOK_EXCEPTION", ['error' => $e->getMessage()]);
