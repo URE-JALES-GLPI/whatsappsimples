@@ -7,7 +7,7 @@ error_reporting(E_ALL);
 try {
     include_once(__DIR__ . '/../../../inc/includes.php');
 
-    $controller = new \GlpiPlugin\Whatsappsimples\Controller\GetChatsController();
+    $controller = new \GlpiPlugin\Whatsappsimples\Controller\TransferChatController();
     $request = \Symfony\Component\HttpFoundation\Request::createFromGlobals();
     $response = $controller($request);
     $response->send();
@@ -16,9 +16,6 @@ try {
     header('Content-Type: application/json');
     echo json_encode([
         'success' => false,
-        'error' => 'Fatal Error: ' . $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'trace' => $e->getTraceAsString()
+        'error' => 'Fatal Error: ' . $e->getMessage()
     ]);
 }

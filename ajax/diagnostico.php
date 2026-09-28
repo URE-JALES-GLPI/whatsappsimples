@@ -1,4 +1,5 @@
 <?php
+define('GLPI_KEEP_CSRF_TOKEN', true);
 
 if (php_sapi_name() !== 'cli') {
     die("Este script deve ser executado pelo terminal (CLI).\n");

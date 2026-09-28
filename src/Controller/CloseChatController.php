@@ -2,7 +2,6 @@
 
 namespace GlpiPlugin\Whatsappsimples\Controller;
 
-use Glpi\Controller\AbstractController;
 use Session;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -15,6 +14,7 @@ final class CloseChatController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         $chatId = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id', 0));
         if ($chatId <= 0) {
             return new JsonResponse(['success' => false, 'error' => 'Chat inválido'], 400);

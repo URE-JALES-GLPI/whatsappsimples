@@ -77,13 +77,33 @@ class EvolutionApiService
      */
     public static function resolvePhoneNumber(array $payload): string
     {
-        $data = $payload['data'] ?? $payload;
-        $key  = $data['key'] ?? [];
+        $data = !empty($payload['data']) ? $payload['data'] : $payload;
+        $key  = !empty($data['key']) ? $data['key'] : [];
+
+        // Busca recursiva por remoteJid para garantir que pegamos o JID do grupo
+        $findRemoteJid = function(array $arr) use (&$findRemoteJid) {
+            if (isset($arr['remoteJid'])) return $arr['remoteJid'];
+            foreach ($arr as $v) {
+                if (is_array($v)) {
+                    $res = $findRemoteJid($v);
+                    if ($res) return $res;
+                }
+            }
+            return '';
+        };
+
+        $remoteJid = $findRemoteJid($payload);
+        
+        // IGNORAR GRUPOS E LISTAS DE TRANSMISSÃO
+        if (strpos($remoteJid, '@g.us') !== false || strpos($remoteJid, '@broadcast') !== false) {
+            self::log("MENSAGEM_IGNORADA_GRUPO", ['jid' => $remoteJid]);
+            return '';
+        }
 
         // O JID do contato está SEMPRE em data.key.remoteJid
         // Para grupos, o remetente individual fica em data.key.participant
         // root-level 'sender' = NOSSO número (linha da URE), NUNCA usar como identificador do contato
-        $contactJid = $key['participant'] ?? $key['remoteJid'] ?? '';
+        $contactJid = !empty($key['participant']) ? $key['participant'] : $remoteJid;
 
         if (empty($contactJid)) {
             self::log("CONTACT_JID_VAZIO", ['key' => $key]);
@@ -279,6 +299,39 @@ class EvolutionApiService
         return ['state' => 'close', 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
+    public static function getQrCode(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/instance/connect/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => ['apikey: ' . $apiToken],
+            CURLOPT_TIMEOUT        => 10
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return [
+                'base64' => $data['base64'] ?? '',
+                'code'   => $data['code'] ?? ''
+            ];
+        }
+
+        return ['error' => "HTTP {$httpCode}: {$response}"];
+    }
+
     // ──────────────────────────────────────────────────
     // WEBHOOK
     // ──────────────────────────────────────────────────
@@ -299,7 +352,7 @@ class EvolutionApiService
                 'enabled' => true,
                 'url' => $url,
                 'byEvents' => false,
-                'base64' => false,
+                'base64' => true,
                 'events' => ['MESSAGES_UPSERT']
             ]
         ];
@@ -324,6 +377,51 @@ class EvolutionApiService
             return ['success' => true, 'data' => json_decode($response, true)];
         }
 
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
+    }
+
+    public static function getBase64FromMediaMessage(string $messageId): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance) || empty($messageId)) {
+            return ['success' => false, 'error' => 'Configurações incompletas ou Message ID vazio'];
+        }
+
+        $endpoint = "{$baseUrl}/chat/getBase64FromMediaMessage/{$instance}";
+        $payload = [
+            'message' => [
+                'key' => [
+                    'id' => $messageId
+                ]
+            ],
+            'convertToMp4' => false
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => json_encode($payload),
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_TIMEOUT        => 30
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return ['success' => true, 'base64' => $data['base64'] ?? ''];
+        }
+
+        self::log("ERRO_GET_BASE64", ['httpCode' => $httpCode, 'response' => $response]);
         return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
@@ -362,6 +460,12 @@ class EvolutionApiService
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
             'number'      => $numberToSend,
+            'options'     => [
+                'delay'          => 1200,
+                'presence'       => 'composing',
+                'verifyContact'  => false,
+                'validateNumber' => false
+            ],
             'text'        => $text,
             'textMessage' => ['text' => $text]
         ];
@@ -475,9 +579,15 @@ class EvolutionApiService
         $bodyData = [
             'number'       => $numberToSend,
             'options'      => [
-                'delay'    => 1000,
-                'presence' => 'composing'
+                'delay'    => 1200,
+                'presence' => 'composing',
+                'verifyContact' => false,
+                'validateNumber' => false
             ],
+            'mediatype' => $mediaType,
+            'fileName'  => $fileName,
+            'caption'   => $caption ?: '',
+            'media'     => $pureBase64,
             'mediaMessage' => [
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,

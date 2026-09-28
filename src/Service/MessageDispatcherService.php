@@ -50,7 +50,17 @@ class MessageDispatcherService
             'message_id'   => $message->getMessageId(),
             'sender_type'  => 'contact',
             'message_text' => $message->getText(),
+            'media_url'    => $message->getMediaUrl(),
         ];
+        
+        if ($message->getMediaData() !== null) {
+            $m = $message->getMediaData();
+            $messageData['media_path'] = $m['media_path'];
+            $messageData['media_mime'] = $m['media_mime'];
+            $messageData['media_size'] = $m['media_size'];
+            $messageData['media_sha256'] = $m['media_sha256'];
+            $messageData['media_status'] = $m['media_status'];
+        }
 
         $result = $this->repository->saveMessage($messageData);
         

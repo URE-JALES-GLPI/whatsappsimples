@@ -15,6 +15,7 @@ final class GetChatsController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         global $DB;
 
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
@@ -27,11 +28,22 @@ final class GetChatsController
         $chats = [];
 
         try {
-            // 1. Busca os registros mais recentes por numero de telefone
+            // 1. Busca os registros mais recentes por numero de telefone e faz JOIN para trazer o nome do técnico
             $iterator = $DB->request([
-                'SELECT' => ['id', 'phone_number', 'contact_name', 'users_id', 'status', 'date_mod', 'unread_count'],
-                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'ORDER'  => 'date_mod DESC, id DESC'
+                'SELECT' => [
+                    'c.id', 'c.phone_number', 'c.contact_name', 'c.users_id', 'c.status', 'c.date_mod', 'c.unread_count',
+                    'u.realname', 'u.firstname'
+                ],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats AS c',
+                'LEFT JOIN' => [
+                    'glpi_users AS u' => [
+                        'ON' => [
+                            'c' => 'users_id',
+                            'u' => 'id'
+                        ]
+                    ]
+                ],
+                'ORDER'  => 'c.date_mod DESC, c.id DESC'
             ]);
 
             $latestByPhone = [];
@@ -44,14 +56,26 @@ final class GetChatsController
                 if (!isset($latestByPhone[$phone])) {
                     $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
 
+                    $technicianName = null;
+                    if (!empty($row['users_id']) && $row['status'] !== 'closed') {
+                        $technicianName = trim(($row['firstname'] ?? '') . ' ' . ($row['realname'] ?? ''));
+                        if (empty($technicianName)) {
+                            $technicianName = 'Técnico ID ' . $row['users_id'];
+                        }
+                    } elseif ($row['status'] === 'closed') {
+                        $technicianName = 'Histórico (Encerrado)';
+                        $row['users_id'] = 0;
+                    }
+
                     $latestByPhone[$phone] = [
-                        'id'           => (int) $row['id'],
-                        'phone_number' => $row['phone_number'],
-                        'contact_name' => $displayName,
-                        'users_id'     => (int) $row['users_id'],
-                        'status'       => $row['status'],
-                        'date_mod'     => $row['date_mod'],
-                        'unread_count' => (int) ($row['unread_count'] ?? 0),
+                        'id'              => (int) $row['id'],
+                        'phone_number'    => $row['phone_number'],
+                        'contact_name'    => $displayName,
+                        'users_id'        => (int) $row['users_id'],
+                        'technician_name' => $technicianName,
+                        'status'          => $row['status'],
+                        'date_mod'        => $row['date_mod'],
+                        'unread_count'    => (int) ($row['unread_count'] ?? 0),
                     ];
                 }
             }
@@ -60,7 +84,7 @@ final class GetChatsController
             foreach ($latestByPhone as $c) {
                 if ($tab === 'mine') {
                     // Chats: Atendimentos ativos vinculados ao técnico logado
-                    if (($c['users_id'] === $currentUserId || $c['users_id'] > 0) && $c['status'] !== 'closed') {
+                    if ($c['users_id'] === $currentUserId && $c['status'] !== 'closed') {
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'queue') {

@@ -16,6 +16,7 @@ final class SendMessageController
     {
         try {
             Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
             global $DB;
 
             if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
@@ -38,23 +39,32 @@ final class SendMessageController
             $chat = null;
             if ($chatId > 0) {
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id', 'status'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
                     'WHERE'  => ['id' => $chatId],
                     'LIMIT'  => 1
                 ])->current();
+                
+                if ($chat && $chat['status'] === 'closed') {
+                    if (empty($phoneNumber)) {
+                        $phoneNumber = $chat['phone_number'];
+                    }
+                    $chat = null;
+                }
             }
 
             if (!$chat && !empty($phoneNumber)) {
+                // Tenta achar um chat ativo para esse número
                 $chat = $DB->request([
-                    'SELECT' => ['id', 'phone_number', 'users_id'],
+                    'SELECT' => ['id', 'phone_number', 'users_id', 'status'],
                     'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                    'WHERE'  => ['phone_number' => $phoneNumber],
+                    'WHERE'  => ['phone_number' => $phoneNumber, 'status' => ['pending', 'in_progress']],
                     'ORDER'  => 'id DESC',
                     'LIMIT'  => 1
                 ])->current();
 
                 if (!$chat) {
+                    // Cria um novo atendimento
                     $DB->insert('glpi_plugin_whatsappsimples_chats', [
                         'phone_number'  => $phoneNumber,
                         'contact_name'  => $phoneNumber,
@@ -68,7 +78,8 @@ final class SendMessageController
                         'id'                  => $chatId,
                         'phone_number'        => $phoneNumber,
                         'first_response_date' => null,
-                        'users_id'            => $currentUserId
+                        'users_id'            => $currentUserId,
+                        'status'        => 'in_progress'
                     ];
                 } else {
                     $chatId = (int) $chat['id'];
@@ -80,6 +91,33 @@ final class SendMessageController
             }
 
             $phoneToUpdate = (string) $chat['phone_number'];
+
+            // Busca nome do atendente para assinatura
+            $userQuery = $DB->request([
+                'SELECT' => ['firstname', 'realname'],
+                'FROM'   => 'glpi_users',
+                'WHERE'  => ['id' => $currentUserId],
+                'LIMIT'  => 1
+            ])->current();
+            
+            $fullName = trim(($userQuery['firstname'] ?? '') . ' ' . ($userQuery['realname'] ?? ''));
+            $nameParts = array_values(array_filter(explode(' ', $fullName)));
+            
+            if (count($nameParts) >= 2) {
+                $attendantName = $nameParts[0] . ' ' . end($nameParts);
+            } else {
+                $attendantName = $fullName;
+            }
+            
+            $attendantName = mb_strtoupper($attendantName);
+            
+            if (empty($attendantName)) {
+                $attendantName = 'ATENDENTE';
+            }
+
+            if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {
+                $text = "*{$attendantName}*\n\n" . $text;
+            }
 
             // 1. Envio de Arquivos de Mídia
             $uploadedFile = $request->files->get('file');
@@ -100,12 +138,18 @@ final class SendMessageController
 
                 $result = EvolutionApiService::sendMedia($chatId, $phoneToUpdate, $mediaType, $base64, $fileName, $text);
                 
-                // Atribui o contato ao usuário logado em TODAS as linhas do número para remover da Fila
-                $DB->update('glpi_plugin_whatsappsimples_chats', [
-                    'users_id' => $currentUserId,
-                    'status'   => 'in_progress',
-                    'date_mod' => $now
-                ], ['phone_number' => $phoneToUpdate]);
+                // Apenas atribui ao usuário se estiver na Fila (users_id == 0). Senão, apenas atualiza date_mod.
+                if ((int)$chat['users_id'] === 0) {
+                    $DB->update('glpi_plugin_whatsappsimples_chats', [
+                        'users_id' => $currentUserId,
+                        'status'   => 'in_progress',
+                        'date_mod' => $now
+                    ], ['phone_number' => $phoneToUpdate]);
+                } else {
+                    $DB->update('glpi_plugin_whatsappsimples_chats', [
+                        'date_mod' => $now
+                    ], ['phone_number' => $phoneToUpdate]);
+                }
 
                 self::logDebug("RESULTADO_ENVIO_MIDIA", $result);
                 return new JsonResponse($result);
@@ -147,14 +191,20 @@ final class SendMessageController
             
             self::logDebug("RESULTADO_ENVIO_TEXTO", $result);
 
-            if (!empty($result['success'])) {
-                $updateData = [
-                    'users_id' => $currentUserId,
-                    'status'   => 'in_progress',
-                    'date_mod' => $now
-                ];
+            if (!empty($result['success']) || $isInternal) {
+                if ((int)$chat['users_id'] === 0) {
+                    $updateData = [
+                        'users_id' => $currentUserId,
+                        'status'   => 'in_progress',
+                        'date_mod' => $now
+                    ];
+                } else {
+                    $updateData = [
+                        'date_mod' => $now
+                    ];
+                }
 
-                // Atualiza o status de TODOS os registros deste telefone para 'in_progress' e 'users_id = currentUserId'
+                // Atualiza o status/users_id ou apenas a data
                 $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneToUpdate]);
             }
 

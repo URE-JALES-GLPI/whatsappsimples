@@ -58,6 +58,7 @@ try {
     }
 
     logWebhook("PAYLOAD_BRUTO", ['payload' => $content]);
+    @file_put_contents(__DIR__ . '/debug.txt', date('Y-m-d H:i:s') . "\n" . $content . "\n\n", FILE_APPEND);
 
     $event = strtolower($payload['event'] ?? '');
     if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {
@@ -78,8 +79,8 @@ try {
     // 2. DTO
     $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
 
-    if (empty($messageDTO->getText())) {
-        echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto']);
+    if (empty($messageDTO->getText()) && empty($messageDTO->getMediaUrl())) {
+        echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto ou mídia']);
         exit;
     }
 

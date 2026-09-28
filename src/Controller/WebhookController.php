@@ -52,8 +52,8 @@ class WebhookController
             // 2. DTO
             $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
 
-            if (empty($messageDTO->getText())) {
-                return new JsonResponse(['success' => true, 'message' => 'Sem conteúdo de texto']);
+            if (empty($messageDTO->getText()) && empty($messageDTO->getMediaUrl())) {
+                return new JsonResponse(['success' => true, 'message' => 'Sem conteúdo de texto ou mídia']);
             }
 
             // 3. Inicializa Dependências

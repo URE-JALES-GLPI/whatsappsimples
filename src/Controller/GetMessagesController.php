@@ -15,6 +15,7 @@ final class GetMessagesController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         global $DB;
 
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
@@ -75,7 +76,7 @@ final class GetMessagesController
             }
 
             $iterator = $DB->request([
-                'SELECT' => ['id', 'chats_id', 'users_id', 'sender_type', 'message_text', 'media_url', 'is_internal', 'date_creation'],
+                'SELECT' => ['id', 'chats_id', 'users_id', 'sender_type', 'message_text', 'media_url', 'is_internal', 'date_creation', 'media_status'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_messages',
                 'WHERE'  => ['chats_id' => $chatsIds],
                 'ORDER'  => 'id ASC'

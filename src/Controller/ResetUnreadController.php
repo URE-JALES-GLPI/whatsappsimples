@@ -15,6 +15,7 @@ final class ResetUnreadController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
 
         $chatId = (int) ($request->request->get('chat_id') ?? $request->query->get('chat_id', 0));
         

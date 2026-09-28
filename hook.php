@@ -14,7 +14,7 @@ function plugin_whatsappsimples_uninstall(): bool
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_configs`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_chats`");
     $DB->doQuery("DROP TABLE IF EXISTS `glpi_plugin_whatsappsimples_messages`");
-    $DB->doQuery("DELETE FROM `glpi_profilerights` WHERE `name` = 'plugin_whatsappsimples'");
+    PluginWhatsappsimplesProfile::uninstall();
     return true;
 }
 
@@ -95,6 +95,21 @@ function plugin_whatsappsimples_ensureTables(): void
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_url` longtext DEFAULT NULL AFTER `message_text`");
         } else {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_path')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_path` varchar(255) DEFAULT NULL AFTER `media_url`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_mime')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_mime` varchar(100) DEFAULT NULL AFTER `media_path`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_size')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_size` bigint(20) DEFAULT 0 AFTER `media_mime`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_sha256')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_sha256` varchar(64) DEFAULT NULL AFTER `media_size`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_status')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_status` varchar(20) DEFAULT NULL AFTER `media_sha256`");
         }
     }
 }

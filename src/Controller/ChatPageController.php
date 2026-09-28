@@ -13,12 +13,14 @@ final class ChatPageController extends AbstractController
     public function __invoke(): Response
     {
         Session::checkLoginUser();
+        Session::checkRight('plugin_whatsappsimples', READ);
         global $CFG_GLPI;
 
         ob_start();
         include_once GLPI_ROOT . '/inc/includes.php';
         \Html::header('WhatsApp', $_SERVER['PHP_SELF'], 'tools', 'whatsappsimples');
 
+        $canTransfer = Session::haveRight('plugin_whatsappsimples_transfer', READ);
         ?>
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -375,6 +377,22 @@ final class ChatPageController extends AbstractController
             }
             .omni-finish-btn:hover { background: #dc2626; }
 
+            .omni-transfer-btn {
+                padding: 6px 14px;
+                background: #3b82f6;
+                color: #ffffff;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.82rem;
+                font-weight: 600;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                transition: background 0.15s;
+            }
+            .omni-transfer-btn:hover { background: #2563eb; }
+
             /* MESSAGES AREA */
             .omni-messages-area {
                 flex: 1;
@@ -558,6 +576,76 @@ final class ChatPageController extends AbstractController
                 border-color: #0284c7;
                 color: #0369a1;
             }
+            .omni-vcard {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 8px;
+                padding: 12px;
+                margin-top: 8px;
+                margin-bottom: 8px;
+                width: 280px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            }
+            .omni-vcard-header {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+            .omni-vcard-avatar {
+                width: 40px;
+                height: 40px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #0ea5e9, #0284c7);
+                color: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 1.1rem;
+            }
+            .omni-vcard-info {
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            .omni-vcard-name {
+                font-weight: 600;
+                color: #1e293b;
+                font-size: 0.95rem;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            .omni-vcard-phone {
+                color: #64748b;
+                font-size: 0.8rem;
+            }
+            .omni-vcard-actions {
+                display: flex;
+                gap: 8px;
+            }
+            .omni-vcard-btn {
+                flex: 1;
+                padding: 6px;
+                background: #e2e8f0;
+                color: #475569;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                cursor: pointer;
+                text-align: center;
+                transition: all 0.15s;
+            }
+            .omni-vcard-btn:hover { background: #cbd5e1; }
+            .omni-vcard-btn-primary {
+                background: #0ea5e9;
+                color: #fff;
+            }
+            .omni-vcard-btn-primary:hover {
+                background: #0284c7;
+            }
         </style>
 
         <div class="omni-app">
@@ -570,7 +658,7 @@ final class ChatPageController extends AbstractController
                     <div class="omni-nav-icon active" title="Conversas / Chat">💬</div>
                     <div class="omni-nav-icon" title="Contatos">👥</div>
                     <div class="omni-nav-icon" title="Tags / Etiquetas">🏷️</div>
-                    <div class="omni-nav-icon" title="Configurações">⚙️</div>
+                    <div class="omni-nav-icon" title="Configurações" style="cursor:pointer;" onclick="openSettingsModal()">⚙️</div>
                     <div class="omni-user-badge">TI</div>
                 </div>
             </div>
@@ -579,9 +667,11 @@ final class ChatPageController extends AbstractController
             <div class="omni-body">
                 <!-- SIDEBAR ESQUERDA -->
                 <div class="omni-sidebar">
-                    <div class="omni-sidebar-header">
+                    <div class="omni-sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Conversas</span>
-                        <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;">&lt;</span>
+                        <div style="display: flex; gap: 8px;">
+                            <span style="font-size:0.9rem; color:#94a3b8; cursor:pointer;" onclick="loadChats()">🔄</span>
+                        </div>
                     </div>
 
                     <div class="omni-search-box">
@@ -630,7 +720,7 @@ final class ChatPageController extends AbstractController
                         <div class="omni-header-tags">
                             <span class="omni-tag-badge omni-tag-whatsapp">🟢 Central WhatsApp</span>
                             <span class="omni-tag-badge omni-tag-dept">🏷️ Suporte URE TI</span>
-                            <div id="header-actions"></div>
+                            <div id="header-actions" style="display:flex; gap:8px; margin-left:12px;"></div>
                         </div>
                     </div>
 
@@ -711,14 +801,152 @@ final class ChatPageController extends AbstractController
             </div>
         </div>
 
+        <!-- LIGHTBOX MODAL (ZOOM IMAGEM) -->
+        <div id="lightbox-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; opacity:0; transition:opacity 0.2s;" onclick="closeLightbox()" onwheel="handleLightboxScroll(event)">
+            <div style="position:absolute; top:20px; right:30px; display:flex; gap:15px; align-items:center;">
+                <span style="color:#fff; font-size:30px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5);" onclick="event.stopPropagation(); zoomLightbox(0.2)" title="Mais Zoom (Ou use o scroll do mouse)">+</span>
+                <span style="color:#fff; font-size:35px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); line-height: 25px;" onclick="event.stopPropagation(); zoomLightbox(-0.2)" title="Menos Zoom (Ou use o scroll do mouse)">-</span>
+                <span style="color:#fff; font-size:40px; font-weight:bold; cursor:pointer; text-shadow: 0 0 10px rgba(0,0,0,0.5); margin-left: 20px;" onclick="closeLightbox()" title="Fechar">&times;</span>
+            </div>
+            <img id="lightbox-img" style="max-width:90%; max-height:90%; border-radius:8px; box-shadow:0 0 20px rgba(0,0,0,0.5); transform:scale(0.9); transition:transform 0.15s ease-out;" src="" onclick="event.stopPropagation()">
+        </div>
+
+        <!-- MODAL DE TRANSFERÊNCIA -->
+        <div id="transfer-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:20px; border-radius:8px; width:400px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b;">🔄 Transferir Chat</h3>
+                    <button onclick="closeTransferModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#64748b;">&times;</button>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Selecione o destino:</label>
+                    <select id="transfer-user-select" style="width:100%; padding:8px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;">
+                        <option value="0">📥 Fila (Desvincular)</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button onclick="closeTransferModal()" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
+                    <button id="transfer-submit-btn" onclick="submitTransfer()" style="padding:8px 16px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Confirmar</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL DE CONFIGURAÇÕES -->
+        <div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; border-radius:8px; width:800px; max-width:95%; height:600px; max-height:90vh; box-shadow:0 10px 25px rgba(0,0,0,0.2); display:flex; flex-direction:column; overflow:hidden;">
+                <!-- Header -->
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 20px; background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <h3 style="margin:0; font-size:1.1rem; color:#1e293b; display:flex; align-items:center; gap:8px;">⚙️ Configurações</h3>
+                    <button onclick="closeSettingsModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b; line-height:1;">&times;</button>
+                </div>
+                <!-- Body -->
+                <div style="display:flex; flex:1; overflow:hidden;">
+                    <!-- Menu lateral -->
+                    <div style="width:220px; background:#f1f5f9; border-right:1px solid #e2e8f0; display:flex; flex-direction:column; padding:15px 0;">
+                        <button class="settings-tab-btn active" onclick="switchSettingsTab('settings-tab-newchat')" style="padding:10px 20px; text-align:left; background:#e0f2fe; border:none; border-right:3px solid #0284c7; color:#0369a1; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            ➕ Novo Contato
+                        </button>
+                        <button class="settings-tab-btn" style="padding:10px 20px; text-align:left; background:transparent; border:none; border-right:3px solid transparent; color:#475569; font-weight:500; cursor:pointer; display:flex; align-items:center; gap:8px;">
+                            🤖 Respostas Rápidas
+                        </button>
+                    </div>
+                    <!-- Conteúdo -->
+                    <div style="flex:1; padding:25px; overflow-y:auto; background:#fff;">
+                        <!-- ABA NOVO CONTATO -->
+                        <div id="settings-tab-newchat" class="settings-content-pane">
+                            <h4 style="margin-top:0; margin-bottom:20px; color:#1e293b; font-size:1.1rem;">Iniciar Nova Conversa</h4>
+                            <p style="color:#64748b; font-size:0.9rem; margin-bottom:20px;">Envie uma mensagem ativa para um contato que ainda não está no sistema.</p>
+                            
+                            <div style="margin-bottom:15px;">
+                                <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Número do WhatsApp (com DDI e DDD):</label>
+                                <input type="text" id="new-chat-phone" placeholder="Ex: 5517999999999" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                                <small style="display:block; color:#64748b; font-size:0.8rem; margin-top:5px;">Apenas números. Ex: 55 para Brasil.</small>
+                            </div>
+                            <div style="margin-bottom:25px;">
+                                <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Nome do Contato (Opcional):</label>
+                                <input type="text" id="new-chat-name" placeholder="Ex: João Silva" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                            </div>
+                            <div id="new-chat-error" style="color:#ef4444; font-size:0.85rem; margin-bottom:15px; display:none; background:#fef2f2; padding:10px; border-radius:4px; border:1px solid #fecaca; max-width:400px;"></div>
+                            
+                            <button id="new-chat-submit-btn" onclick="submitNewChat()" style="padding:10px 24px; background:#0284c7; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.95rem; font-weight:600; transition:background 0.2s;">Iniciar Conversa</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script>
             let currentTab = 'mine';
             let activeChatId = 0;
             let activePhoneNumber = '';
             let isContactTabActive = false;
+            let activeChatOwnerId = 0;
+            const currentUserId = <?= json_encode((int) Session::getLoginUserID()) ?>;
             let allLoadedChats = [];
             let stagedFiles = [];
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
+            const CAN_TRANSFER = <?= json_encode($canTransfer) ?>;
+            let transferUsersLoaded = false;
+            let currentLightboxZoom = 1;
+
+            const audioBlobCache = {};
+            function getAudioBlobUrl(dataUrl) {
+                if (audioBlobCache[dataUrl]) return audioBlobCache[dataUrl];
+                try {
+                    const parts = dataUrl.split(',');
+                    const mime = parts[0].split(':')[1].replace(';base64', '');
+                    const bstr = atob(parts[1]);
+                    const n = bstr.length;
+                    const u8arr = new Uint8Array(n);
+                    for (let i = 0; i < n; i++) {
+                        u8arr[i] = bstr.charCodeAt(i);
+                    }
+                    const blob = new Blob([u8arr], { type: mime });
+                    const url = URL.createObjectURL(blob);
+                    audioBlobCache[dataUrl] = url;
+                    return url;
+                } catch(e) {
+                    console.error("Falha ao converter audio dataURI para Blob", e);
+                    return dataUrl;
+                }
+            }
+
+            function openLightbox(src) {
+                const modal = document.getElementById('lightbox-modal');
+                const img = document.getElementById('lightbox-img');
+                img.src = src;
+                currentLightboxZoom = 1;
+                modal.style.display = 'flex';
+                // Trigger reflow for CSS animation
+                void modal.offsetWidth;
+                modal.style.opacity = '1';
+                img.style.transform = `scale(${currentLightboxZoom})`;
+            }
+
+            function closeLightbox() {
+                const modal = document.getElementById('lightbox-modal');
+                const img = document.getElementById('lightbox-img');
+                modal.style.opacity = '0';
+                img.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    img.src = '';
+                }, 200);
+            }
+
+            function zoomLightbox(delta) {
+                currentLightboxZoom += delta;
+                if (currentLightboxZoom < 0.2) currentLightboxZoom = 0.2;
+                if (currentLightboxZoom > 5) currentLightboxZoom = 5;
+                const img = document.getElementById('lightbox-img');
+                img.style.transform = `scale(${currentLightboxZoom})`;
+            }
+
+            function handleLightboxScroll(e) {
+                e.preventDefault();
+                const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                zoomLightbox(delta);
+            }
 
             function switchTab(tab, btn) {
                 currentTab = tab;
@@ -730,6 +958,27 @@ final class ChatPageController extends AbstractController
 
             async function safeFetchJson(url, options = {}) {
                 try {
+                    const csrfMeta = document.querySelector('meta[property="glpi:csrf_token"]');
+                    if (csrfMeta) {
+                        const token = csrfMeta.getAttribute('content');
+                        
+                        // 1. Sempre adiciona na URL
+                        if (url.includes('?')) {
+                            url += '&_glpi_csrf_token=' + token;
+                        } else {
+                            url += '?_glpi_csrf_token=' + token;
+                        }
+
+                        // 2. Sempre adiciona no Header (O GLPI as vezes depende exclusivamente dele)
+                        options.headers = options.headers || {};
+                        options.headers['X-Glpi-Csrf-Token'] = token;
+                        options.headers['X-Requested-With'] = 'XMLHttpRequest'; // Garante que o GLPI saiba que é AJAX
+
+                        // 3. Sempre adiciona no FormData se aplicável
+                        if (options.body && typeof options.body.append === 'function') {
+                            options.body.append('_glpi_csrf_token', token);
+                        }
+                    }
                     const res = await fetch(url, options);
                     const text = await res.text();
                     try {
@@ -793,9 +1042,14 @@ final class ChatPageController extends AbstractController
                 listEl.innerHTML = chats.map(c => {
                     const initials = getInitials(c.contact_name || c.phone_number);
                     const isSelected = (c.id === activeChatId || c.phone_number === activePhoneNumber);
+                    
+                    let displayPhone = c.phone_number;
+                    if (displayPhone && displayPhone.includes('@lid')) {
+                        displayPhone = 'Número Privado (Meta)';
+                    }
 
                     return `
-                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive})">
+                        <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}', ${c.users_id})">
                             <div class="omni-avatar-wrap">
                                 <div class="omni-avatar">${initials}</div>
                                 <div class="omni-avatar-icon">💬</div>
@@ -809,7 +1063,7 @@ final class ChatPageController extends AbstractController
                                     </div>
                                 </div>
                                 <div class="omni-card-row2">
-                                    <span>✓✓</span> ${c.phone_number}
+                                    <span>✓✓</span> ${displayPhone}
                                 </div>
                             </div>
                         </div>
@@ -823,21 +1077,20 @@ final class ChatPageController extends AbstractController
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
-                if (csrfToken) formData.append('_glpi_csrf_token', csrfToken);
-
                 await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/reset-unread.php`, {
                     method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
                     body: formData
                 });
             }
 
-            async function openChat(chatId, name, phone, isContactTab = false) {
+            async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente', ownerId = 0) {
+                if (activeChatId !== chatId || activePhoneNumber !== phone) {
+                    document.getElementById('messages-box').innerHTML = '';
+                }
+                
                 activeChatId = chatId;
                 activePhoneNumber = phone;
+                activeChatOwnerId = ownerId;
 
                 // Zera o contador visualmente e no banco
                 const chatObj = allLoadedChats.find(c => c.id === chatId);
@@ -847,17 +1100,38 @@ final class ChatPageController extends AbstractController
                 }
 
                 document.getElementById('main-chat-header').style.display = 'flex';
-                document.getElementById('header-title').innerText = name;
-                document.getElementById('header-sub').innerText = phone;
+                let displayPhone = phone;
+                if (displayPhone && displayPhone.includes('@lid')) {
+                    displayPhone = 'Número Privado (Meta)';
+                }
+                
+                document.getElementById('header-title').innerText = name || displayPhone;
+                document.getElementById('header-sub').innerText = displayPhone;
                 document.getElementById('header-avatar').innerText = getInitials(name);
+
+                let transferBtnHtml = '';
+                if (CAN_TRANSFER) {
+                    transferBtnHtml = `
+                    <button class="omni-transfer-btn" onclick="openTransferModal()" title="Transferir Atendimento">
+                        <span>🔄</span> Transferir
+                    </button>`;
+                }
 
                 const actionsBox = document.getElementById('header-actions');
                 if (!isContactTab && chatId > 0) {
                     actionsBox.innerHTML = `
-                        <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})">🔴 Encerrar Atendimento</button>
+                    <button class="omni-finish-btn" onclick="closeActiveChat(${chatId})" title="Encerrar Atendimento">
+                        <span style="font-size: 1.1em;">📵</span> Encerrar
+                    </button>
+                    ${transferBtnHtml}
                     `;
                 } else if (isContactTab) {
-                    actionsBox.innerHTML = `<span style="font-size:0.78rem; color:#64748b; font-weight:600;">📜 Histórico Completo do Contato</span>`;
+                    actionsBox.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="font-size:0.78rem; color:#64748b; font-weight:600;">👤 Resp: ${escapeHtml(technicianName)}</span>
+                            ${transferBtnHtml}
+                        </div>
+                    `;
                 } else {
                     actionsBox.innerHTML = '';
                 }
@@ -877,16 +1151,8 @@ final class ChatPageController extends AbstractController
                 
                 const formData = new FormData();
                 formData.append('chat_id', chatId);
-                if (csrfToken) {
-                    formData.append('_glpi_csrf_token', csrfToken);
-                }
-
                 const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close.php`, {
                     method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-Glpi-Csrf-Token': csrfToken
-                    },
                     body: formData
                 });
 
@@ -918,20 +1184,67 @@ final class ChatPageController extends AbstractController
                     return;
                 }
 
-                box.innerHTML = `
-                    <div class="omni-divider-badge">Atendimento Iniciado</div>
-                    ${data.messages.map(m => `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}">
+                if (box.innerHTML.includes('Sem mensagens registradas')) {
+                    box.innerHTML = '';
+                }
+
+                if (!box.querySelector('.omni-divider-badge')) {
+                    box.insertAdjacentHTML('afterbegin', '<div class="omni-divider-badge">Atendimento Iniciado</div>');
+                }
+
+                let addedNew = false;
+
+                data.messages.forEach(m => {
+                    const existingNode = box.querySelector(`[data-msg-id="${m.id}"]`);
+                    if (existingNode) return;
+
+                    addedNew = true;
+                    let mediaHtml = '';
+                    if (m.media_url && m.media_url.startsWith('data:')) {
+                        if (m.media_url.startsWith('data:image/')) {
+                            mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
+                        } else if (m.media_url.startsWith('data:video/')) {
+                            mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                        } else if (m.media_url.startsWith('data:audio/')) {
+                            mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                        } else {
+                            mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                        }
+                    } else if (m.media_url && m.media_url.startsWith('doc_')) {
+                        const filename = m.media_url.substring(4);
+                        const fullUrl = `${rootDoc}/plugins/whatsappsimples/front/media.php?id=${m.id}&file=${filename}`;
+                        
+                        let warningHtml = '';
+                        if (m.media_status === 'incomplete') {
+                            warningHtml = `<div style="color: #ef4444; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px;">⚠️ Mídia Incompleta (Cortada na Origem)</div>`;
+                        }
+
+                        if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
+                            mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
+                        } else if (filename.endsWith('.mp4')) {
+                            mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
+                        } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
+                            mediaHtml = `${warningHtml}<audio src="${fullUrl}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                        } else {
+                            mediaHtml = `<a href="${fullUrl}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                        }
+                    }
+
+                    const msgHtml = `
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}">
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
-                            <div>${escapeHtml(m.message_text)}</div>
+                            <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
                             <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                         </div>
-                    `).join('')}
-                `;
+                    `;
+                    box.insertAdjacentHTML('beforeend', msgHtml);
+                });
 
-                box.scrollTop = box.scrollHeight;
+                if (addedNew) {
+                    box.scrollTop = box.scrollHeight;
+                }
             }
 
             async function sendCurrentMessage() {
@@ -939,6 +1252,12 @@ final class ChatPageController extends AbstractController
                 const text = input.value.trim();
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
+
+                if (isContactTabActive && activeChatOwnerId > 0 && activeChatOwnerId !== currentUserId) {
+                    alert('Você está visualizando o Histórico deste Contato e este atendimento está atribuído a OUTRO atendente.\n\nPara poder enviar mensagens, você precisa assumir a propriedade deste chat clicando no botão "Transferir" no cabeçalho e transferindo para o seu nome!');
+                    openTransferModal();
+                    return;
+                }
 
                 // Bloqueia o input durante envio para evitar duplicação
                 document.getElementById('send-btn').disabled = true;
@@ -962,16 +1281,8 @@ final class ChatPageController extends AbstractController
                             formData.append('text', text);
                         }
                         formData.append('file', stagedFiles[i]);
-                        if (csrfToken) {
-                            formData.append('_glpi_csrf_token', csrfToken);
-                        }
-
                         const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                             method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-Glpi-Csrf-Token': csrfToken
-                            },
                             body: formData
                         });
 
@@ -985,16 +1296,8 @@ final class ChatPageController extends AbstractController
                     formData.append('chat_id', activeChatId || 0);
                     formData.append('phone_number', activePhoneNumber || '');
                     formData.append('text', text);
-                    if (csrfToken) {
-                        formData.append('_glpi_csrf_token', csrfToken);
-                    }
-
                     const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
                         method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'X-Glpi-Csrf-Token': csrfToken
-                        },
                         body: formData
                     });
 
@@ -1065,12 +1368,13 @@ final class ChatPageController extends AbstractController
                 inputEl.value = ''; // Limpa o input para poder selecionar mais depois
             }
 
-            function toggleOmniPopover(id) {
-                const popover = document.getElementById(id);
-                const isVisible = popover.style.display === 'block';
-                closeAllPopovers();
-                if (!isVisible) {
-                    popover.style.display = 'block';
+            async function toggleOmniPopover(id) {
+                const pop = document.getElementById(id);
+                if (pop.style.display === 'block') {
+                    pop.style.display = 'none';
+                } else {
+                    document.querySelectorAll('.omni-popover').forEach(p => p.style.display = 'none');
+                    pop.style.display = 'block';
                 }
             }
 
@@ -1140,13 +1444,207 @@ final class ChatPageController extends AbstractController
                 return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
             }
 
+            function formatMessageHtml(str) {
+                if (!str) return '';
+
+                const trimmedStr = str.trim();
+                if (trimmedStr.startsWith('[VCARD_SHARE:') && trimmedStr.endsWith(']')) {
+                    try {
+                        const jsonStr = trimmedStr.substring(13, trimmedStr.length - 1);
+                        const data = JSON.parse(jsonStr);
+                        let html = '<div class="omni-contact-cards-container">';
+                        data.contacts.forEach(c => {
+                            const initial = getInitials(c.name);
+                            html += `
+                                <div class="omni-vcard">
+                                    <div class="omni-vcard-header">
+                                        <div class="omni-vcard-avatar">${initial}</div>
+                                        <div class="omni-vcard-info">
+                                            <div class="omni-vcard-name">${escapeHtml(c.name)}</div>
+                                            <div class="omni-vcard-phone">${escapeHtml(c.phone)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="omni-vcard-actions">
+                                        <button class="omni-vcard-btn" onclick="copyContactPhone('${c.phone}')">📋 Copiar</button>
+                                        <button class="omni-vcard-btn omni-vcard-btn-primary" onclick="openChat(0, '${escapeJs(c.name)}', '${escapeJs(c.phone)}', true)">💬 Conversar</button>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                        return html;
+                    } catch(e) {
+                        console.error('Error parsing VCARD_SHARE:', e);
+                    }
+                }
+
+                let escaped = escapeHtml(str);
+                // Bold: *text*
+                escaped = escaped.replace(/\*([^\*]+)\*/g, "<strong>$1</strong>");
+                // Italic: _text_
+                escaped = escaped.replace(/_([^_]+)_/g, "<em>$1</em>");
+                // Strikethrough: ~text~
+                escaped = escaped.replace(/~([^~]+)~/g, "<del>$1</del>");
+                return escaped;
+            }
+
+            function copyContactPhone(phone) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(phone);
+                    alert('Número copiado: ' + phone);
+                } else {
+                    prompt('Copie o número abaixo:', phone);
+                }
+            }
+
             function escapeJs(str) {
                 if (!str) return '';
                 return str.replace(/'/g, "\\'");
             }
 
-            loadChats();
+            // Transfer Logic
+            async function openTransferModal() {
+                if (!activeChatId && !activePhoneNumber) return;
+                const modal = document.getElementById('transfer-modal');
+                modal.style.display = 'flex';
+                
+                if (!transferUsersLoaded) {
+                    const select = document.getElementById('transfer-user-select');
+                    select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option><option disabled>Carregando técnicos...</option>';
+                    
+                    const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/users.php`);
+                    select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option>';
+                    
+                    if (res && res.users) {
+                        res.users.forEach(u => {
+                            const opt = document.createElement('option');
+                            opt.value = u.id;
+                            opt.textContent = `👤 ${u.name}`;
+                            select.appendChild(opt);
+                        });
+                        transferUsersLoaded = true;
+                    } else {
+                        select.innerHTML = '<option value="0">📥 Fila (Desvincular)</option><option disabled>Erro ao carregar técnicos</option>';
+                    }
+                }
+            }
+
+            function closeTransferModal() {
+                document.getElementById('transfer-modal').style.display = 'none';
+            }
+
+            async function submitTransfer() {
+                if (!activeChatId && !activePhoneNumber) return;
+                
+                // If chat isn't initialized yet (just clicking in Contacts before any message), activeChatId might be 0, but we need it.
+                // However, in contacts, we fetch history by phone, but usually there's a chat ID if it exists.
+                if (activeChatId === 0) {
+                    alert('Este chat ainda não existe no banco de dados. Envie uma mensagem primeiro.');
+                    return;
+                }
+
+                const select = document.getElementById('transfer-user-select');
+                const newUserId = select.value;
+                const btn = document.getElementById('transfer-submit-btn');
+                
+                btn.innerText = 'Transferindo...';
+                btn.disabled = true;
+                
+                const formData = new FormData();
+                formData.append('chat_id', activeChatId);
+                formData.append('user_id', newUserId);
+                
+                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/transfer.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                btn.innerText = 'Confirmar';
+                btn.disabled = false;
+                
+                if (res && res.success) {
+                    closeTransferModal();
+                    // Limpa chat ativo da tela
+                    activeChatId = 0;
+                    activePhoneNumber = '';
+                    document.getElementById('main-chat-header').style.display = 'none';
+                    document.getElementById('messages-box').innerHTML = `
+                        <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
+                            <div style="font-size:3rem; margin-bottom:10px;">💬</div>
+                            <div>Chat transferido com sucesso!</div>
+                        </div>
+                    `;
+                    document.getElementById('message-input').disabled = true;
+                    document.getElementById('send-btn').disabled = true;
+                    
+                    loadChats();
+                } else {
+                    alert(res.error || 'Erro ao transferir chat.');
+                }
+            }
+
+            function openSettingsModal() {
+                document.getElementById('new-chat-phone').value = '';
+                document.getElementById('new-chat-name').value = '';
+                document.getElementById('new-chat-error').style.display = 'none';
+                
+                document.getElementById('settings-modal').style.display = 'flex';
+                setTimeout(() => document.getElementById('new-chat-phone').focus(), 100);
+            }
+
+            function closeSettingsModal() {
+                document.getElementById('settings-modal').style.display = 'none';
+            }
+            
+            function switchSettingsTab(tabId) {
+                // Future use when we have more tabs
+            }
+
+            async function submitNewChat() {
+                const phoneInput = document.getElementById('new-chat-phone').value.trim();
+                const nameInput = document.getElementById('new-chat-name').value.trim();
+                const errorEl = document.getElementById('new-chat-error');
+                const btn = document.getElementById('new-chat-submit-btn');
+
+                if (!phoneInput) {
+                    errorEl.innerText = 'O número de telefone é obrigatório.';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                errorEl.style.display = 'none';
+                btn.innerText = 'Iniciando...';
+                btn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('phone_number', phoneInput);
+                formData.append('contact_name', nameInput);
+
+                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/new-chat.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                btn.innerText = 'Iniciar';
+                btn.disabled = false;
+
+                if (res && res.success) {
+                    closeSettingsModal();
+                    // Muda para a aba "Meus Chats" para ver a conversa recém adicionada
+                    document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]').click();
+                    await loadChats();
+                    
+                    // Abre o chat recém criado
+                    openChat(res.chat_id, res.contact_name, res.phone_number, false, 'Você');
+                } else {
+                    errorEl.innerText = res.error || 'Erro desconhecido ao iniciar conversa.';
+                    errorEl.style.display = 'block';
+                }
+            }
+
+            // Inicia o app
             setInterval(loadChats, 5000);
+            loadChats();
         </script>
         <?php
 

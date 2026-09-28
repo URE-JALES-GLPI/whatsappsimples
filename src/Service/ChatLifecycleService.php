@@ -60,11 +60,22 @@ class ChatLifecycleService
         }
 
         // 5. Se não encontrou de forma alguma, cria um NOVO chat na fila
+        $linkedLid = null;
+        if (str_contains($phoneNumber, '@lid')) {
+            $rawDigits = preg_replace('/[^0-9]/', '', $phoneNumber);
+            $resolved = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::fetchRealJidFromApi($rawDigits);
+            if (!empty($resolved)) {
+                $linkedLid = $phoneNumber;
+                $phoneNumber = $resolved;
+            }
+        }
+
         $newChatId = $this->repository->createChat([
-            'phone_number' => $phoneNumber, // Por enquanto, guarda o LID. (Será a chave principal do chat)
+            'phone_number' => $phoneNumber,
             'contact_name' => $contactName,
             'status'       => 'pending',
-            'users_id'     => 0
+            'users_id'     => 0,
+            'linked_lid'   => $linkedLid
         ]);
 
         return [
@@ -73,7 +84,7 @@ class ChatLifecycleService
             'contact_name' => $contactName,
             'status'       => 'pending',
             'users_id'     => 0,
-            'linked_lid'   => null
+            'linked_lid'   => $linkedLid
         ];
     }
 

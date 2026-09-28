@@ -1,27 +1,39 @@
 <?php
-include('../../../inc/includes.php');
-Session::checkRight('profile', UPDATE);
+
+include("../../../inc/includes.php");
+
+Session::checkRight("profile", UPDATE);
 
 if (isset($_POST['update'])) {
-    $profileRight = new ProfileRight();
-    $profiles_id  = (int)$_POST['profiles_id'];
-    $rights       = (int)$_POST['rights'];
+    $profiles_id = (int)$_POST['profiles_id'];
+    $rights      = $_POST['rights'] ?? [];
 
-    $existing = $profileRight->find([
-        'profiles_id' => $profiles_id,
-        'name'        => 'plugin_whatsappsimples',
-    ]);
-
-    if (count($existing)) {
-        $id = array_key_first($existing);
-        $profileRight->update(['id' => $id, 'rights' => $rights]);
-    } else {
-        $profileRight->add([
-            'profiles_id' => $profiles_id,
-            'name'        => 'plugin_whatsappsimples',
-            'rights'      => $rights,
-        ]);
+    if ($profiles_id > 0) {
+        global $DB;
+        $profileRight = new ProfileRight();
+        
+        foreach ($rights as $rightName => $rightValue) {
+            $value = (int)$rightValue;
+            
+            $existing = $profileRight->find([
+                'profiles_id' => $profiles_id,
+                'name'        => $rightName
+            ]);
+            
+            if (count($existing)) {
+                $id = array_key_first($existing);
+                $profileRight->update(['id' => $id, 'rights' => $value]);
+            } else {
+                $profileRight->add([
+                    'profiles_id' => $profiles_id,
+                    'name'        => $rightName,
+                    'rights'      => $value
+                ]);
+            }
+        }
     }
-}
 
-Html::back();
+    Html::back();
+} else {
+    Html::displayErrorAndDie('Lost');
+}
