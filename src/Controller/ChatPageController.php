@@ -1755,7 +1755,11 @@ final class ChatPageController extends AbstractController
                         
                     } catch (err) {
                         console.error("Audio error: ", err);
-                        alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+                        if (!window.isSecureContext) {
+                            alert("⚠️ Segurança do Navegador: Não foi possível acessar o microfone porque você está acessando via HTTP (Não Seguro). O navegador bloqueia o uso de microfone, câmera e área de transferência em conexões sem HTTPS. \n\nPara enviar áudio, você precisará acessar o GLPI via HTTPS ou configurar o navegador para permitir este IP local.");
+                        } else {
+                            alert("Não foi possível acessar o microfone. Verifique as permissões do navegador (o ícone de cadeado ao lado do endereço web).");
+                        }
                     }
                 } else {
                     isRecording = false;
@@ -2156,7 +2160,22 @@ final class ChatPageController extends AbstractController
             
             window.copyMsgText = function(btn) {
                 const text = decodeURIComponent(btn.getAttribute('data-text') || '');
-                navigator.clipboard.writeText(text);
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text);
+                } else {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = text;
+                    textArea.style.position = "fixed";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                        document.execCommand('copy');
+                    } catch (err) {
+                        console.error('Falha ao copiar', err);
+                    }
+                    document.body.removeChild(textArea);
+                }
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
             
@@ -2175,7 +2194,9 @@ final class ChatPageController extends AbstractController
             
             window.replyMsg = function(id, btn) {
                 const text = decodeURIComponent(btn.getAttribute('data-text') || '');
-                const bubble = btn.closest('.omni-bubble');
+                const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
+                if (!bubble) return;
+                
                 const wuid = bubble.getAttribute('data-wuid');
                 
                 let senderName = 'Contato';
