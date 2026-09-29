@@ -684,11 +684,11 @@ final class ChatPageController extends AbstractController
 
                     <!-- 3 ABAS -->
                     <div class="omni-tabs">
-                        <button class="omni-tab-btn active" onclick="switchTab('mine', this)">
-                            💬 Chats <span class="omni-tab-badge" id="badge-mine">0</span>
-                        </button>
-                        <button class="omni-tab-btn" onclick="switchTab('queue', this)">
+                        <button class="omni-tab-btn active" onclick="switchTab('queue', this)">
                             📥 Fila <span class="omni-tab-badge" id="badge-queue">0</span>
+                        </button>
+                        <button class="omni-tab-btn" onclick="switchTab('mine', this)">
+                            💬 Chats <span class="omni-tab-badge" id="badge-mine">0</span>
                         </button>
                         <button class="omni-tab-btn" onclick="switchTab('all', this)">
                             👥 Contatos
@@ -831,6 +831,19 @@ final class ChatPageController extends AbstractController
             </div>
         </div>
 
+        <!-- MODAL DE ENCERRAMENTO -->
+        <div id="close-chat-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
+            <div style="background:#fff; padding:20px; border-radius:8px; width:350px; max-width:90%; box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center;">
+                <div style="font-size:2rem; margin-bottom:10px;">📵</div>
+                <h3 style="margin:0 0 10px 0; font-size:1.1rem; color:#1e293b;">Encerrar Atendimento</h3>
+                <p style="margin:0 0 20px 0; font-size:0.9rem; color:#64748b;">Tem certeza que deseja encerrar e arquivar esta conversa?</p>
+                <div style="display:flex; justify-content:center; gap:10px;">
+                    <button onclick="document.getElementById('close-chat-modal').style.display='none'" style="padding:8px 16px; background:#f1f5f9; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">Cancelar</button>
+                    <button id="close-chat-confirm-btn" onclick="submitCloseChat()" style="padding:8px 16px; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:0.9rem; font-weight:600;">Sim, Encerrar</button>
+                </div>
+            </div>
+        </div>
+
         <!-- MODAL DE CONFIGURAÇÕES -->
         <div id="settings-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center;">
             <div style="background:#fff; border-radius:8px; width:800px; max-width:95%; height:600px; max-height:90vh; box-shadow:0 10px 25px rgba(0,0,0,0.2); display:flex; flex-direction:column; overflow:hidden;">
@@ -876,7 +889,7 @@ final class ChatPageController extends AbstractController
         </div>
 
         <script>
-            let currentTab = 'mine';
+            let currentTab = 'queue';
             let activeChatId = 0;
             let activePhoneNumber = '';
             let isContactTabActive = false;
@@ -948,13 +961,47 @@ final class ChatPageController extends AbstractController
                 zoomLightbox(delta);
             }
 
-            function switchTab(tab, btn) {
+            function switchTab(tab, btn, keepChat = false) {
                 currentTab = tab;
                 isContactTabActive = (tab === 'all');
                 document.querySelectorAll('.omni-tab-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                if (btn) btn.classList.add('active');
+                
+                if (!keepChat) {
+                    // [UX] Resetar o estado do chat ao mudar de aba
+                    activeChatId = 0;
+                    activePhoneNumber = '';
+                    document.getElementById('main-chat-header').style.display = 'none';
+                    document.getElementById('messages-box').innerHTML = `
+                        <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
+                            <div style="font-size:3rem; margin-bottom:10px;">💬</div>
+                            <div>Selecione uma conversa ao lado para iniciar o atendimento</div>
+                        </div>
+                    `;
+                    document.getElementById('message-input').disabled = true;
+                    document.getElementById('send-btn').disabled = true;
+                }
+                
                 loadChats();
             }
+
+            // [UX] Resetar chat ao apertar ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    activeChatId = 0;
+                    activePhoneNumber = '';
+                    document.getElementById('main-chat-header').style.display = 'none';
+                    document.getElementById('messages-box').innerHTML = `
+                        <div style="margin:auto; text-align:center; color:#94a3b8; font-size:0.9rem;">
+                            <div style="font-size:3rem; margin-bottom:10px;">💬</div>
+                            <div>Selecione uma conversa ao lado para iniciar o atendimento</div>
+                        </div>
+                    `;
+                    document.getElementById('message-input').disabled = true;
+                    document.getElementById('send-btn').disabled = true;
+                    loadChats();
+                }
+            });
 
             async function safeFetchJson(url, options = {}) {
                 try {
@@ -1143,18 +1190,32 @@ final class ChatPageController extends AbstractController
                 loadMessages(isContactTab);
             }
 
-            async function closeActiveChat(chatId) {
-                if (!confirm('Deseja realmente encerrar este atendimento?')) return;
+            let chatToClose = 0;
+            function closeActiveChat(chatId) {
+                chatToClose = chatId;
+                document.getElementById('close-chat-modal').style.display = 'flex';
+            }
+
+            async function submitCloseChat() {
+                if (!chatToClose) return;
+                
+                const btn = document.getElementById('close-chat-confirm-btn');
+                btn.innerText = 'Encerrando...';
+                btn.disabled = true;
 
                 const metaCsrf = document.querySelector('meta[property="glpi:csrf_token"]') || document.querySelector('meta[name="csrf-token"]');
                 const csrfToken = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.csrf_token) ? CFG_GLPI.csrf_token : (metaCsrf ? metaCsrf.content : '');
                 
                 const formData = new FormData();
-                formData.append('chat_id', chatId);
+                formData.append('chat_id', chatToClose);
                 const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/close.php`, {
                     method: 'POST',
                     body: formData
                 });
+
+                btn.innerText = 'Sim, Encerrar';
+                btn.disabled = false;
+                document.getElementById('close-chat-modal').style.display = 'none';
 
                 if (data.success) {
                     activeChatId = 0;
@@ -1206,9 +1267,20 @@ final class ChatPageController extends AbstractController
                         } else if (m.media_url.startsWith('data:video/')) {
                             mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (m.media_url.startsWith('data:audio/')) {
-                            mediaHtml = `<audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                            mediaHtml = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                <audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 260px; max-width: 100%; border-radius: 8px; outline: none;"></audio>
+                                <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
+                            </div><br>`;
                         } else {
-                            mediaHtml = `<a href="${m.media_url}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                            mediaHtml = `<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.5rem;">📦</span>
+                                    <div>
+                                        <div style="font-weight:bold; font-size:0.9rem;">Documento TXT/DOC</div>
+                                        <a href="${m.media_url}" download="arquivo" style="text-decoration:none; color:#0284c7; font-size:0.8rem; font-weight:600;">📥 Baixar Arquivo</a>
+                                    </div>
+                                </div>
+                            </div><br>`;
                         }
                     } else if (m.media_url && m.media_url.startsWith('doc_')) {
                         const filename = m.media_url.substring(4);
@@ -1224,9 +1296,28 @@ final class ChatPageController extends AbstractController
                         } else if (filename.endsWith('.mp4')) {
                             mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
-                            mediaHtml = `${warningHtml}<audio src="${fullUrl}" controls preload="metadata" style="width: 320px; max-width: 100%; border-radius: 8px; margin-bottom: 8px; outline: none;"></audio><br>`;
+                            mediaHtml = `${warningHtml}<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                                <audio src="${fullUrl}" controls preload="metadata" style="width: 260px; max-width: 100%; border-radius: 8px; outline: none;"></audio>
+                                <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
+                            </div><br>`;
                         } else {
-                            mediaHtml = `<a href="${fullUrl}" download="arquivo" style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; text-decoration:none; color:inherit; margin-bottom: 8px; font-weight:600;">📎 Baixar Arquivo</a><br>`;
+                            let icon = '📦';
+                            let extLabel = 'DOC';
+                            let fName = filename.toLowerCase();
+                            if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
+                            else if (fName.endsWith('.doc') || fName.endsWith('.docx')) { icon = '📝'; extLabel = 'WORD'; }
+                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv')) { icon = '📊'; extLabel = 'EXCEL'; }
+                            else if (fName.endsWith('.zip') || fName.endsWith('.rar')) { icon = '🗜️'; extLabel = 'ZIP'; }
+                            
+                            mediaHtml = `${warningHtml}<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.5rem;">${icon}</span>
+                                    <div>
+                                        <div style="font-weight:bold; font-size:0.9rem;">Documento ${extLabel}</div>
+                                        <a href="${fullUrl}" download="arquivo" style="text-decoration:none; color:#0284c7; font-size:0.8rem; font-weight:600;">📥 Baixar Arquivo</a>
+                                    </div>
+                                </div>
+                            </div><br>`;
                         }
                     }
 
@@ -1313,8 +1404,13 @@ final class ChatPageController extends AbstractController
 
                 if (!hasError) {
                     clearSelectedFile();
-                    loadMessages(isContactTabActive);
-                    loadChats();
+                    if (currentTab === 'queue') {
+                        const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]');
+                        switchTab('mine', mineBtn, true);
+                    } else {
+                        loadMessages(isContactTabActive);
+                        loadChats();
+                    }
                 } else {
                     // Recarrega para mostrar as que passaram
                     loadMessages(isContactTabActive);
@@ -1639,6 +1735,22 @@ final class ChatPageController extends AbstractController
                 } else {
                     errorEl.innerText = res.error || 'Erro desconhecido ao iniciar conversa.';
                     errorEl.style.display = 'block';
+                }
+            }
+
+            function togglePlaybackSpeed(btn) {
+                const audio = btn.previousElementSibling;
+                if (!audio || audio.tagName !== 'AUDIO') return;
+                
+                if (audio.playbackRate === 1) {
+                    audio.playbackRate = 1.5;
+                    btn.innerText = '1.5x';
+                } else if (audio.playbackRate === 1.5) {
+                    audio.playbackRate = 2;
+                    btn.innerText = '2x';
+                } else {
+                    audio.playbackRate = 1;
+                    btn.innerText = '1x';
                 }
             }
 
