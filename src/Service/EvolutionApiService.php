@@ -623,15 +623,37 @@ class EvolutionApiService
             $responseData = json_decode($responseBody, true);
             $messageId    = $responseData['key']['id'] ?? '';
 
-            $DB->insert('glpi_plugin_whatsappsimples_messages', [
+            // Ao invés de salvar base64 gigante no MySQL, salva fisicamente
+            $mediaDir = GLPI_PLUGIN_DOC_DIR . '/whatsappsimples/media/' . date('Y/m');
+            if (!is_dir($mediaDir)) {
+                @mkdir($mediaDir, 0775, true);
+            }
+            
+            $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $fileName);
+            $localHash = md5(uniqid(rand(), true)) . '_' . $safeFileName;
+            $localPath = $mediaDir . '/' . $localHash;
+            
+            file_put_contents($localPath, base64_decode($pureBase64));
+            
+            $dbMediaPath = date('Y/m') . '/' . $localHash;
+            $dbMediaUrl = 'doc_' . $dbMediaPath;
+            
+            $messageData = [
                 'chats_id'      => $chatId,
                 'users_id'      => $currentUserId,
                 'message_id'    => $messageId,
                 'sender_type'   => 'attendant',
                 'message_text'  => $messageText,
-                'media_url'     => $base64Data,
+                'media_url'     => $dbMediaUrl,
                 'date_creation' => $now
-            ]);
+            ];
+            
+            if ($DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_path')) {
+                $messageData['media_path'] = $dbMediaPath;
+                $messageData['media_mime'] = $mimeType;
+            }
+
+            $DB->insert('glpi_plugin_whatsappsimples_messages', $messageData);
 
             $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
 
