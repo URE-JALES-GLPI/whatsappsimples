@@ -824,6 +824,13 @@ final class ChatPageController extends AbstractController
                         <div id="file-preview-list"></div>
                     </div>
 
+                    <!-- PREVIEW DE QUOTE (RESPONDER) -->
+                    <div id="quote-preview-container" style="display:none; background: #f1f5f9; padding: 8px 12px; border-left: 4px solid #0ea5e9; border-top: 1px solid #cbd5e1; position: relative;">
+                        <span style="position: absolute; top: 4px; right: 12px; cursor: pointer; color: #64748b; font-weight: bold; font-size: 1.2rem;" onclick="clearQuotePreview()">&times;</span>
+                        <div id="quote-preview-name" style="font-size: 0.8rem; font-weight: bold; color: #0ea5e9; margin-bottom: 2px;"></div>
+                        <div id="quote-preview-text" style="font-size: 0.8rem; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;"></div>
+                    </div>
+
                     <div class="omni-input-footer">
                         <!-- POP-OVER EMOJIS -->
                         <div class="omni-popover" id="emoji-popover">
@@ -1423,7 +1430,7 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
                             <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
@@ -1440,9 +1447,25 @@ final class ChatPageController extends AbstractController
                 }
             }
 
+            let currentQuote = null;
+
+            function showQuotePreview(wuid, name, text) {
+                currentQuote = { wuid: wuid, name: name, text: text };
+                document.getElementById('quote-preview-container').style.display = 'block';
+                document.getElementById('quote-preview-name').innerText = name;
+                document.getElementById('quote-preview-text').innerText = text;
+                checkInputState();
+            }
+
+            window.clearQuotePreview = function() {
+                currentQuote = null;
+                document.getElementById('quote-preview-container').style.display = 'none';
+                checkInputState();
+            };
+
             async function sendCurrentMessage() {
                 const input = document.getElementById('message-input');
-                const text = input.value.trim();
+                let text = input.value.trim();
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
@@ -1472,6 +1495,7 @@ final class ChatPageController extends AbstractController
                         // A legenda vai apenas no primeiro arquivo, se houver
                         if (i === 0 && text) {
                             formData.append('text', text);
+                            text = ''; // clear so we don't send it again
                         }
                         formData.append('file', stagedFiles[i]);
                         const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
@@ -1484,7 +1508,13 @@ final class ChatPageController extends AbstractController
                             hasError = true;
                         }
                     }
-                } else if (text) {
+                } 
+                
+                if (text) {
+                    if (currentQuote) {
+                        const quoteJson = JSON.stringify(currentQuote);
+                        text = `[QUOTE:${quoteJson}]\n` + text;
+                    }
                     const formData = new FormData();
                     formData.append('chat_id', activeChatId || 0);
                     formData.append('phone_number', activePhoneNumber || '');
@@ -1506,6 +1536,7 @@ final class ChatPageController extends AbstractController
 
                 if (!hasError) {
                     clearSelectedFile();
+                    clearQuotePreview();
                     if (currentTab === 'queue') {
                         const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]');
                         switchTab('mine', mineBtn, true);
@@ -1761,9 +1792,29 @@ final class ChatPageController extends AbstractController
                 if (!str) return '';
 
                 const trimmedStr = str.trim();
-                if (trimmedStr.startsWith('[VCARD_SHARE:') && trimmedStr.endsWith(']')) {
+                let htmlPrefix = '';
+                let mainContent = trimmedStr;
+
+                if (trimmedStr.startsWith('[QUOTE:')) {
+                    const endBracket = trimmedStr.indexOf(']\n');
+                    if (endBracket !== -1) {
+                        const jsonStr = trimmedStr.substring(7, endBracket);
+                        try {
+                            const qData = JSON.parse(jsonStr);
+                            htmlPrefix = `
+                                <div style="background: rgba(0,0,0,0.06); padding: 6px 10px; border-left: 4px solid #0284c7; border-radius: 4px; margin-bottom: 6px; cursor: pointer; user-select: none;">
+                                    <div style="font-size: 0.75rem; font-weight: bold; color: #0284c7; margin-bottom: 2px;">${escapeHtml(qData.name)}</div>
+                                    <div style="font-size: 0.75rem; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(qData.text)}</div>
+                                </div>
+                            `;
+                            mainContent = trimmedStr.substring(endBracket + 2);
+                        } catch(e) {}
+                    }
+                }
+
+                if (mainContent.startsWith('[VCARD_SHARE:') && mainContent.endsWith(']')) {
                     try {
-                        const jsonStr = trimmedStr.substring(13, trimmedStr.length - 1);
+                        const jsonStr = mainContent.substring(13, mainContent.length - 1);
                         const data = JSON.parse(jsonStr);
                         let html = '<div class="omni-contact-cards-container">';
                         data.contacts.forEach(c => {
@@ -1785,20 +1836,20 @@ final class ChatPageController extends AbstractController
                             `;
                         });
                         html += '</div>';
-                        return html;
+                        return htmlPrefix + html;
                     } catch(e) {
                         console.error('Error parsing VCARD_SHARE:', e);
                     }
                 }
 
-                let escaped = escapeHtml(str);
+                let escaped = escapeHtml(mainContent);
                 // Bold: *text*
                 escaped = escaped.replace(/\*([^\*]+)\*/g, "<strong>$1</strong>");
                 // Italic: _text_
                 escaped = escaped.replace(/_([^_]+)_/g, "<em>$1</em>");
                 // Strikethrough: ~text~
                 escaped = escaped.replace(/~([^~]+)~/g, "<del>$1</del>");
-                return escaped;
+                return htmlPrefix + escaped;
             }
 
             function copyContactPhone(phone) {
@@ -2124,10 +2175,20 @@ final class ChatPageController extends AbstractController
             
             window.replyMsg = function(id, btn) {
                 const text = decodeURIComponent(btn.getAttribute('data-text') || '');
-                const input = document.getElementById('message-input');
-                let quote = text.length > 50 ? text.substring(0, 50) + '...' : text;
-                input.value = `[Respondendo a: "${quote}"]\n` + input.value;
-                input.focus();
+                const bubble = btn.closest('.omni-bubble');
+                const wuid = bubble.getAttribute('data-wuid');
+                
+                let senderName = 'Contato';
+                const nameSpan = bubble.querySelector('.omni-bubble-sender span');
+                if (nameSpan && nameSpan.innerText) {
+                    senderName = nameSpan.innerText;
+                } else if (bubble.classList.contains('attendant')) {
+                    senderName = 'Você';
+                }
+
+                showQuotePreview(wuid, senderName, text);
+                document.getElementById('message-input').focus();
+                
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
 

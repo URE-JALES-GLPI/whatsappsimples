@@ -457,6 +457,16 @@ class EvolutionApiService
             }
         }
 
+        $dbText = $text;
+        $quoteId = null;
+        if (preg_match('/^\[QUOTE:(.*?)\]\n/', $text, $matches)) {
+            $quoteData = json_decode($matches[1], true);
+            if ($quoteData && !empty($quoteData['wuid'])) {
+                $quoteId = $quoteData['wuid'];
+            }
+            $text = preg_replace('/^\[QUOTE:(.*?)\]\n/', '', $text);
+        }
+
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
             'number'      => $numberToSend,
@@ -469,6 +479,16 @@ class EvolutionApiService
             'text'        => $text,
             'textMessage' => ['text' => $text]
         ];
+
+        if (!empty($quoteId)) {
+            $bodyData['options']['quoted'] = [
+                'key' => [
+                    'id' => $quoteId
+                ]
+            ];
+            // Some older versions use:
+            $bodyData['options']['quotedMessageId'] = $quoteId;
+        }
 
         $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
@@ -526,7 +546,7 @@ class EvolutionApiService
                 'users_id'      => $currentUserId,
                 'message_id'    => $messageId,
                 'sender_type'   => 'attendant',
-                'message_text'  => $text,
+                'message_text'  => $dbText,
                 'date_creation' => $now
             ]);
 
@@ -575,6 +595,16 @@ class EvolutionApiService
             $pureBase64 = $matches[2];
         }
 
+        $dbCaption = $caption;
+        $quoteId = null;
+        if (preg_match('/^\[QUOTE:(.*?)\]\n/', $caption, $matches)) {
+            $quoteData = json_decode($matches[1], true);
+            if ($quoteData && !empty($quoteData['wuid'])) {
+                $quoteId = $quoteData['wuid'];
+            }
+            $caption = preg_replace('/^\[QUOTE:(.*?)\]\n/', '', $caption);
+        }
+
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
         $bodyData = [
             'number'       => $numberToSend,
@@ -598,6 +628,15 @@ class EvolutionApiService
             ]
         ];
 
+        if (!empty($quoteId)) {
+            $bodyData['options']['quoted'] = [
+                'key' => [
+                    'id' => $quoteId
+                ]
+            ];
+            $bodyData['options']['quotedMessageId'] = $quoteId;
+        }
+
         $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
             CURLOPT_POST           => true,
@@ -617,7 +656,7 @@ class EvolutionApiService
 
         $now = date('Y-m-d H:i:s');
         $currentUserId = (int) \Session::getLoginUserID();
-        $messageText = "📎 Arquivo: {$fileName}" . ($caption ? "\n{$caption}" : "");
+        $messageText = "📎 Arquivo: {$fileName}" . ($dbCaption ? "\n{$dbCaption}" : "");
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $responseData = json_decode($responseBody, true);
