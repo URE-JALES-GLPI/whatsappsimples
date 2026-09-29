@@ -588,11 +588,13 @@ class EvolutionApiService
             'fileName'  => $fileName,
             'caption'   => $caption ?: '',
             'media'     => $pureBase64,
+            'mimetype'  => $mimeType,
             'mediaMessage' => [
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,
                 'caption'   => $caption ?: '',
-                'media'     => $pureBase64
+                'media'     => $pureBase64,
+                'mimetype'  => $mimeType
             ]
         ];
 
@@ -602,7 +604,8 @@ class EvolutionApiService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
-                'apikey: ' . $apiToken
+                'apikey: ' . $apiToken,
+                'Expect:'
             ],
             CURLOPT_POSTFIELDS     => json_encode($bodyData),
             CURLOPT_TIMEOUT        => 30
