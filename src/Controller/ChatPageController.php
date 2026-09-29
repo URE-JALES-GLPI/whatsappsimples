@@ -1423,8 +1423,8 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" style="position:relative;">
-                            <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, '${m.id}', '${m.sender_type}', \`${escapeJs(m.message_text)}\`, '${m.media_url}')">⌄</div>
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
+                            <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
@@ -2054,13 +2054,19 @@ final class ChatPageController extends AbstractController
 
             // Menu Contextual da Mensagem
             let currentMsgMenu = null;
-            window.openMsgMenu = function(e, id, type, text, mediaUrl) {
+            window.openMsgMenu = function(e, btn) {
                 e.stopPropagation();
                 closeAllPopovers();
                 
                 if (currentMsgMenu) {
                     currentMsgMenu.remove();
                 }
+
+                const bubble = btn.closest('.omni-bubble');
+                const id = bubble.getAttribute('data-msg-id');
+                const type = bubble.getAttribute('data-sender-type');
+                const text = decodeURIComponent(bubble.getAttribute('data-msg-text') || '');
+                const mediaUrl = decodeURIComponent(bubble.getAttribute('data-media-url') || '');
                 
                 const isAttendant = type === 'attendant';
                 const hasMedia = mediaUrl && mediaUrl !== 'null' && mediaUrl.length > 0;
@@ -2069,16 +2075,16 @@ final class ChatPageController extends AbstractController
                 let html = '<div class="omni-msg-dropdown" id="msg-dropdown" style="display:block;">';
                 
                 if (hasText) {
-                    html += `<div class="omni-msg-dropdown-item" onclick="copyMsgText(\`${escapeJs(text)}\`)">📋 Copiar</div>`;
+                    html += `<div class="omni-msg-dropdown-item" onclick="copyMsgText(this)" data-text="${encodeURIComponent(text)}">📋 Copiar</div>`;
                 }
-                html += `<div class="omni-msg-dropdown-item" onclick="replyMsg('${id}', \`${escapeJs(text)}\`)">↩️ Responder</div>`;
+                html += `<div class="omni-msg-dropdown-item" onclick="replyMsg('${id}', this)" data-text="${encodeURIComponent(text)}">↩️ Responder</div>`;
                 
                 if (hasMedia) {
                     html += `<div class="omni-msg-dropdown-item" onclick="downloadMedia('${mediaUrl}')">📥 Baixar</div>`;
                 }
                 
                 if (isAttendant) {
-                    html += `<div class="omni-msg-dropdown-item" onclick="editMsg('${id}', \`${escapeJs(text)}\`)">✏️ Editar</div>`;
+                    html += `<div class="omni-msg-dropdown-item" onclick="editMsg('${id}', this)" data-text="${encodeURIComponent(text)}">✏️ Editar</div>`;
                     html += `<div class="omni-msg-dropdown-item" style="color: #ef4444;" onclick="deleteMsg('${id}')">🗑️ Apagar</div>`;
                 }
                 
@@ -2097,7 +2103,8 @@ final class ChatPageController extends AbstractController
                 }
             };
             
-            window.copyMsgText = function(text) {
+            window.copyMsgText = function(btn) {
+                const text = decodeURIComponent(btn.getAttribute('data-text') || '');
                 navigator.clipboard.writeText(text);
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
@@ -2115,7 +2122,8 @@ final class ChatPageController extends AbstractController
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
             
-            window.replyMsg = function(id, text) {
+            window.replyMsg = function(id, btn) {
+                const text = decodeURIComponent(btn.getAttribute('data-text') || '');
                 const input = document.getElementById('message-input');
                 let quote = text.length > 50 ? text.substring(0, 50) + '...' : text;
                 input.value = `[Respondendo a: "${quote}"]\n` + input.value;
@@ -2123,7 +2131,8 @@ final class ChatPageController extends AbstractController
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
 
-            window.editMsg = function(id, text) {
+            window.editMsg = function(id, btn) {
+                const text = decodeURIComponent(btn.getAttribute('data-text') || '');
                 const input = document.getElementById('message-input');
                 input.value = text;
                 input.focus();
