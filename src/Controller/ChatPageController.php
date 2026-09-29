@@ -646,6 +646,28 @@ final class ChatPageController extends AbstractController
             .omni-vcard-btn-primary:hover {
                 background: #0284c7;
             }
+
+            /* Custom Audio Player CSS */
+            .omni-audio-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #38bdf8;
+                cursor: pointer;
+            }
+            .omni-audio-slider::-moz-range-thumb {
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                background: #38bdf8;
+                cursor: pointer;
+                border: none;
+            }
+            .omni-bubble.attendant .omni-custom-audio-player button {
+                background: rgba(0,0,0,0.3) !important;
+            }
         </style>
 
         <div class="omni-app">
@@ -1267,10 +1289,7 @@ final class ChatPageController extends AbstractController
                         } else if (m.media_url.startsWith('data:video/')) {
                             mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (m.media_url.startsWith('data:audio/')) {
-                            mediaHtml = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <audio src="${getAudioBlobUrl(m.media_url)}" controls preload="metadata" style="width: 260px; max-width: 100%; border-radius: 8px; outline: none;"></audio>
-                                <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
-                            </div><br>`;
+                            mediaHtml = buildAudioPlayerHtml(getAudioBlobUrl(m.media_url), 'data_' + m.id) + '<br>';
                         } else {
                             let icon = '📦';
                             let fName = '';
@@ -1311,10 +1330,7 @@ final class ChatPageController extends AbstractController
                         } else if (filename.endsWith('.mp4')) {
                             mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3') || filename.endsWith('.webm')) {
-                            mediaHtml = `${warningHtml}<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                                <audio src="${fullUrl}" controls preload="metadata" style="width: 260px; max-width: 100%; border-radius: 8px; outline: none;"></audio>
-                                <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
-                            </div><br>`;
+                            mediaHtml = warningHtml + buildAudioPlayerHtml(fullUrl, 'doc_' + m.id) + '<br>';
                         } else {
                             let icon = '📦';
                             let extLabel = 'DOC';
@@ -1757,13 +1773,94 @@ final class ChatPageController extends AbstractController
                 }
             }
 
-            function togglePlaybackSpeed(btn) {
-                const audio = btn.previousElementSibling;
-                if (!audio || audio.tagName !== 'AUDIO') return;
+            function buildAudioPlayerHtml(url, uniqueId) {
+                return `
+                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:8px; background:transparent; padding: 4px; width: 280px; max-width: 100%; margin-bottom: 8px;">
+                    <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
+                    
+                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="background:#111b21; color:#fff; border:none; border-radius:15px; padding:4px 10px; font-size:0.75rem; font-weight:bold; cursor:pointer; min-width:42px; opacity: 0.7;">1x</button>
+                    
+                    <div id="play-btn-${uniqueId}" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.5rem; display:flex; align-items:center; justify-content:center; width: 30px; color: #fff; margin-left: 4px; margin-right: 4px;">
+                        ▶
+                    </div>
+                    
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; position:relative; margin-top:2px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <div style="width: 12px; height: 12px; background: #38bdf8; border-radius: 50%; display:inline-block; flex-shrink:0;"></div>
+                            <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="flex:1; height:4px; appearance:none; background:rgba(255,255,255,0.4); border-radius:2px; cursor:pointer; outline:none; -webkit-appearance: none;" />
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:rgba(255,255,255,0.7); margin-top:6px; padding-left: 18px;">
+                            <span id="curr-time-${uniqueId}">0:00</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+
+            window.togglePlayPause = function(id) {
+                const audio = document.getElementById('audio-' + id);
+                const btn = document.getElementById('play-btn-' + id);
+                if (audio.paused) {
+                    audio.play();
+                    btn.innerHTML = '⏸';
+                } else {
+                    audio.pause();
+                    btn.innerHTML = '▶';
+                }
+            };
+
+            window.updateAudioUI = function(id) {
+                const audio = document.getElementById('audio-' + id);
+                const slider = document.getElementById('slider-' + id);
+                const currTime = document.getElementById('curr-time-' + id);
                 
+                if (audio.duration) {
+                    const progress = (audio.currentTime / audio.duration) * 100;
+                    slider.value = progress;
+                    currTime.innerText = formatAudioTime(audio.currentTime);
+                }
+            };
+
+            window.initAudioUI = function(id) {
+                const audio = document.getElementById('audio-' + id);
+                if (audio.duration && isFinite(audio.duration)) {
+                    document.getElementById('curr-time-' + id).innerText = formatAudioTime(audio.duration);
+                }
+            };
+
+            window.resetAudioUI = function(id) {
+                const btn = document.getElementById('play-btn-' + id);
+                const slider = document.getElementById('slider-' + id);
+                const audio = document.getElementById('audio-' + id);
+                const currTime = document.getElementById('curr-time-' + id);
+                btn.innerHTML = '▶';
+                slider.value = 0;
+                if (audio.duration && isFinite(audio.duration)) {
+                    currTime.innerText = formatAudioTime(audio.duration);
+                } else {
+                    currTime.innerText = '0:00';
+                }
+            };
+
+            window.seekAudio = function(id, val) {
+                const audio = document.getElementById('audio-' + id);
+                if (audio.duration) {
+                    audio.currentTime = (val / 100) * audio.duration;
+                }
+            };
+
+            window.formatAudioTime = function(secs) {
+                if (!secs || !isFinite(secs)) return '0:00';
+                const m = Math.floor(secs / 60);
+                const s = Math.floor(secs % 60);
+                return m + ':' + (s < 10 ? '0' : '') + s;
+            };
+
+            window.toggleCustomPlaybackSpeed = function(id, btn) {
+                const audio = document.getElementById('audio-' + id);
                 if (audio.playbackRate === 1) {
                     audio.playbackRate = 1.5;
-                    btn.innerText = '1.5x';
+                    btn.innerText = '1,5x';
                 } else if (audio.playbackRate === 1.5) {
                     audio.playbackRate = 2;
                     btn.innerText = '2x';
@@ -1771,7 +1868,7 @@ final class ChatPageController extends AbstractController
                     audio.playbackRate = 1;
                     btn.innerText = '1x';
                 }
-            }
+            };
 
             // Inicia o app
             setInterval(loadChats, 5000);
