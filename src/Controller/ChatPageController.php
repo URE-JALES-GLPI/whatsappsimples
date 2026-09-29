@@ -1272,11 +1272,26 @@ final class ChatPageController extends AbstractController
                                 <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
                             </div><br>`;
                         } else {
+                            let icon = '📦';
+                            let fName = '';
+                            if (m.message_text && m.message_text.includes('Arquivo: ')) {
+                                fName = m.message_text.split('Arquivo: ')[1].split('\n')[0].trim().toLowerCase();
+                            } else {
+                                let mimeMatch = m.media_url.match(/^data:(.*?);/);
+                                if (mimeMatch) fName = mimeMatch[1].replace('/', '.').toLowerCase();
+                            }
+                            
+                            let extLabel = 'DOC';
+                            if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
+                            else if (fName.endsWith('.doc') || fName.endsWith('.docx')) { icon = '📝'; extLabel = 'WORD'; }
+                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv') || fName.includes('spreadsheet')) { icon = '📊'; extLabel = 'EXCEL'; }
+                            else if (fName.endsWith('.zip') || fName.endsWith('.rar')) { icon = '🗜️'; extLabel = 'ZIP'; }
+
                             mediaHtml = `<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:1.5rem;">📦</span>
+                                    <span style="font-size:1.5rem;">${icon}</span>
                                     <div>
-                                        <div style="font-weight:bold; font-size:0.9rem;">Documento TXT/DOC</div>
+                                        <div style="font-weight:bold; font-size:0.9rem;">Documento ${extLabel}</div>
                                         <a href="${m.media_url}" download="arquivo" style="text-decoration:none; color:#0284c7; font-size:0.8rem; font-weight:600;">📥 Baixar Arquivo</a>
                                     </div>
                                 </div>
@@ -1304,9 +1319,13 @@ final class ChatPageController extends AbstractController
                             let icon = '📦';
                             let extLabel = 'DOC';
                             let fName = filename.toLowerCase();
+                            if (m.message_text && m.message_text.includes('Arquivo: ')) {
+                                fName = m.message_text.toLowerCase();
+                            }
+                            
                             if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
                             else if (fName.endsWith('.doc') || fName.endsWith('.docx')) { icon = '📝'; extLabel = 'WORD'; }
-                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv')) { icon = '📊'; extLabel = 'EXCEL'; }
+                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv') || fName.includes('spreadsheet')) { icon = '📊'; extLabel = 'EXCEL'; }
                             else if (fName.endsWith('.zip') || fName.endsWith('.rar')) { icon = '🗜️'; extLabel = 'ZIP'; }
                             
                             mediaHtml = `${warningHtml}<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
