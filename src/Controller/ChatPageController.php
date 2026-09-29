@@ -1310,7 +1310,7 @@ final class ChatPageController extends AbstractController
                             mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
                         } else if (filename.endsWith('.mp4')) {
                             mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
-                        } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3')) {
+                        } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3') || filename.endsWith('.webm')) {
                             mediaHtml = `${warningHtml}<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                                 <audio src="${fullUrl}" controls preload="metadata" style="width: 260px; max-width: 100%; border-radius: 8px; outline: none;"></audio>
                                 <button onclick="togglePlaybackSpeed(this)" style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:15px; padding:4px 8px; font-size:0.75rem; font-weight:bold; color:#475569; cursor:pointer;" title="Velocidade">1x</button>
