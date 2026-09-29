@@ -647,6 +647,12 @@ final class ChatPageController extends AbstractController
                 background: #0284c7;
             }
 
+            @keyframes pulse {
+                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+                50% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+            }
+
             /* Custom Audio Player CSS */
             .omni-audio-slider::-webkit-slider-thumb {
                 -webkit-appearance: none;
@@ -816,8 +822,8 @@ final class ChatPageController extends AbstractController
                             <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
                         </div>
 
-                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this)" disabled rows="1"></textarea>
-                        <button class="omni-send-btn" id="send-btn" onclick="sendCurrentMessage()" disabled title="Enviar">✈️</button>
+                        <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this); checkInputState();" disabled rows="1"></textarea>
+                        <button class="omni-send-btn" id="send-btn" onclick="toggleAudioRecording()" disabled title="Gravar Áudio" style="transition: all 0.2s; min-width: 45px;">🎤</button>
                     </div>
                 </div>
             </div>
@@ -1451,6 +1457,7 @@ final class ChatPageController extends AbstractController
                     loadMessages(isContactTabActive);
                     loadChats();
                 }
+                checkInputState();
             }
 
             function clearSelectedFile() {
@@ -1471,6 +1478,7 @@ final class ChatPageController extends AbstractController
                 if (stagedFiles.length === 0) {
                     container.style.display = 'none';
                     list.innerHTML = '';
+                    checkInputState();
                     return;
                 }
                 
@@ -1481,6 +1489,7 @@ final class ChatPageController extends AbstractController
                         <span style="cursor: pointer; color: #ef4444; font-weight: bold; font-size: 1.1rem; line-height: 1;" onclick="removeStagedFile(${i})" title="Remover">&times;</span>
                     </div>
                 `).join('');
+                checkInputState();
             }
 
             function uploadSelectedFile(inputEl) {
@@ -1549,6 +1558,114 @@ final class ChatPageController extends AbstractController
                 el.style.height = '38px';
                 if (el.scrollHeight > 38) {
                     el.style.height = Math.min(el.scrollHeight, 114) + 'px';
+                }
+            }
+
+            function checkInputState() {
+                const input = document.getElementById('message-input');
+                const btn = document.getElementById('send-btn');
+                const hasText = input.value.trim().length > 0;
+                const hasFiles = stagedFiles.length > 0;
+                
+                if (hasText || hasFiles) {
+                    btn.innerHTML = '✈️';
+                    btn.title = 'Enviar';
+                    btn.onclick = sendCurrentMessage;
+                } else {
+                    btn.innerHTML = '🎤';
+                    btn.title = 'Gravar Áudio';
+                    btn.onclick = toggleAudioRecording;
+                }
+            }
+
+            let mediaRecorder = null;
+            let audioChunks = [];
+            let isRecording = false;
+            let recordTimer = null;
+            let recordSeconds = 0;
+
+            async function toggleAudioRecording() {
+                if (!activeChatId && !activePhoneNumber) return;
+                
+                const btn = document.getElementById('send-btn');
+                const input = document.getElementById('message-input');
+                
+                if (!isRecording) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        
+                        mediaRecorder.ondataavailable = e => {
+                            if (e.data.size > 0) audioChunks.push(e.data);
+                        };
+                        
+                        mediaRecorder.onstop = async () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            audioChunks = [];
+                            
+                            clearInterval(recordTimer);
+                            input.placeholder = "Digite uma mensagem (Shift + Enter quebra linha)...";
+                            btn.innerHTML = '🎤';
+                            btn.style.color = '';
+                            btn.style.background = '';
+                            btn.style.animation = '';
+                            
+                            const formData = new FormData();
+                            formData.append('chat_id', activeChatId || 0);
+                            formData.append('phone_number', activePhoneNumber || '');
+                            formData.append('file', audioBlob, 'audio.webm');
+                            
+                            btn.disabled = true;
+                            const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            btn.disabled = false;
+                            
+                            if (!data || !data.success) {
+                                alert('Erro ao enviar áudio: ' + (data?.error || 'Falha desconhecida'));
+                            } else {
+                                if (currentTab === 'queue') {
+                                    const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\\'mine\\', this)"]');
+                                    switchTab('mine', mineBtn, true);
+                                } else {
+                                    loadMessages(isContactTabActive);
+                                    loadChats();
+                                }
+                            }
+                            checkInputState();
+                        };
+                        
+                        audioChunks = [];
+                        mediaRecorder.start();
+                        isRecording = true;
+                        
+                        btn.innerHTML = '🛑';
+                        btn.style.color = '#fff';
+                        btn.style.background = '#ef4444';
+                        btn.style.animation = 'pulse 1.5s infinite';
+                        recordSeconds = 0;
+                        
+                        input.placeholder = "Gravando áudio... 0:00";
+                        input.disabled = true;
+                        
+                        recordTimer = setInterval(() => {
+                            recordSeconds++;
+                            const m = Math.floor(recordSeconds / 60);
+                            const s = recordSeconds % 60;
+                            input.placeholder = `Gravando áudio... ${m}:${s < 10 ? '0' : ''}${s}`;
+                        }, 1000);
+                        
+                    } catch (err) {
+                        console.error("Audio error: ", err);
+                        alert("Não foi possível acessar o microfone. Verifique as permissões do navegador.");
+                    }
+                } else {
+                    isRecording = false;
+                    input.disabled = false;
+                    mediaRecorder.stop();
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
                 }
             }
 
