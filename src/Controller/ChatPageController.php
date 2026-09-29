@@ -1692,7 +1692,7 @@ final class ChatPageController extends AbstractController
                                 alert('Erro ao enviar áudio: ' + (data?.error || 'Falha desconhecida'));
                             } else {
                                 if (currentTab === 'queue') {
-                                    const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\\'mine\\', this)"]');
+                                    const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]');
                                     switchTab('mine', mineBtn, true);
                                 } else {
                                     loadMessages(isContactTabActive);
