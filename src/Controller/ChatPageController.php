@@ -654,6 +654,23 @@ final class ChatPageController extends AbstractController
             }
 
             /* Custom Audio Player CSS */
+            .omni-custom-audio-player { color: #fff; }
+            .omni-custom-audio-player .omni-play-btn { color: #fff; }
+            .omni-custom-audio-player .omni-current-time { color: rgba(255,255,255,0.7); }
+
+            .omni-bubble.contact .omni-custom-audio-player,
+            .omni-bubble.contact .omni-custom-audio-player .omni-current-time,
+            .omni-bubble.contact .omni-custom-audio-player .omni-play-btn {
+                color: #475569 !important;
+            }
+            .omni-bubble.contact .omni-custom-audio-player .omni-audio-slider {
+                background: rgba(0,0,0,0.15) !important;
+            }
+            .omni-bubble.contact .omni-custom-audio-player button {
+                background: #e2e8f0 !important;
+                color: #475569 !important;
+            }
+
             .omni-audio-slider::-webkit-slider-thumb {
                 -webkit-appearance: none;
                 appearance: none;
@@ -673,6 +690,49 @@ final class ChatPageController extends AbstractController
             }
             .omni-bubble.attendant .omni-custom-audio-player button {
                 background: rgba(0,0,0,0.3) !important;
+                color: #fff !important;
+            }
+
+            .omni-msg-menu-btn {
+                display: none;
+                position: absolute;
+                top: 4px;
+                right: 8px;
+                cursor: pointer;
+                color: rgba(0,0,0,0.4);
+                font-size: 1.2rem;
+                padding: 0 4px;
+                border-radius: 4px;
+                z-index: 10;
+            }
+            .omni-bubble:hover .omni-msg-menu-btn {
+                display: block;
+            }
+            .omni-bubble.attendant .omni-msg-menu-btn {
+                color: rgba(255,255,255,0.7);
+            }
+            .omni-msg-dropdown {
+                position: absolute;
+                background: #fff;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                border-radius: 8px;
+                padding: 4px 0;
+                z-index: 9999;
+                min-width: 150px;
+                display: none;
+            }
+            .omni-msg-dropdown-item {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+                color: #334155;
+                cursor: pointer;
+                transition: background 0.1s;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            .omni-msg-dropdown-item:hover {
+                background: #f1f5f9;
             }
         </style>
 
@@ -1363,7 +1423,8 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}">
+                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" style="position:relative;">
+                            <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, '${m.id}', '${m.sender_type}', \`${escapeJs(m.message_text)}\`, '${m.media_url}')">⌄</div>
                             <div class="omni-bubble-sender">
                                 <span>${m.sender_name || ''}</span>
                             </div>
@@ -1537,8 +1598,12 @@ final class ChatPageController extends AbstractController
             }
 
             document.addEventListener('click', function(e) {
-                if (!e.target.closest('.omni-input-footer')) {
+                if (!e.target.closest('.omni-input-footer') && !e.target.closest('.omni-msg-menu-btn')) {
                     closeAllPopovers();
+                }
+                if (currentMsgMenu && !e.target.closest('#msg-dropdown')) {
+                    currentMsgMenu.remove();
+                    currentMsgMenu = null;
                 }
             });
 
@@ -1895,9 +1960,9 @@ final class ChatPageController extends AbstractController
                 <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:8px; background:transparent; padding: 4px; width: 280px; max-width: 100%; margin-bottom: 8px;">
                     <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
                     
-                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="background:#111b21; color:#fff; border:none; border-radius:15px; padding:4px 10px; font-size:0.75rem; font-weight:bold; cursor:pointer; min-width:42px; opacity: 0.7;">1x</button>
+                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:15px; padding:4px 10px; font-size:0.75rem; font-weight:bold; cursor:pointer; min-width:42px; opacity: 0.7;">1x</button>
                     
-                    <div id="play-btn-${uniqueId}" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.5rem; display:flex; align-items:center; justify-content:center; width: 30px; color: #fff; margin-left: 4px; margin-right: 4px;">
+                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.5rem; display:flex; align-items:center; justify-content:center; width: 30px; margin-left: 4px; margin-right: 4px;">
                         ▶
                     </div>
                     
@@ -1906,8 +1971,8 @@ final class ChatPageController extends AbstractController
                             <div style="width: 12px; height: 12px; background: #38bdf8; border-radius: 50%; display:inline-block; flex-shrink:0;"></div>
                             <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="flex:1; height:4px; appearance:none; background:rgba(255,255,255,0.4); border-radius:2px; cursor:pointer; outline:none; -webkit-appearance: none;" />
                         </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:rgba(255,255,255,0.7); margin-top:6px; padding-left: 18px;">
-                            <span id="curr-time-${uniqueId}">0:00</span>
+                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; margin-top:6px; padding-left: 18px;">
+                            <span id="curr-time-${uniqueId}" class="omni-current-time">0:00</span>
                         </div>
                     </div>
                 </div>
@@ -1985,6 +2050,92 @@ final class ChatPageController extends AbstractController
                     audio.playbackRate = 1;
                     btn.innerText = '1x';
                 }
+            };
+
+            // Menu Contextual da Mensagem
+            let currentMsgMenu = null;
+            window.openMsgMenu = function(e, id, type, text, mediaUrl) {
+                e.stopPropagation();
+                closeAllPopovers();
+                
+                if (currentMsgMenu) {
+                    currentMsgMenu.remove();
+                }
+                
+                const isAttendant = type === 'attendant';
+                const hasMedia = mediaUrl && mediaUrl !== 'null' && mediaUrl.length > 0;
+                const hasText = text && text !== 'null' && text.length > 0;
+                
+                let html = '<div class="omni-msg-dropdown" id="msg-dropdown" style="display:block;">';
+                
+                if (hasText) {
+                    html += `<div class="omni-msg-dropdown-item" onclick="copyMsgText(\`${escapeJs(text)}\`)">📋 Copiar</div>`;
+                }
+                html += `<div class="omni-msg-dropdown-item" onclick="replyMsg('${id}', \`${escapeJs(text)}\`)">↩️ Responder</div>`;
+                
+                if (hasMedia) {
+                    html += `<div class="omni-msg-dropdown-item" onclick="downloadMedia('${mediaUrl}')">📥 Baixar</div>`;
+                }
+                
+                if (isAttendant) {
+                    html += `<div class="omni-msg-dropdown-item" onclick="editMsg('${id}', \`${escapeJs(text)}\`)">✏️ Editar</div>`;
+                    html += `<div class="omni-msg-dropdown-item" style="color: #ef4444;" onclick="deleteMsg('${id}')">🗑️ Apagar</div>`;
+                }
+                
+                html += '</div>';
+                
+                document.body.insertAdjacentHTML('beforeend', html);
+                currentMsgMenu = document.getElementById('msg-dropdown');
+                
+                const rect = e.target.getBoundingClientRect();
+                currentMsgMenu.style.top = (rect.bottom + window.scrollY) + 'px';
+                
+                if (rect.right + 150 > window.innerWidth) {
+                    currentMsgMenu.style.right = (window.innerWidth - rect.right) + 'px';
+                } else {
+                    currentMsgMenu.style.left = rect.left + 'px';
+                }
+            };
+            
+            window.copyMsgText = function(text) {
+                navigator.clipboard.writeText(text);
+                if(currentMsgMenu) currentMsgMenu.remove();
+            };
+            
+            window.downloadMedia = function(url) {
+                if (url.startsWith('doc_')) {
+                    const filename = url.substring(4);
+                    window.open(`${rootDoc}/plugins/whatsappsimples/front/media.php?file=${filename}`, '_blank');
+                } else if (url.startsWith('data:')) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'media';
+                    a.click();
+                }
+                if(currentMsgMenu) currentMsgMenu.remove();
+            };
+            
+            window.replyMsg = function(id, text) {
+                const input = document.getElementById('message-input');
+                let quote = text.length > 50 ? text.substring(0, 50) + '...' : text;
+                input.value = `[Respondendo a: "${quote}"]\n` + input.value;
+                input.focus();
+                if(currentMsgMenu) currentMsgMenu.remove();
+            };
+
+            window.editMsg = function(id, text) {
+                const input = document.getElementById('message-input');
+                input.value = text;
+                input.focus();
+                alert('Em breve a Evolution API suportará edição direta!');
+                if(currentMsgMenu) currentMsgMenu.remove();
+            };
+            
+            window.deleteMsg = async function(id) {
+                if(confirm('Tem certeza que deseja apagar esta mensagem para todos?')) {
+                    alert('Esta função fará o delete via Evolution API em breve!');
+                }
+                if(currentMsgMenu) currentMsgMenu.remove();
             };
 
             // Inicia o app
