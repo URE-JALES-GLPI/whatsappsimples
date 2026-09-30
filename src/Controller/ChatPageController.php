@@ -1356,6 +1356,11 @@ final class ChatPageController extends AbstractController
 
                     addedNew = true;
                     let mediaHtml = '';
+                    
+                    if (m.message_text && m.message_text.trim() === '📎 Arquivo: audio.webm') {
+                        m.message_text = '';
+                    }
+
                     if (m.media_url && m.media_url.startsWith('data:')) {
                         if (m.media_url.startsWith('data:image/')) {
                             mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
@@ -1410,10 +1415,6 @@ final class ChatPageController extends AbstractController
                             let fName = filename.toLowerCase();
                             if (m.message_text && m.message_text.includes('Arquivo: ')) {
                                 fName = m.message_text.toLowerCase();
-                                // Esconde a legenda automática de áudio gravado na hora
-                                if (m.message_text.trim() === '📎 Arquivo: audio.webm') {
-                                    m.message_text = '';
-                                }
                             }
                             
                             if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
@@ -2077,18 +2078,18 @@ final class ChatPageController extends AbstractController
 
             function buildAudioPlayerHtml(url, uniqueId) {
                 return `
-                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:16px; background:transparent; padding: 4px; width: 340px; max-width: 100%; margin-bottom: 2px;">
+                <div class="omni-custom-audio-player" style="display:flex; align-items:flex-start; gap:14px; background:transparent; padding: 6px 4px; width: 340px; max-width: 100%; margin-bottom: 2px;">
                     <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
                     
-                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:14px; padding:6px 12px; font-size:0.8rem; font-weight:700; cursor:pointer; min-width:48px; background:rgba(0,0,0,0.6); color:#fff; transition: opacity 0.2s;">1,0x</button>
+                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:14px; padding:6px 12px; font-size:0.8rem; font-weight:700; cursor:pointer; min-width:48px; background:rgba(0,0,0,0.55); color:#fff; transition: opacity 0.2s; margin-top: 2px;">1,0x</button>
                     
-                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.6rem; display:flex; align-items:center; justify-content:center; width: 28px; color: rgba(0,0,0,0.6);">
+                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.7rem; display:flex; align-items:center; justify-content:center; width: 28px; color: rgba(0,0,0,0.6); line-height: 1;">
                         ▶
                     </div>
                     
-                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; margin-top:2px;">
-                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 5px; cursor: pointer; accent-color: #38bdf8; background: rgba(0,0,0,0.15); border-radius: 4px;" />
-                        <div style="display:flex; justify-content:flex-start; font-size:0.75rem; font-weight: 500; color:rgba(0,0,0,0.5); margin-top:6px;">
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
+                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 5px; cursor: pointer; accent-color: #0ea5e9; background: rgba(0,0,0,0.15); border-radius: 4px; margin: 0; margin-top: 12px;" />
+                        <div style="display:flex; justify-content:flex-start; font-size:0.75rem; font-weight: 600; color:rgba(0,0,0,0.55); margin-top:8px;">
                             <span id="curr-time-${uniqueId}" class="omni-current-time">0:00</span>
                         </div>
                     </div>
