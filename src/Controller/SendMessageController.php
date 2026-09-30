@@ -115,9 +115,17 @@ final class SendMessageController
                 $attendantName = 'ATENDENTE';
             }
 
+            $quotePrefix = '';
+            if (preg_match('/^(\[QUOTE:.*?\]\n)/', $text, $matches)) {
+                $quotePrefix = $matches[1];
+                $text = substr($text, strlen($quotePrefix));
+            }
+
             if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {
                 $text = "*{$attendantName}*\n\n" . $text;
             }
+            
+            $text = $quotePrefix . $text;
 
             // 1. Envio de Arquivos de Mídia
             $uploadedFile = $request->files->get('file');
