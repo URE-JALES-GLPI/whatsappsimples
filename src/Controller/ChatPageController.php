@@ -1430,13 +1430,15 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
-                            <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
-                            <div class="omni-bubble-sender">
-                                <span>${m.sender_name || ''}</span>
+                        <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; display: flex; flex-direction: column; padding: 4px 16px; margin: -4px -16px; box-sizing: border-box; border-radius: 4px;">
+                            <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
+                                <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
+                                <div class="omni-bubble-sender">
+                                    <span>${m.sender_name || ''}</span>
+                                </div>
+                                <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                             </div>
-                            <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
-                            <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
                         </div>
                     `;
                     box.insertAdjacentHTML('beforeend', msgHtml);
@@ -1794,29 +1796,24 @@ final class ChatPageController extends AbstractController
 
             window.scrollToMessage = function(wuid) {
                 if (!wuid) return;
-                const bubble = document.querySelector(`.omni-bubble[data-wuid="${wuid}"]`);
-                if (bubble) {
-                    bubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const row = document.querySelector(`.omni-msg-row[data-wuid="${wuid}"]`);
+                if (row) {
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
-                    // Guarda estados originais
-                    const originalBg = bubble.style.backgroundColor;
-                    const originalTransition = bubble.style.transition;
+                    const originalBg = row.style.backgroundColor;
+                    const originalTransition = row.style.transition;
                     
-                    // Aplica o destaque vivo instantaneamente (sem transição)
-                    bubble.style.transition = 'none';
-                    bubble.style.backgroundColor = 'rgba(14, 165, 233, 0.35)'; // Azul vibrante translúcido
+                    row.style.transition = 'none';
+                    row.style.backgroundColor = 'rgba(14, 165, 233, 0.2)'; 
                     
-                    // Força o navegador a renderizar o fundo azul imediatamente
-                    void bubble.offsetWidth; 
+                    void row.offsetWidth; 
                     
-                    // Configura o apagar lento (fade out) de 3 segundos
-                    bubble.style.transition = 'background-color 3s ease-out';
-                    bubble.style.backgroundColor = originalBg || '';
+                    row.style.transition = 'background-color 3s ease-out';
+                    row.style.backgroundColor = originalBg || '';
                     
-                    // Limpa a propriedade transition no final para não afetar futuros eventos
                     setTimeout(() => {
-                        if (bubble.style.backgroundColor === originalBg || bubble.style.backgroundColor === '') {
-                            bubble.style.transition = originalTransition || '';
+                        if (row.style.backgroundColor === originalBg || row.style.backgroundColor === '') {
+                            row.style.transition = originalTransition || '';
                         }
                     }, 3000);
                 } else {
