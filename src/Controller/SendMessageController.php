@@ -116,9 +116,17 @@ final class SendMessageController
             }
 
             $quotePrefix = '';
-            if (preg_match('/^(\[QUOTE:.*?\]\n)/', $text, $matches)) {
-                $quotePrefix = $matches[1];
-                $text = substr($text, strlen($quotePrefix));
+            if (str_starts_with($text, '[QUOTE:{')) {
+                $endPos = strpos($text, "}]\n");
+                $endLen = 3;
+                if ($endPos === false) {
+                    $endPos = strpos($text, "}]\r\n");
+                    $endLen = 4;
+                }
+                if ($endPos !== false) {
+                    $quotePrefix = substr($text, 0, $endPos + $endLen);
+                    $text = substr($text, $endPos + $endLen);
+                }
             }
 
             if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {

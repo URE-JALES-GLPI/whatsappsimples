@@ -459,12 +459,21 @@ class EvolutionApiService
 
         $dbText = $text;
         $quoteId = null;
-        if (preg_match('/^\[QUOTE:(.*?)\]\n/', $text, $matches)) {
-            $quoteData = json_decode($matches[1], true);
-            if ($quoteData && !empty($quoteData['wuid'])) {
-                $quoteId = $quoteData['wuid'];
+        if (str_starts_with($text, '[QUOTE:{')) {
+            $endPos = strpos($text, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($text, "}]\r\n");
+                $endLen = 4;
             }
-            $text = preg_replace('/^\[QUOTE:(.*?)\]\n/', '', $text);
+            if ($endPos !== false) {
+                $jsonStr = substr($text, 7, $endPos - 7 + 1); // +1 to include '}'
+                $quoteData = json_decode($jsonStr, true);
+                if ($quoteData && !empty($quoteData['wuid'])) {
+                    $quoteId = $quoteData['wuid'];
+                }
+                $text = substr($text, $endPos + $endLen);
+            }
         }
 
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
@@ -597,12 +606,21 @@ class EvolutionApiService
 
         $dbCaption = $caption;
         $quoteId = null;
-        if (preg_match('/^\[QUOTE:(.*?)\]\n/', $caption, $matches)) {
-            $quoteData = json_decode($matches[1], true);
-            if ($quoteData && !empty($quoteData['wuid'])) {
-                $quoteId = $quoteData['wuid'];
+        if (str_starts_with($caption, '[QUOTE:{')) {
+            $endPos = strpos($caption, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($caption, "}]\r\n");
+                $endLen = 4;
             }
-            $caption = preg_replace('/^\[QUOTE:(.*?)\]\n/', '', $caption);
+            if ($endPos !== false) {
+                $jsonStr = substr($caption, 7, $endPos - 7 + 1);
+                $quoteData = json_decode($jsonStr, true);
+                if ($quoteData && !empty($quoteData['wuid'])) {
+                    $quoteId = $quoteData['wuid'];
+                }
+                $caption = substr($caption, $endPos + $endLen);
+            }
         }
 
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";

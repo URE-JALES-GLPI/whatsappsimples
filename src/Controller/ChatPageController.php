@@ -1799,10 +1799,15 @@ final class ChatPageController extends AbstractController
                 let htmlPrefix = '';
                 let mainContent = trimmedStr;
 
-                if (trimmedStr.startsWith('[QUOTE:')) {
-                    const endBracket = trimmedStr.indexOf(']\n');
-                    if (endBracket !== -1) {
-                        const jsonStr = trimmedStr.substring(7, endBracket);
+                if (mainContent.startsWith('[QUOTE:{')) {
+                    let endPos = mainContent.indexOf('}]\n');
+                    let endLen = 3;
+                    if (endPos === -1) {
+                        endPos = mainContent.indexOf('}]\r\n');
+                        endLen = 4;
+                    }
+                    if (endPos !== -1) {
+                        const jsonStr = mainContent.substring(7, endPos + 1); // +1 to include }
                         try {
                             const qData = JSON.parse(jsonStr);
                             htmlPrefix = `
@@ -1811,8 +1816,10 @@ final class ChatPageController extends AbstractController
                                     <div style="font-size: 0.75rem; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(qData.text)}</div>
                                 </div>
                             `;
-                            mainContent = trimmedStr.substring(endBracket + 2);
-                        } catch(e) {}
+                            mainContent = mainContent.substring(endPos + endLen);
+                        } catch(e) {
+                            console.error('Error parsing QUOTE JSON', e);
+                        }
                     }
                 }
 
