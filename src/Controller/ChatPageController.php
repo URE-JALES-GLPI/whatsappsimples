@@ -1792,6 +1792,24 @@ final class ChatPageController extends AbstractController
                 return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
             }
 
+            window.scrollToMessage = function(wuid) {
+                if (!wuid) return;
+                const bubble = document.querySelector(`.omni-bubble[data-wuid="${wuid}"]`);
+                if (bubble) {
+                    bubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    bubble.style.transition = 'all 0.4s ease';
+                    const originalTransform = bubble.style.transform;
+                    
+                    bubble.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        bubble.style.transform = originalTransform || 'scale(1)';
+                    }, 400);
+                } else {
+                    alert('Mensagem original não encontrada na tela (pode estar em um histórico mais antigo).');
+                }
+            };
+
             function formatMessageHtml(str) {
                 if (!str) return '';
 
@@ -1811,7 +1829,7 @@ final class ChatPageController extends AbstractController
                         try {
                             const qData = JSON.parse(jsonStr);
                             htmlPrefix = `
-                                <div style="background: rgba(0,0,0,0.06); padding: 6px 10px; border-left: 4px solid #0284c7; border-radius: 4px; margin-bottom: 6px; cursor: pointer; user-select: none;">
+                                <div onclick="scrollToMessage('${qData.wuid}')" style="background: rgba(0,0,0,0.06); padding: 6px 10px; border-left: 4px solid #0284c7; border-radius: 4px; margin-bottom: 6px; cursor: pointer; user-select: none; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">
                                     <div style="font-size: 0.75rem; font-weight: bold; color: #0284c7; margin-bottom: 2px;">${escapeHtml(qData.name)}</div>
                                     <div style="font-size: 0.75rem; color: rgba(0,0,0,0.6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(qData.text)}</div>
                                 </div>
