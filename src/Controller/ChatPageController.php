@@ -1798,13 +1798,27 @@ final class ChatPageController extends AbstractController
                 if (bubble) {
                     bubble.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     
-                    bubble.style.transition = 'all 0.4s ease';
-                    const originalTransform = bubble.style.transform;
+                    // Guarda estados originais
+                    const originalBg = bubble.style.backgroundColor;
+                    const originalTransition = bubble.style.transition;
                     
-                    bubble.style.transform = 'scale(1.05)';
+                    // Aplica o destaque vivo instantaneamente (sem transição)
+                    bubble.style.transition = 'none';
+                    bubble.style.backgroundColor = 'rgba(14, 165, 233, 0.35)'; // Azul vibrante translúcido
+                    
+                    // Força o navegador a renderizar o fundo azul imediatamente
+                    void bubble.offsetWidth; 
+                    
+                    // Configura o apagar lento (fade out) de 3 segundos
+                    bubble.style.transition = 'background-color 3s ease-out';
+                    bubble.style.backgroundColor = originalBg || '';
+                    
+                    // Limpa a propriedade transition no final para não afetar futuros eventos
                     setTimeout(() => {
-                        bubble.style.transform = originalTransform || 'scale(1)';
-                    }, 400);
+                        if (bubble.style.backgroundColor === originalBg || bubble.style.backgroundColor === '') {
+                            bubble.style.transition = originalTransition || '';
+                        }
+                    }, 3000);
                 } else {
                     alert('Mensagem original não encontrada na tela (pode estar em um histórico mais antigo).');
                 }
