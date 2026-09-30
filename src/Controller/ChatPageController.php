@@ -1410,6 +1410,10 @@ final class ChatPageController extends AbstractController
                             let fName = filename.toLowerCase();
                             if (m.message_text && m.message_text.includes('Arquivo: ')) {
                                 fName = m.message_text.toLowerCase();
+                                // Esconde a legenda automática de áudio gravado na hora
+                                if (m.message_text.trim() === '📎 Arquivo: audio.webm') {
+                                    m.message_text = '';
+                                }
                             }
                             
                             if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
@@ -2048,21 +2052,18 @@ final class ChatPageController extends AbstractController
 
             function buildAudioPlayerHtml(url, uniqueId) {
                 return `
-                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:8px; background:transparent; padding: 4px; width: 280px; max-width: 100%; margin-bottom: 8px;">
+                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.06); padding: 10px 14px; border-radius: 20px; width: 320px; max-width: 100%; margin-bottom: 8px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
                     <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
                     
-                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:15px; padding:4px 10px; font-size:0.75rem; font-weight:bold; cursor:pointer; min-width:42px; opacity: 0.7;">1x</button>
+                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:12px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer; min-width:44px; background:#cbd5e1; color:#334155; transition: background 0.2s;">1x</button>
                     
-                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.5rem; display:flex; align-items:center; justify-content:center; width: 30px; margin-left: 4px; margin-right: 4px;">
+                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.8rem; display:flex; align-items:center; justify-content:center; width: 36px; color: #475569;">
                         ▶
                     </div>
                     
-                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; position:relative; margin-top:2px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <div style="width: 12px; height: 12px; background: #38bdf8; border-radius: 50%; display:inline-block; flex-shrink:0;"></div>
-                            <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="flex:1; height:4px; appearance:none; background:rgba(255,255,255,0.4); border-radius:2px; cursor:pointer; outline:none; -webkit-appearance: none;" />
-                        </div>
-                        <div style="display:flex; justify-content:space-between; font-size:0.65rem; margin-top:6px; padding-left: 18px;">
+                    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; margin-top:2px;">
+                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 6px; cursor: pointer; accent-color: #0284c7;" />
+                        <div style="display:flex; justify-content:flex-start; font-size:0.8rem; font-weight: 600; color:#475569; margin-top:6px;">
                             <span id="curr-time-${uniqueId}" class="omni-current-time">0:00</span>
                         </div>
                     </div>
