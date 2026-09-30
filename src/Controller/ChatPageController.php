@@ -1480,13 +1480,11 @@ final class ChatPageController extends AbstractController
                     input.style.color = '#854d0e';
                     input.style.borderColor = '#fde047';
                     input.placeholder = 'Digite uma NOTA INTERNA (invisível para o cliente)...';
-                    btn.style.backgroundColor = '#fde047';
                 } else {
                     input.style.backgroundColor = '';
                     input.style.color = '';
                     input.style.borderColor = '';
                     input.placeholder = 'Digite uma mensagem (Shift + Enter quebra linha)...';
-                    btn.style.backgroundColor = '';
                 }
                 input.focus();
             };
@@ -2079,18 +2077,18 @@ final class ChatPageController extends AbstractController
 
             function buildAudioPlayerHtml(url, uniqueId) {
                 return `
-                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:12px; background:rgba(0,0,0,0.06); padding: 10px 14px; border-radius: 20px; width: 320px; max-width: 100%; margin-bottom: 8px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.02);">
+                <div class="omni-custom-audio-player" style="display:flex; align-items:center; gap:16px; background:transparent; padding: 4px; width: 340px; max-width: 100%; margin-bottom: 2px;">
                     <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
                     
-                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:12px; padding:4px 8px; font-size:0.75rem; font-weight:700; cursor:pointer; min-width:44px; background:#cbd5e1; color:#334155; transition: background 0.2s;">1x</button>
+                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:14px; padding:6px 12px; font-size:0.8rem; font-weight:700; cursor:pointer; min-width:48px; background:rgba(0,0,0,0.6); color:#fff; transition: opacity 0.2s;">1,0x</button>
                     
-                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.8rem; display:flex; align-items:center; justify-content:center; width: 36px; color: #475569;">
+                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.6rem; display:flex; align-items:center; justify-content:center; width: 28px; color: rgba(0,0,0,0.6);">
                         ▶
                     </div>
                     
                     <div style="flex:1; display:flex; flex-direction:column; justify-content:center; margin-top:2px;">
-                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 6px; cursor: pointer; accent-color: #0284c7;" />
-                        <div style="display:flex; justify-content:flex-start; font-size:0.8rem; font-weight: 600; color:#475569; margin-top:6px;">
+                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 5px; cursor: pointer; accent-color: #38bdf8; background: rgba(0,0,0,0.15); border-radius: 4px;" />
+                        <div style="display:flex; justify-content:flex-start; font-size:0.75rem; font-weight: 500; color:rgba(0,0,0,0.5); margin-top:6px;">
                             <span id="curr-time-${uniqueId}" class="omni-current-time">0:00</span>
                         </div>
                     </div>
@@ -2164,10 +2162,10 @@ final class ChatPageController extends AbstractController
                     btn.innerText = '1,5x';
                 } else if (audio.playbackRate === 1.5) {
                     audio.playbackRate = 2;
-                    btn.innerText = '2x';
+                    btn.innerText = '2,0x';
                 } else {
                     audio.playbackRate = 1;
-                    btn.innerText = '1x';
+                    btn.innerText = '1,0x';
                 }
             };
 
