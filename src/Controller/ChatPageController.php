@@ -886,7 +886,7 @@ final class ChatPageController extends AbstractController
                             <span class="omni-footer-tool-btn" title="Anexar Arquivo/Foto" onclick="document.getElementById('file-input').click()">+</span>
                             <span class="omni-footer-tool-btn" title="Emojis" onclick="toggleOmniPopover('emoji-popover')">😊</span>
                             <span class="omni-footer-tool-btn" title="Respostas Rápidas" onclick="toggleOmniPopover('canned-popover')">⚡</span>
-                            <span class="omni-footer-tool-btn" title="Nota Interna" onclick="insertCanned('[NOTA INTERNA] ')">📝</span>
+                            <span class="omni-footer-tool-btn" id="internal-note-btn" title="Nota Interna" onclick="toggleInternalNoteMode()">📝</span>
                         </div>
 
                         <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this); checkInputState();" disabled rows="1"></textarea>
@@ -1469,9 +1469,35 @@ final class ChatPageController extends AbstractController
                 checkInputState();
             };
 
+            let isInternalNoteMode = false;
+            window.toggleInternalNoteMode = function() {
+                isInternalNoteMode = !isInternalNoteMode;
+                const input = document.getElementById('message-input');
+                const btn = document.getElementById('internal-note-btn');
+                
+                if (isInternalNoteMode) {
+                    input.style.backgroundColor = '#fef08a';
+                    input.style.color = '#854d0e';
+                    input.style.borderColor = '#fde047';
+                    input.placeholder = 'Digite uma NOTA INTERNA (invisível para o cliente)...';
+                    btn.style.backgroundColor = '#fde047';
+                } else {
+                    input.style.backgroundColor = '';
+                    input.style.color = '';
+                    input.style.borderColor = '';
+                    input.placeholder = 'Digite uma mensagem (Shift + Enter quebra linha)...';
+                    btn.style.backgroundColor = '';
+                }
+                input.focus();
+            };
+
             async function sendCurrentMessage() {
                 const input = document.getElementById('message-input');
                 let text = input.value.trim();
+                
+                if (isInternalNoteMode) {
+                    text = '[NOTA INTERNA] ' + text;
+                }
 
                 if ((!text && stagedFiles.length === 0) || (!activeChatId && !activePhoneNumber)) return;
 
@@ -1543,6 +1569,7 @@ final class ChatPageController extends AbstractController
                 if (!hasError) {
                     clearSelectedFile();
                     clearQuotePreview();
+                    if (isInternalNoteMode) toggleInternalNoteMode();
                     if (currentTab === 'queue') {
                         const mineBtn = document.querySelector('.omni-tab-btn[onclick="switchTab(\'mine\', this)"]');
                         switchTab('mine', mineBtn, true);
