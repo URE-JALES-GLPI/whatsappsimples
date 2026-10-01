@@ -1357,8 +1357,13 @@ final class ChatPageController extends AbstractController
                     addedNew = true;
                     let mediaHtml = '';
                     
-                    if (m.message_text && m.message_text.trim() === '📎 Arquivo: audio.webm') {
-                        m.message_text = '';
+                    if (m.message_text && m.message_text.trim().startsWith('📎 Arquivo:')) {
+                        let lines = m.message_text.trim().split('\n');
+                        if (lines.length === 1) {
+                            m.message_text = '';
+                        } else {
+                            m.message_text = lines.slice(1).join('\n');
+                        }
                     }
 
                     if (m.media_url && m.media_url.startsWith('data:')) {
@@ -2287,7 +2292,24 @@ final class ChatPageController extends AbstractController
             
             window.deleteMsg = async function(id) {
                 if(confirm('Tem certeza que deseja apagar esta mensagem para todos?')) {
-                    alert('Esta função fará o delete via Evolution API em breve!');
+                    const formData = new FormData();
+                    formData.append('msg_id', id);
+                    
+                    const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/delete-message.php`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (res && res.success) {
+                        const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
+                        if (bubble) {
+                            const row = bubble.closest('.omni-msg-row');
+                            if (row) row.remove();
+                            else bubble.remove();
+                        }
+                    } else {
+                        alert(res.error || 'Erro ao apagar mensagem.');
+                    }
                 }
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
