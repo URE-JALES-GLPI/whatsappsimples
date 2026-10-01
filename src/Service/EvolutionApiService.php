@@ -75,11 +75,14 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações incompletas, número ou Message ID vazios'];
         }
 
-        $endpoint = "{$baseUrl}/chat/deleteMessage/{$instance}";
+        $endpoint = "{$baseUrl}/chat/deleteMessageForEveryone/{$instance}";
+        
+        $remoteJid = strpos($phoneNumber, '@') !== false ? $phoneNumber : $phoneNumber . '@s.whatsapp.net';
         
         $bodyData = [
-            'number' => $phoneNumber,
-            'messageId' => $messageId
+            'id' => $messageId,
+            'remoteJid' => $remoteJid,
+            'fromMe' => true
         ];
 
         $ch = curl_init($endpoint);
