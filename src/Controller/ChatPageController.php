@@ -967,7 +967,7 @@ final class ChatPageController extends AbstractController
                             
                             <div style="margin-bottom:15px;">
                                 <label style="display:block; margin-bottom:5px; font-size:0.9rem; font-weight:600; color:#475569;">Número do WhatsApp (com DDI e DDD):</label>
-                                <input type="text" id="new-chat-phone" placeholder="Ex: 5517999999999" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
+                                <input type="text" id="new-chat-phone" value="55" placeholder="Ex: 5517999999999" style="width:100%; max-width:400px; padding:10px; border:1px solid #cbd5e1; border-radius:6px; font-size:0.95rem;">
                                 <small style="display:block; color:#64748b; font-size:0.8rem; margin-top:5px;">Apenas números. Ex: 55 para Brasil.</small>
                             </div>
                             <div style="margin-bottom:25px;">
