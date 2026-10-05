@@ -2023,7 +2023,7 @@ final class ChatPageController extends AbstractController
             }
 
             function openSettingsModal() {
-                document.getElementById('new-chat-phone').value = '';
+                document.getElementById('new-chat-phone').value = '55';
                 document.getElementById('new-chat-name').value = '';
                 document.getElementById('new-chat-error').style.display = 'none';
                 
