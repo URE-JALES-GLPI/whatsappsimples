@@ -43,7 +43,7 @@ final class GetChatsController
                         ]
                     ]
                 ],
-                'ORDER'  => 'c.date_mod DESC, c.id DESC'
+                'ORDER'  => "c.status != 'closed' DESC, c.date_mod DESC, c.id DESC"
             ]);
 
             $latestByPhone = [];

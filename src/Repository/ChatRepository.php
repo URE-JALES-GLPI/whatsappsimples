@@ -87,6 +87,9 @@ class ChatRepository
         if (!isset($data['date_creation'])) {
             $data['date_creation'] = date('Y-m-d H:i:s');
         }
+        if (!isset($data['date_mod'])) {
+            $data['date_mod'] = date('Y-m-d H:i:s');
+        }
         
         if ($DB->insert('glpi_plugin_whatsappsimples_chats', $data)) {
             return (int) $DB->insertId();
@@ -136,7 +139,8 @@ class ChatRepository
     public function incrementUnreadCount(int $chatId): bool
     {
         global $DB;
-        return $DB->doQuery("UPDATE `glpi_plugin_whatsappsimples_chats` SET `unread_count` = `unread_count` + 1 WHERE `id` = $chatId");
+        $now = date('Y-m-d H:i:s');
+        return $DB->doQuery("UPDATE `glpi_plugin_whatsappsimples_chats` SET `unread_count` = `unread_count` + 1, `date_mod` = '$now' WHERE `id` = $chatId");
     }
 
     public function resetUnreadCount(int $chatId): bool
