@@ -4,9 +4,11 @@ if (!defined('GLPI_ROOT')) {
     die("Sorry. You can't access this file directly");
 }
 
+require_once __DIR__ . '/../src/compat.php';
+
 class PluginWhatsappsimplesProfile extends CommonGLPI
 {
-    public static $rightname = 'plugin_whatsappsimples';
+    public static string $rightname = 'plugin_whatsappsimples';
 
     public static function canView(): bool
     {
@@ -111,8 +113,8 @@ class PluginWhatsappsimplesProfile extends CommonGLPI
         global $DB;
         $profiles_id = $ID;
 
-        echo "<form name='form_whatsappsimples_profile' action='" . Plugin::getWebDir('whatsappsimples') . "/front/profile.form.php' method='post'>";
-        echo "<input type='hidden' name='_glpi_csrf_token' value='" . Session::getNewCSRFToken() . "'>";
+        echo "<form name='form_whatsappsimples_profile' action='" . wa_web_dir('whatsappsimples') . "/front/profile.form.php' method='post'>";
+        echo "<input type='hidden' name='_glpi_csrf_token' value='" . wa_csrf_token() . "'>";
         echo "<input type='hidden' name='profiles_id' value='$profiles_id'>";
 
         echo "<table class='tab_cadre_fixehov'>";

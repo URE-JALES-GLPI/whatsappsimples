@@ -1,5 +1,6 @@
 <?php
 include('../../../inc/includes.php');
+require_once __DIR__ . '/../src/compat.php';
 Session::checkLoginUser();
 Session::checkRight('plugin_whatsappsimples', READ);
 $serverUrl = PluginWhatsappsimplesConfig::getConfig('server_url', 'http://localhost:3001');
@@ -55,5 +56,5 @@ Html::header(
 window.WAPP_SERVER = <?= json_encode($serverUrl) ?>;
 window.WAPP_TOKEN  = <?= json_encode($apiToken) ?>;
 </script>
-<script src="<?= Plugin::getWebDir('whatsappsimples') ?>/public/js/whatsappsimples.js"></script>
+<script src="<?= wa_web_dir('whatsappsimples') ?>/public/js/whatsappsimples.js"></script>
 <?php Html::footer(); ?>

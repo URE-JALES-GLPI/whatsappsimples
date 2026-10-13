@@ -5,6 +5,8 @@ use GlpiPlugin\Whatsappsimples\Menu;
 
 include_once __DIR__ . '/hook.php';
 
+require_once __DIR__ . '/src/compat.php';
+
 // Registra os caminhos STATELESS (API / Webhook de servidores externos sem sessão e sem CSRF) no GLPI 11
 if (class_exists(\Glpi\Http\SessionManager::class)) {
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/webhook#');
@@ -22,7 +24,11 @@ function plugin_init_whatsappsimples(): void
 {
     global $PLUGIN_HOOKS;
 
-    $PLUGIN_HOOKS['csrf_compliant']['whatsappsimples'] = true;
+    // CSRF compliance - no GLPI 12 o hook foi removido (CheckCsrfListener cuida);
+    // mantém true apenas no GLPI <12 (mesmo esquema dos outros plugins URE).
+    if (!wa_is_glpi12_plus()) {
+        $PLUGIN_HOOKS['csrf_compliant']['whatsappsimples'] = true;
+    }
     $PLUGIN_HOOKS['change_profile']['whatsappsimples'] = ['PluginWhatsappsimplesProfile', 'changeProfile'];
 
     if (class_exists(\Glpi\Http\SessionManager::class)) {
@@ -56,12 +62,12 @@ function plugin_version_whatsappsimples(): array
 {
     return [
         'name'         => 'WhatsApp',
-        'version'      => '1.0.1',
+        'version'      => '1.1.0',
         'author'       => 'Equipe de TI',
         'license'      => 'GPLv3+',
         'homepage'     => '',
         'requirements' => [
-            'glpi' => ['min' => '11.0.0'],
+            'glpi' => ['min' => '11.0.0', 'max' => '12.0.99'],
             'php'  => ['min' => '8.1'],
         ],
     ];

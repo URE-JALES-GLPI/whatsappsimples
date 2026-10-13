@@ -7,7 +7,7 @@ use Session;
 
 class Menu extends CommonGLPI
 {
-    public static $rightname = 'tools';
+    public static string $rightname = 'tools';
 
     public static function getMenuName(int $nb = 0): string
     {
