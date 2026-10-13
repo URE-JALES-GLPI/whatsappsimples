@@ -8,7 +8,7 @@ class PluginWhatsappsimplesConfig extends CommonDBTM
 
     static function getTypeName($nb = 0): string
     {
-        return 'Configuraï¿½ï¿½es WhatsApp Simples';
+        return 'Configurações WhatsApp Simples';
     }
 
     static function getConfig(string $name, $default = null)
@@ -75,15 +75,15 @@ class PluginWhatsappsimplesConfig extends CommonDBTM
         echo '<form method="post" action="' . $action . '">';
         echo '<input type="hidden" name="_glpi_csrf_token" value="' . wa_csrf_token() . '">';
         echo '<table class="tab_cadre_fixe">';
-        echo '<tr class="headerRow"><th colspan="4">Configuraï¿½ï¿½es do Servidor WhatsApp</th></tr>';
+        echo '<tr class="headerRow"><th colspan="4">Configurações do Servidor WhatsApp</th></tr>';
 
         echo '<tr class="tab_bg_1">';
         echo '<td style="width:25%">URL do Servidor</td>';
-        echo '<td colspan="3"><input type="text" name="server_url" value="' . htmlspecialchars($serverUrl) . '" class="form-control" style="width:400px"><br><span style="font-size:11px;color:#888;">Endereï¿½o completo com porta. Ex: http://localhost:3001</span></td>';
+        echo '<td colspan="3"><input type="text" name="server_url" value="' . htmlspecialchars($serverUrl) . '" class="form-control" style="width:400px"><br><span style="font-size:11px;color:#888;">Endereço completo com porta. Ex: http://localhost:3001</span></td>';
         echo '</tr>';
 
         echo '<tr class="tab_bg_1">';
-        echo '<td>Token de Autenticaï¿½ï¿½o</td>';
+        echo '<td>Token de Autenticação</td>';
         echo '<td colspan="3"><input type="text" name="api_token" value="' . htmlspecialchars($apiToken) . '" class="form-control" style="width:400px"></td>';
         echo '</tr>';
 
