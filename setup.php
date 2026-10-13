@@ -61,7 +61,7 @@ function plugin_init_whatsappsimples(): void
 function plugin_version_whatsappsimples(): array
 {
     return [
-        'name'         => 'WhatsApp',
+        'name'         => '[URE] WhatsApp',
         'version'      => '1.1.0',
         'author'       => 'Equipe de TI',
         'license'      => 'GPLv3+',
