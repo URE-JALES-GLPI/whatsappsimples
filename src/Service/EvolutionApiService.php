@@ -25,6 +25,18 @@ class EvolutionApiService
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'is_internal')) {
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `is_internal` tinyint(1) NOT NULL DEFAULT 0 AFTER `media_url`");
             }
+            $mediaCols = [
+                'media_path'   => "varchar(255) DEFAULT NULL",
+                'media_mime'   => "varchar(100) DEFAULT NULL",
+                'media_size'   => "bigint(20) DEFAULT 0",
+                'media_sha256' => "varchar(64) DEFAULT NULL",
+                'media_status' => "varchar(20) DEFAULT NULL",
+            ];
+            foreach ($mediaCols as $col => $def) {
+                if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', $col)) {
+                    @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `$col` $def");
+                }
+            }
         }
         if ($DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'linked_lid')) {
