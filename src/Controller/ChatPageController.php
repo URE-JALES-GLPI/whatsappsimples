@@ -418,6 +418,19 @@ final class ChatPageController extends AbstractController
                 margin: 8px 0;
             }
 
+            .omni-system-badge {
+                align-self: center;
+                background: #cbd5e1;
+                color: #334155;
+                padding: 5px 18px;
+                border-radius: 12px;
+                font-size: 0.78rem;
+                font-weight: 600;
+                text-align: center;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+                margin: 10px 0;
+            }
+
             .omni-bubble {
                 max-width: 65%;
                 padding: 8px 12px 6px 12px;
@@ -1355,6 +1368,15 @@ final class ChatPageController extends AbstractController
                     if (existingNode) return;
 
                     addedNew = true;
+
+                    if (m.sender_type === 'system') {
+                        const sysNode = document.createElement('div');
+                        sysNode.className = 'omni-system-badge';
+                        sysNode.setAttribute('data-msg-id', m.id);
+                        sysNode.textContent = (m.message_text || '') + (m.date_creation ? ' • ' + formatTime(m.date_creation) : '');
+                        box.appendChild(sysNode);
+                        return;
+                    }
                     let mediaHtml = '';
                     
                     if (m.message_text && m.message_text.trim().startsWith('📎 Arquivo:')) {

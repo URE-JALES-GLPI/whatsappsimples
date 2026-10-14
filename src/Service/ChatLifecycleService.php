@@ -94,12 +94,30 @@ class ChatLifecycleService
     public function closeChat(int $chatId, int $userId): bool
     {
         $now = date('Y-m-d H:i:s');
-        return $this->repository->updateChat($chatId, [
+        $ok = $this->repository->updateChat($chatId, [
             'status'      => 'closed',
             'users_id'    => $userId, // Marca quem encerrou
             'date_closed' => $now,
             'date_mod'    => $now
         ]);
+
+        if ($ok) {
+            $who = '';
+            $user = new \User();
+            if ($userId > 0 && $user->getFromDB($userId)) {
+                $who = trim(($user->fields['firstname'] ?? '') . ' ' . ($user->fields['realname'] ?? ''));
+            }
+            $this->repository->saveMessage([
+                'chats_id'     => $chatId,
+                'users_id'     => $userId,
+                'message_id'   => 'sys_close_' . $chatId . '_' . time(),
+                'sender_type'  => 'system',
+                'message_text' => 'Atendimento encerrado' . ($who !== '' ? ' por ' . $who : ''),
+                'date_creation' => $now,
+            ]);
+        }
+
+        return $ok;
     }
 
     /**

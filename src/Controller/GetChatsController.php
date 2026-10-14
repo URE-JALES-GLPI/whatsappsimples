@@ -43,17 +43,30 @@ final class GetChatsController
                         ]
                     ]
                 ],
-                'ORDER'  => "c.status != 'closed' DESC, c.date_mod DESC, c.id DESC"
+                'ORDER'  => 'c.date_mod DESC, c.id DESC'
             ]);
 
             $latestByPhone = [];
+            $phonesServedByMe = [];
             foreach ($iterator as $row) {
                 $phone = $row['phone_number'];
                 if (empty($phone)) {
                     continue;
                 }
 
-                if (!isset($latestByPhone[$phone])) {
+                // Contatos do tecnico logado: qualquer atendimento que ele assumiu ou encerrou
+                if ((int) $row['users_id'] === $currentUserId) {
+                    $phonesServedByMe[$phone] = true;
+                }
+
+                // Um atendimento ativo (pending/in_progress) sempre prevalece sobre o historico encerrado
+                $isActive = $row['status'] !== 'closed';
+                $alreadyPicked = isset($latestByPhone[$phone]);
+                if ($alreadyPicked && !($isActive && $latestByPhone[$phone]['status'] === 'closed')) {
+                    continue;
+                }
+
+                if (true) {
                     $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
 
                     $technicianName = null;
@@ -93,8 +106,10 @@ final class GetChatsController
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'all') {
-                    // Contatos: Exibe todos os contatos únicos cadastrados no sistema
-                    $chats[] = $c;
+                    // Contatos: apenas contatos que o tecnico logado atendeu (assumiu ou encerrou)
+                    if (isset($phonesServedByMe[$c['phone_number']])) {
+                        $chats[] = $c;
+                    }
                 }
             }
 

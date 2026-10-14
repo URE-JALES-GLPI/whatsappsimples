@@ -88,7 +88,9 @@ final class GetMessagesController
             foreach ($iterator as $row) {
                 $senderName = '';
                 $type = $row['sender_type'];
-                if ($type === 'user' || $type === 'contact') {
+                if ($type === 'system') {
+                    $senderName = '';
+                } elseif ($type === 'user' || $type === 'contact') {
                     $senderName = $contactDisplayName;
                 } else {
                     $techId = (int) ($row['users_id'] ?? 0);
