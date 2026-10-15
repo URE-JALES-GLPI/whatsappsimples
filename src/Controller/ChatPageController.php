@@ -1327,6 +1327,7 @@ final class ChatPageController extends AbstractController
 
                 if (data.success) {
                     activeChatId = 0;
+                    activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';
                     document.getElementById('messages-box').innerHTML = `
                         <div class="omni-divider-badge">Atendimento encerrado com sucesso</div>
