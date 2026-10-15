@@ -168,6 +168,7 @@ final class SendMessageController
                 }
 
                 self::logDebug("RESULTADO_ENVIO_MIDIA", $result);
+                \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('message_sent', ['phone_number' => $phoneToUpdate]);
                 return new JsonResponse($result);
             }
 
@@ -224,6 +225,7 @@ final class SendMessageController
                 $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => (int) $chat['id']]);
             }
 
+            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('message_sent', ['phone_number' => $phoneToUpdate]);
             return new JsonResponse($result);
 
         } catch (\Throwable $e) {

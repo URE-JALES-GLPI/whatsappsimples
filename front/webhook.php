@@ -93,6 +93,7 @@ try {
     $success = $dispatcher->dispatchIncomingMessage($messageDTO);
 
     if ($success) {
+        \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('new_message', ['phone_number' => $phoneNumber]);
         echo json_encode(['success' => true, 'message' => 'Mensagem processada']);
     } else {
         http_response_code(500);

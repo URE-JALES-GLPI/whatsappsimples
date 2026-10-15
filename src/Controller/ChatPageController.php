@@ -2365,9 +2365,41 @@ final class ChatPageController extends AbstractController
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
 
-            // Inicia o app
-            setInterval(loadChats, 5000);
+            // Inicia o app: tempo real via Mercure (SSE) com polling lento como plano B
+            let sseConnected = false;
+            let sseDebounce = null;
+
+            function scheduleRefresh() {
+                clearTimeout(sseDebounce);
+                sseDebounce = setTimeout(loadChats, 250);
+            }
+
+            function connectRealtime() {
+                try {
+                    const hubUrl = new URL('<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::HUB_URL ?>');
+                    hubUrl.searchParams.append('topic', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::TOPIC ?>');
+                    const es = new EventSource(hubUrl);
+                    es.onopen = () => { sseConnected = true; };
+                    es.onmessage = () => { scheduleRefresh(); };
+                    es.onerror = () => { sseConnected = false; }; // EventSource reconecta sozinho
+                } catch (e) {
+                    sseConnected = false;
+                }
+            }
+
+            function pollLoop() {
+                if (!document.hidden) loadChats();
+                // Sem Mercure: 5s. Com Mercure ativo: apenas uma verificacao de seguranca a cada 60s.
+                setTimeout(pollLoop, sseConnected ? 60000 : 5000);
+            }
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) loadChats();
+            });
+
+            connectRealtime();
             loadChats();
+            setTimeout(pollLoop, 5000);
         </script>
         <?php
 

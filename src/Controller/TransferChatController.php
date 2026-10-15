@@ -61,6 +61,7 @@ final class TransferChatController
         ], ['phone_number' => $phoneToUpdate]);
 
         if ($success !== false) {
+            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('chat_transferred', ['phone_number' => $phoneToUpdate]);
             return new JsonResponse(['success' => true]);
         }
 
