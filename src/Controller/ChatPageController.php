@@ -2377,7 +2377,7 @@ final class ChatPageController extends AbstractController
             function connectRealtime() {
                 try {
                     const hubUrl = new URL('<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::HUB_URL ?>');
-                    hubUrl.searchParams.append('topic', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::TOPIC ?>');
+                    hubUrl.searchParams.append('match', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::TOPIC ?>');
                     const es = new EventSource(hubUrl);
                     es.onopen = () => { sseConnected = true; };
                     es.onmessage = () => { scheduleRefresh(); };

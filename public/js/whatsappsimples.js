@@ -886,7 +886,7 @@
         // NOVA CONEXÃO REAL-TIME (Substitui o setInterval de 2 segundos)
         // -----------------------------------------------------------------
         const mercureUrl = new URL('http://10.180.152.29:3001/.well-known/mercure');
-        mercureUrl.searchParams.append('topic', 'chats_ure_jales');
+        mercureUrl.searchParams.append('match', 'chats_ure_jales');
 
         const eventSource = new EventSource(mercureUrl);
 

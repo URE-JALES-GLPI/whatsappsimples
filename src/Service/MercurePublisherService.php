@@ -23,7 +23,7 @@ class MercurePublisherService
         }
     }
 
-    public function publish(string $topic, array $payload): void
+    public function publish(string $topic, array $payload): bool
     {
         $token = $this->generateJwt();
 
@@ -35,8 +35,8 @@ class MercurePublisherService
         $ch = curl_init($this->mercureUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 800);
-        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 1500);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, 1500);
+        curl_setopt($ch, CURLOPT_TIMEOUT_MS, 2500);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             "Authorization: Bearer {$token}",
@@ -44,14 +44,35 @@ class MercurePublisherService
         ]);
         
         $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        if (php_sapi_name() === 'cli') {
+            echo "Mercure Publish Status: HTTP $httpCode | Resp: $response" . ($curlError ? " | Curl Err: $curlError" : "") . "\n";
+        }
+
+        return $httpCode >= 200 && $httpCode < 300;
     }
 
     private function generateJwt(): string
     {
         $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
-        // Permissão para publicar em qualquer tópico
-        $payload = json_encode(['mercure' => ['publish' => ['*']]]);
+        $now = time();
+        $payload = json_encode([
+            'iat' => $now,
+            'exp' => $now + 86400, // 24h
+            'mercure' => ['publish' => ['*']],
+            'authorization_details' => [
+                [
+                    'type' => 'https://mercure.rocks/authorization-detail',
+                    'actions' => ['publish'],
+                    'topics' => [
+                        ['match' => '*']
+                    ]
+                ]
+            ]
+        ]);
 
         $base64UrlHeader = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($header));
         $base64UrlPayload = str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($payload));
