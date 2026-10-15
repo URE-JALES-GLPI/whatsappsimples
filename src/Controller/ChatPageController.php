@@ -211,6 +211,16 @@ final class ChatPageController extends AbstractController
                 background: #0284c7;
                 color: #ffffff;
             }
+            .omni-tab-badge.alert,
+            .omni-tab-btn.active .omni-tab-badge.alert {
+                background: #ef4444;
+                color: #ffffff;
+                animation: omniBadgePulse 1.2s ease-in-out infinite;
+            }
+            @keyframes omniBadgePulse {
+                0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+                50% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+            }
 
             .omni-subsort {
                 padding: 6px 16px;
@@ -1148,15 +1158,33 @@ final class ChatPageController extends AbstractController
                 }
             }
 
+            function setTabBadge(tab, chats) {
+                const el = document.getElementById(tab === 'queue' ? 'badge-queue' : 'badge-mine');
+                if (!el) return;
+                el.innerText = chats.length;
+                const hasPending = (tab === 'queue')
+                    ? chats.length > 0
+                    : chats.some(c => c.unread_count > 0 && c.id !== activeChatId);
+                el.classList.toggle('alert', hasPending);
+            }
+
+            async function refreshOtherTabBadges() {
+                // Mantem os contadores de Fila e Chats vivos mesmo estando em outra aba (ex: Contatos)
+                const others = ['queue', 'mine'].filter(t => t !== currentTab);
+                for (const t of others) {
+                    const d = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${t}`);
+                    if (d && Array.isArray(d.chats)) setTabBadge(t, d.chats);
+                }
+            }
+
             async function loadChats() {
                 const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${currentTab}`);
                 allLoadedChats = data.chats || [];
 
-                if (currentTab === 'mine') {
-                    document.getElementById('badge-mine').innerText = allLoadedChats.length;
-                } else if (currentTab === 'queue') {
-                    document.getElementById('badge-queue').innerText = allLoadedChats.length;
+                if (currentTab === 'mine' || currentTab === 'queue') {
+                    setTabBadge(currentTab, allLoadedChats);
                 }
+                refreshOtherTabBadges();
 
                 renderChatList(allLoadedChats);
 
