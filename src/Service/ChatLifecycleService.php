@@ -102,6 +102,26 @@ class ChatLifecycleService
         ]);
 
         if ($ok) {
+            // Garante que nenhum outro atendimento ativo do mesmo numero fique aberto
+            global $DB;
+            $current = $DB->request([
+                'SELECT' => ['phone_number'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => ['id' => $chatId],
+                'LIMIT'  => 1
+            ])->current();
+            if ($current && !empty($current['phone_number'])) {
+                $DB->update('glpi_plugin_whatsappsimples_chats', [
+                    'status'      => 'closed',
+                    'users_id'    => $userId,
+                    'date_closed' => $now,
+                    'date_mod'    => $now
+                ], [
+                    'phone_number' => $current['phone_number'],
+                    'status'       => ['pending', 'in_progress']
+                ]);
+            }
+
             $who = '';
             $user = new \User();
             if ($userId > 0 && $user->getFromDB($userId)) {

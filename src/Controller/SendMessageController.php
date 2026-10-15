@@ -160,11 +160,11 @@ final class SendMessageController
                         'users_id' => $currentUserId,
                         'status'   => 'in_progress',
                         'date_mod' => $now
-                    ], ['phone_number' => $phoneToUpdate]);
+                    ], ['id' => (int) $chat['id']]);
                 } else {
                     $DB->update('glpi_plugin_whatsappsimples_chats', [
                         'date_mod' => $now
-                    ], ['phone_number' => $phoneToUpdate]);
+                    ], ['id' => (int) $chat['id']]);
                 }
 
                 self::logDebug("RESULTADO_ENVIO_MIDIA", $result);
@@ -221,7 +221,7 @@ final class SendMessageController
                 }
 
                 // Atualiza o status/users_id ou apenas a data
-                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneToUpdate]);
+                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => (int) $chat['id']]);
             }
 
             return new JsonResponse($result);
