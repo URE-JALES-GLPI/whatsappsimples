@@ -51,10 +51,34 @@ $filesize = filesize($filePath);
 $offset = 0;
 $length = $filesize;
 
+$ext = pathinfo($file, PATHINFO_EXTENSION);
+if (!$ext) {
+    $map = [
+        'application/pdf' => 'pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.ms-excel' => 'xls',
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'audio/mp4' => 'm4a',
+        'audio/ogg' => 'ogg',
+        'video/mp4' => 'mp4',
+        'text/csv' => 'csv',
+        'text/plain' => 'txt',
+        'application/zip' => 'zip',
+        'application/octet-stream' => 'bin'
+    ];
+    $ext = $map[$mime] ?? 'bin';
+}
+
+$filename = "documento." . $ext;
+$disposition = (strpos($mime, 'image/') === 0 || strpos($mime, 'video/') === 0 || strpos($mime, 'audio/') === 0) ? 'inline' : 'attachment';
+
 header("Content-Type: $mime");
 header("Accept-Ranges: bytes");
 header("X-Content-Type-Options: nosniff");
-header("Content-Disposition: inline; filename=\"media\"");
+header("Content-Disposition: $disposition; filename=\"$filename\"");
 
 if (isset($_SERVER['HTTP_RANGE'])) {
     if (preg_match('/bytes=(\d+)-(\d+)?/', $_SERVER['HTTP_RANGE'], $matches)) {

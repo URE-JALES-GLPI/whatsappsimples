@@ -115,9 +115,25 @@ final class SendMessageController
                 $attendantName = 'ATENDENTE';
             }
 
+            $quotePrefix = '';
+            if (str_starts_with($text, '[QUOTE:{')) {
+                $endPos = strpos($text, "}]\n");
+                $endLen = 3;
+                if ($endPos === false) {
+                    $endPos = strpos($text, "}]\r\n");
+                    $endLen = 4;
+                }
+                if ($endPos !== false) {
+                    $quotePrefix = substr($text, 0, $endPos + $endLen);
+                    $text = substr($text, $endPos + $endLen);
+                }
+            }
+
             if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {
                 $text = "*{$attendantName}*\n\n" . $text;
             }
+            
+            $text = $quotePrefix . $text;
 
             // 1. Envio de Arquivos de Mídia
             $uploadedFile = $request->files->get('file');
@@ -144,18 +160,19 @@ final class SendMessageController
                         'users_id' => $currentUserId,
                         'status'   => 'in_progress',
                         'date_mod' => $now
-                    ], ['phone_number' => $phoneToUpdate]);
+                    ], ['id' => (int) $chat['id']]);
                 } else {
                     $DB->update('glpi_plugin_whatsappsimples_chats', [
                         'date_mod' => $now
-                    ], ['phone_number' => $phoneToUpdate]);
+                    ], ['id' => (int) $chat['id']]);
                 }
 
                 self::logDebug("RESULTADO_ENVIO_MIDIA", $result);
+                \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('message_sent', ['phone_number' => $phoneToUpdate]);
                 return new JsonResponse($result);
             }
 
-            if (empty($text)) {
+            if ($text === null || trim((string)$text) === '') {
                 return new JsonResponse(['success' => false, 'error' => 'Digite um texto ou selecione um arquivo para enviar'], 400);
             }
 
@@ -166,7 +183,7 @@ final class SendMessageController
                 $isInternal = true;
                 // Remove o prefixo para salvar no banco limpo (ou mantém, mas limpo é melhor)
                 $pureText = trim(str_replace('[NOTA INTERNA]', '', $text));
-                if (empty($pureText)) {
+                if ($pureText === '') {
                     return new JsonResponse(['success' => false, 'error' => 'Nota interna não pode ser vazia'], 400);
                 }
             }
@@ -205,9 +222,10 @@ final class SendMessageController
                 }
 
                 // Atualiza o status/users_id ou apenas a data
-                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneToUpdate]);
+                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['id' => (int) $chat['id']]);
             }
 
+            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('message_sent', ['phone_number' => $phoneToUpdate]);
             return new JsonResponse($result);
 
         } catch (\Throwable $e) {

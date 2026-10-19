@@ -25,6 +25,18 @@ class EvolutionApiService
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'is_internal')) {
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `is_internal` tinyint(1) NOT NULL DEFAULT 0 AFTER `media_url`");
             }
+            $mediaCols = [
+                'media_path'   => "varchar(255) DEFAULT NULL",
+                'media_mime'   => "varchar(100) DEFAULT NULL",
+                'media_size'   => "bigint(20) DEFAULT 0",
+                'media_sha256' => "varchar(64) DEFAULT NULL",
+                'media_status' => "varchar(20) DEFAULT NULL",
+            ];
+            foreach ($mediaCols as $col => $def) {
+                if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', $col)) {
+                    @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `$col` $def");
+                }
+            }
         }
         if ($DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'linked_lid')) {
@@ -59,6 +71,103 @@ class EvolutionApiService
     {
         $clean = preg_replace('/[^0-9]/', '', $digits);
         return str_starts_with($clean, '55') && strlen($clean) >= 12 && strlen($clean) <= 13;
+    }
+
+    // ──────────────────────────────────────────────────
+    // DELETAR MENSAGEM
+    // ──────────────────────────────────────────────────
+
+    public static function deleteMessage(string $phoneNumber, string $messageId): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance) || empty($messageId) || empty($phoneNumber)) {
+            return ['success' => false, 'error' => 'Configurações incompletas, número ou Message ID vazios'];
+        }
+
+        $endpoint = "{$baseUrl}/chat/deleteMessageForEveryone/{$instance}";
+        
+        $remoteJid = strpos($phoneNumber, '@') !== false ? $phoneNumber : $phoneNumber . '@s.whatsapp.net';
+        
+        $bodyData = [
+            'id' => $messageId,
+            'remoteJid' => $remoteJid,
+            'fromMe' => true
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_CUSTOMREQUEST  => 'DELETE',
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 30
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return ['success' => true];
+        }
+
+        self::log("ERRO_DELETE_MENSAGEM", ['httpCode' => $httpCode, 'response' => $response]);
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
+    }
+
+    public static function updateMessage(string $phoneNumber, string $messageId, string $newText): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance) || empty($messageId) || empty($phoneNumber)) {
+            return ['success' => false, 'error' => 'Configurações incompletas, número ou Message ID vazios'];
+        }
+
+        $endpoint = "{$baseUrl}/chat/updateMessage/{$instance}";
+        
+        $remoteJid = strpos($phoneNumber, '@') !== false ? $phoneNumber : $phoneNumber . '@s.whatsapp.net';
+        $numberToSend = self::formatNumberForSending($phoneNumber);
+        
+        $bodyData = [
+            'number' => $numberToSend,
+            'text'   => $newText,
+            'key'    => [
+                'remoteJid' => $remoteJid,
+                'fromMe'    => true,
+                'id'        => $messageId
+            ]
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 30
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return ['success' => true];
+        }
+
+        self::log("ERRO_UPDATE_MENSAGEM", ['httpCode' => $httpCode, 'response' => $response]);
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
     /**
@@ -457,6 +566,25 @@ class EvolutionApiService
             }
         }
 
+        $dbText = $text;
+        $quoteId = null;
+        if (str_starts_with($text, '[QUOTE:{')) {
+            $endPos = strpos($text, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($text, "}]\r\n");
+                $endLen = 4;
+            }
+            if ($endPos !== false) {
+                $jsonStr = substr($text, 7, $endPos - 7 + 1); // +1 to include '}'
+                $quoteData = json_decode($jsonStr, true);
+                if ($quoteData && !empty($quoteData['wuid'])) {
+                    $quoteId = $quoteData['wuid'];
+                }
+                $text = substr($text, $endPos + $endLen);
+            }
+        }
+
         $endpoint = "{$baseUrl}/message/sendText/{$instance}";
         $bodyData = [
             'number'      => $numberToSend,
@@ -469,6 +597,16 @@ class EvolutionApiService
             'text'        => $text,
             'textMessage' => ['text' => $text]
         ];
+
+        if (!empty($quoteId)) {
+            $bodyData['options']['quoted'] = [
+                'key' => [
+                    'id' => $quoteId
+                ]
+            ];
+            // Some older versions use:
+            $bodyData['options']['quotedMessageId'] = $quoteId;
+        }
 
         $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
@@ -526,7 +664,7 @@ class EvolutionApiService
                 'users_id'      => $currentUserId,
                 'message_id'    => $messageId,
                 'sender_type'   => 'attendant',
-                'message_text'  => $text,
+                'message_text'  => $dbText,
                 'date_creation' => $now
             ]);
 
@@ -575,6 +713,25 @@ class EvolutionApiService
             $pureBase64 = $matches[2];
         }
 
+        $dbCaption = $caption;
+        $quoteId = null;
+        if (str_starts_with($caption, '[QUOTE:{')) {
+            $endPos = strpos($caption, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($caption, "}]\r\n");
+                $endLen = 4;
+            }
+            if ($endPos !== false) {
+                $jsonStr = substr($caption, 7, $endPos - 7 + 1);
+                $quoteData = json_decode($jsonStr, true);
+                if ($quoteData && !empty($quoteData['wuid'])) {
+                    $quoteId = $quoteData['wuid'];
+                }
+                $caption = substr($caption, $endPos + $endLen);
+            }
+        }
+
         $endpoint = "{$baseUrl}/message/sendMedia/{$instance}";
         $bodyData = [
             'number'       => $numberToSend,
@@ -588,13 +745,24 @@ class EvolutionApiService
             'fileName'  => $fileName,
             'caption'   => $caption ?: '',
             'media'     => $pureBase64,
+            'mimetype'  => $mimeType,
             'mediaMessage' => [
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,
                 'caption'   => $caption ?: '',
-                'media'     => $pureBase64
+                'media'     => $pureBase64,
+                'mimetype'  => $mimeType
             ]
         ];
+
+        if (!empty($quoteId)) {
+            $bodyData['options']['quoted'] = [
+                'key' => [
+                    'id' => $quoteId
+                ]
+            ];
+            $bodyData['options']['quotedMessageId'] = $quoteId;
+        }
 
         $ch = curl_init($endpoint);
         curl_setopt_array($ch, [
@@ -602,7 +770,8 @@ class EvolutionApiService
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER     => [
                 'Content-Type: application/json',
-                'apikey: ' . $apiToken
+                'apikey: ' . $apiToken,
+                'Expect:'
             ],
             CURLOPT_POSTFIELDS     => json_encode($bodyData),
             CURLOPT_TIMEOUT        => 30
@@ -614,21 +783,43 @@ class EvolutionApiService
 
         $now = date('Y-m-d H:i:s');
         $currentUserId = (int) \Session::getLoginUserID();
-        $messageText = "📎 Arquivo: {$fileName}" . ($caption ? "\n{$caption}" : "");
+        $messageText = "📎 Arquivo: {$fileName}" . ($dbCaption ? "\n{$dbCaption}" : "");
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $responseData = json_decode($responseBody, true);
             $messageId    = $responseData['key']['id'] ?? '';
 
-            $DB->insert('glpi_plugin_whatsappsimples_messages', [
+            // Ao invés de salvar base64 gigante no MySQL, salva fisicamente
+            $mediaDir = GLPI_PLUGIN_DOC_DIR . '/whatsappsimples/media/' . date('Y/m');
+            if (!is_dir($mediaDir)) {
+                @mkdir($mediaDir, 0775, true);
+            }
+            
+            $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $fileName);
+            $localHash = md5(uniqid(rand(), true)) . '_' . $safeFileName;
+            $localPath = $mediaDir . '/' . $localHash;
+            
+            file_put_contents($localPath, base64_decode($pureBase64));
+            
+            $dbMediaPath = date('Y/m') . '/' . $localHash;
+            $dbMediaUrl = 'doc_' . $dbMediaPath;
+            
+            $messageData = [
                 'chats_id'      => $chatId,
                 'users_id'      => $currentUserId,
                 'message_id'    => $messageId,
                 'sender_type'   => 'attendant',
                 'message_text'  => $messageText,
-                'media_url'     => $base64Data,
+                'media_url'     => $dbMediaUrl,
                 'date_creation' => $now
-            ]);
+            ];
+            
+            if ($DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_path')) {
+                $messageData['media_path'] = $dbMediaPath;
+                $messageData['media_mime'] = $mimeType;
+            }
+
+            $DB->insert('glpi_plugin_whatsappsimples_messages', $messageData);
 
             $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
 

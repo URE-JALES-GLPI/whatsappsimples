@@ -94,12 +94,50 @@ class ChatLifecycleService
     public function closeChat(int $chatId, int $userId): bool
     {
         $now = date('Y-m-d H:i:s');
-        return $this->repository->updateChat($chatId, [
+        $ok = $this->repository->updateChat($chatId, [
             'status'      => 'closed',
             'users_id'    => $userId, // Marca quem encerrou
             'date_closed' => $now,
             'date_mod'    => $now
         ]);
+
+        if ($ok) {
+            // Garante que nenhum outro atendimento ativo do mesmo numero fique aberto
+            global $DB;
+            $current = $DB->request([
+                'SELECT' => ['phone_number'],
+                'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+                'WHERE'  => ['id' => $chatId],
+                'LIMIT'  => 1
+            ])->current();
+            if ($current && !empty($current['phone_number'])) {
+                $DB->update('glpi_plugin_whatsappsimples_chats', [
+                    'status'      => 'closed',
+                    'users_id'    => $userId,
+                    'date_closed' => $now,
+                    'date_mod'    => $now
+                ], [
+                    'phone_number' => $current['phone_number'],
+                    'status'       => ['pending', 'in_progress']
+                ]);
+            }
+
+            $who = '';
+            $user = new \User();
+            if ($userId > 0 && $user->getFromDB($userId)) {
+                $who = trim(($user->fields['firstname'] ?? '') . ' ' . ($user->fields['realname'] ?? ''));
+            }
+            $this->repository->saveMessage([
+                'chats_id'     => $chatId,
+                'users_id'     => $userId,
+                'message_id'   => 'sys_close_' . $chatId . '_' . time(),
+                'sender_type'  => 'system',
+                'message_text' => 'Atendimento encerrado' . ($who !== '' ? ' por ' . $who : ''),
+                'date_creation' => $now,
+            ]);
+        }
+
+        return $ok;
     }
 
     /**
@@ -112,5 +150,74 @@ class ChatLifecycleService
             'users_id' => $userId,
             'date_mod' => date('Y-m-d H:i:s')
         ]);
+    }
+
+    /**
+     * Transfere o chat para outro atendente ou devolve para a fila, registrando evento de sistema.
+     */
+    public function transferChat(int $chatId, int $newUserId, int $fromUserId): bool
+    {
+        global $DB;
+        $now = date('Y-m-d H:i:s');
+
+        $chat = $DB->request([
+            'SELECT' => ['id', 'phone_number'],
+            'FROM'   => 'glpi_plugin_whatsappsimples_chats',
+            'WHERE'  => ['id' => $chatId],
+            'LIMIT'  => 1
+        ])->current();
+
+        if (!$chat) {
+            return false;
+        }
+
+        $phoneToUpdate = $chat['phone_number'];
+        $newStatus = ($newUserId > 0) ? 'in_progress' : 'pending';
+
+        $ok = $DB->update('glpi_plugin_whatsappsimples_chats', [
+            'users_id' => $newUserId,
+            'status'   => $newStatus,
+            'date_mod' => $now
+        ], ['phone_number' => $phoneToUpdate]);
+
+        if ($ok !== false) {
+            $fromName = 'Técnico';
+            if ($fromUserId > 0) {
+                $uFrom = new \User();
+                if ($uFrom->getFromDB($fromUserId)) {
+                    $fullName = trim(($uFrom->fields['firstname'] ?? '') . ' ' . ($uFrom->fields['realname'] ?? ''));
+                    if (!empty($fullName)) {
+                        $fromName = $fullName;
+                    }
+                }
+            }
+
+            if ($newUserId > 0) {
+                $toName = 'outro atendente';
+                $uTo = new \User();
+                if ($uTo->getFromDB($newUserId)) {
+                    $fullName = trim(($uTo->fields['firstname'] ?? '') . ' ' . ($uTo->fields['realname'] ?? ''));
+                    if (!empty($fullName)) {
+                        $toName = $fullName;
+                    }
+                }
+                $systemText = "Atendimento transferido por {$fromName} para {$toName}";
+            } else {
+                $systemText = "Atendimento devolvido para a Fila por {$fromName}";
+            }
+
+            $this->repository->saveMessage([
+                'chats_id'      => $chatId,
+                'users_id'      => $fromUserId,
+                'message_id'    => 'sys_transfer_' . $chatId . '_' . time(),
+                'sender_type'   => 'system',
+                'message_text'  => $systemText,
+                'date_creation' => $now,
+            ]);
+
+            return true;
+        }
+
+        return false;
     }
 }

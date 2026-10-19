@@ -28,6 +28,7 @@ final class CloseChatController
         $success = $lifecycleService->closeChat($chatId, $userId);
 
         if ($success) {
+            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('chat_closed', ['chat_id' => $chatId]);
             return new JsonResponse(['success' => true, 'message' => 'Atendimento encerrado com sucesso']);
         }
 

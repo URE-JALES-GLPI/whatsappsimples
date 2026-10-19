@@ -87,7 +87,13 @@ function plugin_whatsappsimples_ensureTables(): void
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         $DB->doQuery($query);
-    } else {
+    }
+
+    // Garante colunas adicionais tanto em instalacao limpa quanto em atualizacao
+    if ($DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'is_internal')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `is_internal` tinyint(1) NOT NULL DEFAULT 0 AFTER `media_url`");
+        }
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'users_id')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `users_id` int(11) NOT NULL DEFAULT 0 AFTER `chats_id`");
         }
