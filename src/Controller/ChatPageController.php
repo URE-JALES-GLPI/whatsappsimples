@@ -106,11 +106,16 @@ final class ChatPageController extends AbstractController
                 flex: 1;
                 display: flex;
                 overflow: hidden;
+                width: 100%;
+                min-width: 0;
             }
 
             /* SIDEBAR ESQUERDA */
             .omni-sidebar {
                 width: 360px;
+                min-width: 360px;
+                max-width: 360px;
+                flex-shrink: 0;
                 background: #ffffff;
                 border-right: 1px solid #e2e8f0;
                 display: flex;
@@ -329,10 +334,12 @@ final class ChatPageController extends AbstractController
             /* MAIN CHAT WINDOW */
             .omni-main {
                 flex: 1;
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
                 background: #efeae2;
                 position: relative;
+                overflow: hidden;
             }
 
             /* CHAT HEADER BAR */
@@ -345,18 +352,40 @@ final class ChatPageController extends AbstractController
                 justify-content: space-between;
                 padding: 0 16px;
                 z-index: 10;
+                flex-shrink: 0;
+                min-width: 0;
             }
 
             .omni-header-contact {
                 display: flex;
                 align-items: center;
                 gap: 12px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .omni-header-contact > div:last-child {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            #header-title {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #header-sub {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             .omni-header-tags {
                 display: flex;
                 align-items: center;
                 gap: 6px;
+                flex-shrink: 0;
             }
 
             .omni-tag-badge {
@@ -408,6 +437,8 @@ final class ChatPageController extends AbstractController
                 flex: 1;
                 padding: 20px;
                 overflow-y: auto;
+                overflow-x: hidden;
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -459,14 +490,18 @@ final class ChatPageController extends AbstractController
             }
 
             .omni-bubble {
-                max-width: 65%;
+                max-width: 75%;
+                min-width: 0;
                 padding: 8px 12px 6px 12px;
                 border-radius: 8px;
                 font-size: 0.88rem;
                 line-height: 1.45;
                 position: relative;
+                overflow-wrap: anywhere;
+                word-break: break-word;
                 word-wrap: break-word;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                box-sizing: border-box;
             }
             .omni-bubble.user, .omni-bubble.contact {
                 align-self: flex-start;
@@ -486,6 +521,70 @@ final class ChatPageController extends AbstractController
                 background: #fef08a !important;
                 color: #854d0e !important;
                 border: 1px solid #fde047 !important;
+            }
+
+            .omni-bubble-content {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .omni-bubble-text {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+                min-width: 0;
+                max-width: 100%;
+                position: relative;
+                transition: max-height 0.2s ease;
+            }
+
+            .omni-bubble-text.omni-clamped {
+                max-height: 125px; /* Limite de aproximadamente 6 linhas */
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0,0,0,0.2) transparent;
+                padding-right: 4px;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar {
+                width: 4px;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2);
+                border-radius: 4px;
+            }
+
+            .omni-read-more-btn {
+                display: inline-block;
+                color: #0284c7;
+                font-size: 0.78rem;
+                font-weight: 700;
+                cursor: pointer;
+                margin-top: 4px;
+                user-select: none;
+                transition: all 0.15s;
+                background: rgba(2, 132, 199, 0.08);
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            .omni-read-more-btn:hover {
+                background: rgba(2, 132, 199, 0.18);
+                color: #0369a1;
+            }
+            .omni-bubble.attendant .omni-read-more-btn {
+                color: #047857;
+                background: rgba(4, 120, 87, 0.1);
+            }
+            .omni-bubble.attendant .omni-read-more-btn:hover {
+                color: #065f46;
+                background: rgba(4, 120, 87, 0.2);
             }
 
             .omni-bubble-sender {
@@ -513,6 +612,16 @@ final class ChatPageController extends AbstractController
                 align-items: center;
                 gap: 10px;
                 position: relative;
+                flex-shrink: 0;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
+            #quote-preview-container, #edit-preview-container {
+                min-width: 0;
+                flex-shrink: 0;
+                box-sizing: border-box;
+                overflow: hidden;
             }
 
             .omni-footer-tools {
@@ -521,6 +630,7 @@ final class ChatPageController extends AbstractController
                 gap: 10px;
                 color: #64748b;
                 font-size: 1.2rem;
+                flex-shrink: 0;
             }
             .omni-footer-tool-btn {
                 cursor: pointer;
@@ -531,6 +641,7 @@ final class ChatPageController extends AbstractController
 
             .omni-message-input {
                 flex: 1;
+                min-width: 0;
                 padding: 9px 16px;
                 border: 1px solid #cbd5e1;
                 border-radius: 20px;
@@ -549,6 +660,7 @@ final class ChatPageController extends AbstractController
             .omni-send-btn {
                 width: 38px;
                 height: 38px;
+                min-width: 38px;
                 border-radius: 50%;
                 background: #0284c7;
                 color: #ffffff;
@@ -558,6 +670,7 @@ final class ChatPageController extends AbstractController
                 justify-content: center;
                 cursor: pointer;
                 font-size: 1.05rem;
+                flex-shrink: 0;
                 transition: background 0.15s;
             }
             .omni-send-btn:hover { background: #0369a1; }
@@ -1549,13 +1662,13 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; display: flex; flex-direction: column; padding: 4px 16px; margin: -4px -16px; box-sizing: border-box; border-radius: 4px;">
+                        <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; max-width: 100%; min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; box-sizing: border-box; border-radius: 4px;">
                             <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
                                 <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
                                 <div class="omni-bubble-sender">
                                     <span>${m.sender_name || ''}</span>
                                 </div>
-                                <div class="omni-bubble-content">${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                                <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${m.message_text ? `<div class="omni-bubble-text">${formatMessageHtml(m.message_text)}</div>` : ''}</div>
                                 <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${m.sender_type === 'agent' ? ' ✓✓' : ''}</div>
                             </div>
                         </div>
@@ -1563,10 +1676,48 @@ final class ChatPageController extends AbstractController
                     box.insertAdjacentHTML('beforeend', msgHtml);
                 });
 
+                applyMessageClamping(box);
+
                 if (addedNew) {
                     box.scrollTop = box.scrollHeight;
                 }
             }
+
+            function applyMessageClamping(container) {
+                if (!container) return;
+                const textNodes = container.querySelectorAll('.omni-bubble-text:not([data-clamped-checked])');
+                textNodes.forEach(node => {
+                    node.setAttribute('data-clamped-checked', '1');
+                    // Altura equivalente a ~6 linhas (125px). Se ultrapassar 130px, ativa o limitador
+                    if (node.scrollHeight > 130) {
+                        node.classList.add('omni-clamped');
+                        const btn = document.createElement('div');
+                        btn.className = 'omni-read-more-btn';
+                        btn.innerHTML = '... Ler mais ▾';
+                        btn.onclick = function(e) {
+                            e.stopPropagation();
+                            toggleReadMore(this, node);
+                        };
+                        node.after(btn);
+                    }
+                });
+            }
+
+            window.toggleReadMore = function(btn, node) {
+                if (!node) {
+                    const bubble = btn.closest('.omni-bubble');
+                    if (bubble) node = bubble.querySelector('.omni-bubble-text');
+                }
+                if (!node) return;
+
+                if (node.classList.contains('omni-clamped')) {
+                    node.classList.remove('omni-clamped');
+                    btn.innerHTML = 'Mostrar menos ▴';
+                } else {
+                    node.classList.add('omni-clamped');
+                    btn.innerHTML = '... Ler mais ▾';
+                }
+            };
 
             let currentQuote = null;
             let currentEditingMsg = null;
@@ -2627,7 +2778,17 @@ final class ChatPageController extends AbstractController
                             bubble.setAttribute('data-msg-text', encodeURIComponent(savedDbText));
                             const contentEl = bubble.querySelector('.omni-bubble-content');
                             if (contentEl) {
-                                contentEl.innerHTML = formatMessageHtml(savedDbText);
+                                const textEl = contentEl.querySelector('.omni-bubble-text');
+                                if (textEl) {
+                                    textEl.innerHTML = formatMessageHtml(savedDbText);
+                                    textEl.removeAttribute('data-clamped-checked');
+                                    textEl.classList.remove('omni-clamped');
+                                } else {
+                                    contentEl.innerHTML = `<div class="omni-bubble-text">${formatMessageHtml(savedDbText)}</div>`;
+                                }
+                                const existingBtn = bubble.querySelector('.omni-read-more-btn');
+                                if (existingBtn) existingBtn.remove();
+                                applyMessageClamping(bubble);
                             }
                         }
                         savedDraftBeforeEdit = '';
