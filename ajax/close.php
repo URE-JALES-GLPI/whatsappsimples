@@ -1,9 +1,19 @@
 <?php
 define('GLPI_KEEP_CSRF_TOKEN', true);
 
-include_once(__DIR__ . '/../../../inc/includes.php');
+try {
+    include_once(__DIR__ . '/../../../inc/includes.php');
 
-$controller = new \GlpiPlugin\Whatsappsimples\Controller\CloseChatController();
-$request = \Symfony\Component\HttpFoundation\Request::createFromGlobals();
-$response = $controller($request);
-$response->send();
+    $controller = new \GlpiPlugin\Whatsappsimples\Controller\CloseChatController();
+    $request = \Symfony\Component\HttpFoundation\Request::createFromGlobals();
+    $response = $controller($request);
+    return $response;
+} catch (\Throwable $e) {
+    return new \Symfony\Component\HttpFoundation\JsonResponse([
+        'success' => false,
+        'error' => 'Fatal Error: ' . $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString()
+    ], 500);
+}

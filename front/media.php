@@ -129,3 +129,4 @@ if ($fileHandle !== false) {
     }
     fclose($fileHandle);
 }
+exit;

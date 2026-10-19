@@ -1,16 +1,13 @@
 <?php
 define('GLPI_KEEP_CSRF_TOKEN', true);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
 
 use GlpiPlugin\Whatsappsimples\Service\EvolutionApiService;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 try {
     include_once(__DIR__ . '/../../../inc/includes.php');
 
     Session::checkLoginUser();
-    header('Content-Type: application/json');
 
     global $CFG_GLPI;
 
@@ -25,17 +22,16 @@ try {
 
         EvolutionApiService::setWebhook($webhookUrl);
 
-        echo json_encode([
+        return new JsonResponse([
             'success' => true,
             'state'   => 'open',
             'message' => 'WhatsApp Conectado com Sucesso!'
         ]);
-        exit;
     }
 
     $qrResult = EvolutionApiService::getQrCode();
 
-    echo json_encode([
+    return new JsonResponse([
         'success' => true,
         'state'   => $stateResult['state'] ?? 'close',
         'base64'  => $qrResult['base64'] ?? '',
@@ -44,13 +40,11 @@ try {
     ]);
 
 } catch (\Throwable $e) {
-    http_response_code(500);
-    header('Content-Type: application/json');
-    echo json_encode([
+    return new JsonResponse([
         'success' => false,
         'error' => 'Fatal Error: ' . $e->getMessage(),
         'file' => $e->getFile(),
         'line' => $e->getLine(),
         'trace' => $e->getTraceAsString()
-    ]);
+    ], 500);
 }
