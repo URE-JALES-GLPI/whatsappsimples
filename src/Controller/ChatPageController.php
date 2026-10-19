@@ -441,6 +441,23 @@ final class ChatPageController extends AbstractController
                 margin: 10px 0;
             }
 
+            .omni-date-badge {
+                align-self: center;
+                background: #ffffff;
+                color: #54656f;
+                padding: 4px 14px;
+                border-radius: 8px;
+                font-size: 0.72rem;
+                font-weight: 600;
+                text-align: center;
+                text-transform: uppercase;
+                letter-spacing: 0.3px;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+                border: 1px solid rgba(0,0,0,0.04);
+                margin: 12px 0 6px 0;
+                user-select: none;
+            }
+
             .omni-bubble {
                 max-width: 65%;
                 padding: 8px 12px 6px 12px;
@@ -1242,7 +1259,7 @@ final class ChatPageController extends AbstractController
                                     <div class="omni-card-name">${c.contact_name}</div>
                                     <div style="display:flex; align-items:center; gap:6px;">
                                         ${(!isSelected && c.unread_count > 0) ? `<span style="background:#ef4444; color:#fff; font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:10px;">${c.unread_count}</span>` : ''}
-                                        <div class="omni-card-time">${formatTime(c.date_mod)}</div>
+                                        <div class="omni-card-time" title="${formatFullDateTime(c.date_mod)}">${formatCardTime(c.date_mod)}</div>
                                     </div>
                                 </div>
                                 <div class="omni-card-row2">
@@ -1398,10 +1415,28 @@ final class ChatPageController extends AbstractController
 
                     addedNew = true;
 
+                    // Divisor de Data: Insere badge de data centralizado sempre que o dia muda
+                    const msgDateKey = (m.date_creation || '').substring(0, 10);
+                    if (msgDateKey) {
+                        const dateBadges = box.querySelectorAll('.omni-date-badge');
+                        const lastDateBadge = dateBadges.length > 0 ? dateBadges[dateBadges.length - 1] : null;
+                        const lastRenderedDate = lastDateBadge ? lastDateBadge.getAttribute('data-date') : null;
+
+                        if (lastRenderedDate !== msgDateKey) {
+                            const dateBadgeNode = document.createElement('div');
+                            dateBadgeNode.className = 'omni-date-badge';
+                            dateBadgeNode.setAttribute('data-date', msgDateKey);
+                            dateBadgeNode.title = formatFullDateTime(m.date_creation).split(' às ')[0];
+                            dateBadgeNode.textContent = formatDateBadge(msgDateKey);
+                            box.appendChild(dateBadgeNode);
+                        }
+                    }
+
                     if (m.sender_type === 'system') {
                         const sysNode = document.createElement('div');
                         sysNode.className = 'omni-system-badge';
                         sysNode.setAttribute('data-msg-id', m.id);
+                        sysNode.title = formatFullDateTime(m.date_creation);
                         sysNode.textContent = (m.message_text || '') + (m.date_creation ? ' • ' + formatTime(m.date_creation) : '');
                         box.appendChild(sysNode);
                         return;
@@ -1498,7 +1533,7 @@ final class ChatPageController extends AbstractController
                                     <span>${m.sender_name || ''}</span>
                                 </div>
                                 <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
-                                <div class="omni-bubble-time">${formatTime(m.date_creation)} ✓✓</div>
+                                <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${m.sender_type === 'agent' ? ' ✓✓' : ''}</div>
                             </div>
                         </div>
                     `;
@@ -1873,6 +1908,91 @@ final class ChatPageController extends AbstractController
                     return parts[1].substring(0, 5);
                 }
                 return dateStr;
+            }
+
+            function parseSqlDate(dateStr) {
+                if (!dateStr) return null;
+                const parts = dateStr.split(' ');
+                if (parts.length >= 1) {
+                    const dParts = parts[0].split('-');
+                    if (dParts.length === 3) {
+                        const y = parseInt(dParts[0], 10);
+                        const m = parseInt(dParts[1], 10) - 1;
+                        const d = parseInt(dParts[2], 10);
+                        let h = 0, min = 0, s = 0;
+                        if (parts[1]) {
+                            const tParts = parts[1].split(':');
+                            h = parseInt(tParts[0], 10) || 0;
+                            min = parseInt(tParts[1], 10) || 0;
+                            s = parseInt(tParts[2], 10) || 0;
+                        }
+                        return new Date(y, m, d, h, min, s);
+                    }
+                }
+                const d = new Date(dateStr);
+                return isNaN(d.getTime()) ? null : d;
+            }
+
+            function formatDateBadge(dateStr) {
+                const dateObj = parseSqlDate(dateStr);
+                if (!dateObj) return dateStr || '';
+
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const msgDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+
+                const diffTime = today.getTime() - msgDay.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 0) {
+                    return 'Hoje';
+                } else if (diffDays === 1) {
+                    return 'Ontem';
+                } else if (diffDays > 1 && diffDays < 7) {
+                    const daysOfWeek = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+                    return daysOfWeek[msgDay.getDay()];
+                } else {
+                    const dd = String(msgDay.getDate()).padStart(2, '0');
+                    const mm = String(msgDay.getMonth() + 1).padStart(2, '0');
+                    return `${dd}/${mm}/${msgDay.getFullYear()}`;
+                }
+            }
+
+            function formatCardTime(dateStr) {
+                const dateObj = parseSqlDate(dateStr);
+                if (!dateObj) return formatTime(dateStr);
+
+                const now = new Date();
+                const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                const msgDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+
+                const diffTime = today.getTime() - msgDay.getTime();
+                const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 0) {
+                    return formatTime(dateStr);
+                } else if (diffDays === 1) {
+                    return 'Ontem';
+                } else if (diffDays > 1 && diffDays < 7) {
+                    const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                    return daysOfWeek[msgDay.getDay()];
+                } else {
+                    const dd = String(msgDay.getDate()).padStart(2, '0');
+                    const mm = String(msgDay.getMonth() + 1).padStart(2, '0');
+                    return `${dd}/${mm}/${msgDay.getFullYear()}`;
+                }
+            }
+
+            function formatFullDateTime(dateStr) {
+                const dateObj = parseSqlDate(dateStr);
+                if (!dateObj) return dateStr || '';
+                const dd = String(dateObj.getDate()).padStart(2, '0');
+                const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const yyyy = dateObj.getFullYear();
+                const hh = String(dateObj.getHours()).padStart(2, '0');
+                const min = String(dateObj.getMinutes()).padStart(2, '0');
+                const ss = String(dateObj.getSeconds()).padStart(2, '0');
+                return `${dd}/${mm}/${yyyy} às ${hh}:${min}:${ss}`;
             }
 
             function escapeHtml(str) {
