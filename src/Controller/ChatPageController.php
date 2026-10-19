@@ -106,11 +106,16 @@ final class ChatPageController extends AbstractController
                 flex: 1;
                 display: flex;
                 overflow: hidden;
+                width: 100%;
+                min-width: 0;
             }
 
             /* SIDEBAR ESQUERDA */
             .omni-sidebar {
                 width: 360px;
+                min-width: 360px;
+                max-width: 360px;
+                flex-shrink: 0;
                 background: #ffffff;
                 border-right: 1px solid #e2e8f0;
                 display: flex;
@@ -329,10 +334,12 @@ final class ChatPageController extends AbstractController
             /* MAIN CHAT WINDOW */
             .omni-main {
                 flex: 1;
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
                 background: #efeae2;
                 position: relative;
+                overflow: hidden;
             }
 
             /* CHAT HEADER BAR */
@@ -345,18 +352,40 @@ final class ChatPageController extends AbstractController
                 justify-content: space-between;
                 padding: 0 16px;
                 z-index: 10;
+                flex-shrink: 0;
+                min-width: 0;
             }
 
             .omni-header-contact {
                 display: flex;
                 align-items: center;
                 gap: 12px;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .omni-header-contact > div:last-child {
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            #header-title {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            #header-sub {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
             }
 
             .omni-header-tags {
                 display: flex;
                 align-items: center;
                 gap: 6px;
+                flex-shrink: 0;
             }
 
             .omni-tag-badge {
@@ -408,6 +437,8 @@ final class ChatPageController extends AbstractController
                 flex: 1;
                 padding: 20px;
                 overflow-y: auto;
+                overflow-x: hidden;
+                min-width: 0;
                 display: flex;
                 flex-direction: column;
                 gap: 12px;
@@ -459,14 +490,18 @@ final class ChatPageController extends AbstractController
             }
 
             .omni-bubble {
-                max-width: 65%;
+                max-width: 75%;
+                min-width: 0;
                 padding: 8px 12px 6px 12px;
                 border-radius: 8px;
                 font-size: 0.88rem;
                 line-height: 1.45;
                 position: relative;
+                overflow-wrap: anywhere;
+                word-break: break-word;
                 word-wrap: break-word;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                box-sizing: border-box;
             }
             .omni-bubble.user, .omni-bubble.contact {
                 align-self: flex-start;
@@ -486,6 +521,15 @@ final class ChatPageController extends AbstractController
                 background: #fef08a !important;
                 color: #854d0e !important;
                 border: 1px solid #fde047 !important;
+            }
+
+            .omni-bubble-content {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+                min-width: 0;
+                max-width: 100%;
             }
 
             .omni-bubble-sender {
@@ -513,6 +557,16 @@ final class ChatPageController extends AbstractController
                 align-items: center;
                 gap: 10px;
                 position: relative;
+                flex-shrink: 0;
+                min-width: 0;
+                box-sizing: border-box;
+            }
+
+            #quote-preview-container, #edit-preview-container {
+                min-width: 0;
+                flex-shrink: 0;
+                box-sizing: border-box;
+                overflow: hidden;
             }
 
             .omni-footer-tools {
@@ -521,6 +575,7 @@ final class ChatPageController extends AbstractController
                 gap: 10px;
                 color: #64748b;
                 font-size: 1.2rem;
+                flex-shrink: 0;
             }
             .omni-footer-tool-btn {
                 cursor: pointer;
@@ -531,6 +586,7 @@ final class ChatPageController extends AbstractController
 
             .omni-message-input {
                 flex: 1;
+                min-width: 0;
                 padding: 9px 16px;
                 border: 1px solid #cbd5e1;
                 border-radius: 20px;
@@ -549,6 +605,7 @@ final class ChatPageController extends AbstractController
             .omni-send-btn {
                 width: 38px;
                 height: 38px;
+                min-width: 38px;
                 border-radius: 50%;
                 background: #0284c7;
                 color: #ffffff;
@@ -558,6 +615,7 @@ final class ChatPageController extends AbstractController
                 justify-content: center;
                 cursor: pointer;
                 font-size: 1.05rem;
+                flex-shrink: 0;
                 transition: background 0.15s;
             }
             .omni-send-btn:hover { background: #0369a1; }
@@ -1549,7 +1607,7 @@ final class ChatPageController extends AbstractController
                     }
 
                     const msgHtml = `
-                        <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; display: flex; flex-direction: column; padding: 4px 16px; margin: -4px -16px; box-sizing: border-box; border-radius: 4px;">
+                        <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; max-width: 100%; min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; box-sizing: border-box; border-radius: 4px;">
                             <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
                                 <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
                                 <div class="omni-bubble-sender">
