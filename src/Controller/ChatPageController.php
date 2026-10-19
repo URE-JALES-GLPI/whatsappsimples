@@ -1263,7 +1263,9 @@ final class ChatPageController extends AbstractController
                                     </div>
                                 </div>
                                 <div class="omni-card-row2">
-                                    <span>✓✓</span> ${displayPhone}
+                                    ${isContactTabActive ? '' : '<span>✓✓</span>'}
+                                    <span>${displayPhone}</span>
+                                    ${isContactTabActive && c.technician_name ? `<span style="margin-left:auto; font-size:0.72rem; color:#0284c7; font-weight:600; white-space:nowrap;">👤 ${escapeHtml(c.technician_name)}</span>` : ''}
                                 </div>
                             </div>
                         </div>

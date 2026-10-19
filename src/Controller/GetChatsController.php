@@ -47,16 +47,10 @@ final class GetChatsController
             ]);
 
             $latestByPhone = [];
-            $phonesServedByMe = [];
             foreach ($iterator as $row) {
                 $phone = $row['phone_number'];
                 if (empty($phone)) {
                     continue;
-                }
-
-                // Contatos do tecnico logado: qualquer atendimento que ele assumiu ou encerrou
-                if ((int) $row['users_id'] === $currentUserId) {
-                    $phonesServedByMe[$phone] = true;
                 }
 
                 // Um atendimento ativo (pending/in_progress) sempre prevalece sobre o historico encerrado
@@ -66,31 +60,32 @@ final class GetChatsController
                     continue;
                 }
 
-                if (true) {
-                    $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
+                $displayName = !empty($row['contact_name']) ? $row['contact_name'] : $row['phone_number'];
 
-                    $technicianName = null;
-                    if (!empty($row['users_id']) && $row['status'] !== 'closed') {
-                        $technicianName = trim(($row['firstname'] ?? '') . ' ' . ($row['realname'] ?? ''));
-                        if (empty($technicianName)) {
-                            $technicianName = 'Técnico ID ' . $row['users_id'];
-                        }
-                    } elseif ($row['status'] === 'closed') {
-                        $technicianName = 'Histórico (Encerrado)';
-                        $row['users_id'] = 0;
+                $technicianName = null;
+                if (!empty($row['users_id']) && $row['status'] !== 'closed') {
+                    $technicianName = trim(($row['firstname'] ?? '') . ' ' . ($row['realname'] ?? ''));
+                    if (empty($technicianName)) {
+                        $technicianName = 'Técnico ID ' . $row['users_id'];
                     }
-
-                    $latestByPhone[$phone] = [
-                        'id'              => (int) $row['id'],
-                        'phone_number'    => $row['phone_number'],
-                        'contact_name'    => $displayName,
-                        'users_id'        => (int) $row['users_id'],
-                        'technician_name' => $technicianName,
-                        'status'          => $row['status'],
-                        'date_mod'        => $row['date_mod'],
-                        'unread_count'    => (int) ($row['unread_count'] ?? 0),
-                    ];
+                } elseif ($row['status'] === 'closed') {
+                    $technicianName = 'Histórico (Encerrado)';
+                    $row['users_id'] = 0;
+                } elseif ($row['status'] === 'pending') {
+                    $technicianName = 'Aguardando na Fila';
+                    $row['users_id'] = 0;
                 }
+
+                $latestByPhone[$phone] = [
+                    'id'              => (int) $row['id'],
+                    'phone_number'    => $row['phone_number'],
+                    'contact_name'    => $displayName,
+                    'users_id'        => (int) $row['users_id'],
+                    'technician_name' => $technicianName,
+                    'status'          => $row['status'],
+                    'date_mod'        => $row['date_mod'],
+                    'unread_count'    => (int) ($row['unread_count'] ?? 0),
+                ];
             }
 
             // 2. Aplica filtro de exibição estrito por aba sem mesclar contatos
@@ -106,10 +101,8 @@ final class GetChatsController
                         $chats[] = $c;
                     }
                 } elseif ($tab === 'all') {
-                    // Contatos: apenas contatos que o tecnico logado atendeu (assumiu ou encerrou)
-                    if (isset($phonesServedByMe[$c['phone_number']])) {
-                        $chats[] = $c;
-                    }
+                    // Contatos: Todos os contatos e conversas cadastrados no sistema
+                    $chats[] = $c;
                 }
             }
 
