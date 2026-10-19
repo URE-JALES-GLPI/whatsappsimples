@@ -30,41 +30,17 @@ final class TransferChatController
             return new JsonResponse(['success' => false, 'error' => 'Dados inválidos'], 400);
         }
 
-        // Verify if user exists if not returning to queue
-        if ($newUserId > 0) {
-            $userExists = $DB->request([
-                'SELECT' => ['id'],
-                'FROM'   => 'glpi_users',
-                'WHERE'  => ['id' => $newUserId]
-            ])->count();
+        $currentUserId = (int) Session::getLoginUserID();
+        $repository = new \GlpiPlugin\Whatsappsimples\Repository\ChatRepository();
+        $lifecycleService = new \GlpiPlugin\Whatsappsimples\Service\ChatLifecycleService($repository);
 
-            if ($userExists === 0) {
-                return new JsonResponse(['success' => false, 'error' => 'Usuário de destino não encontrado'], 404);
-            }
-        }
+        $success = $lifecycleService->transferChat($chatId, $newUserId, $currentUserId);
 
-        // Find the phone number of the chat to update all related history
-        $chat = $DB->request([
-            'SELECT' => ['phone_number'],
-            'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-            'WHERE'  => ['id' => $chatId]
-        ])->current();
-
-        if (!$chat) {
-            return new JsonResponse(['success' => false, 'error' => 'Chat não encontrado'], 404);
-        }
-
-        $phoneToUpdate = $chat['phone_number'];
-        $success = $DB->update('glpi_plugin_whatsappsimples_chats', [
-            'users_id' => $newUserId,
-            'date_mod' => date('Y-m-d H:i:s')
-        ], ['phone_number' => $phoneToUpdate]);
-
-        if ($success !== false) {
-            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('chat_transferred', ['phone_number' => $phoneToUpdate]);
+        if ($success) {
+            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('chat_transferred', ['chat_id' => $chatId]);
             return new JsonResponse(['success' => true]);
         }
 
-        return new JsonResponse(['success' => false, 'error' => 'Falha ao atualizar o banco de dados'], 500);
+        return new JsonResponse(['success' => false, 'error' => 'Falha ao transferir chat'], 500);
     }
 }
