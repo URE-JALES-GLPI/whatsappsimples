@@ -172,7 +172,7 @@ final class SendMessageController
                 return new JsonResponse($result);
             }
 
-            if (empty($text)) {
+            if ($text === null || trim((string)$text) === '') {
                 return new JsonResponse(['success' => false, 'error' => 'Digite um texto ou selecione um arquivo para enviar'], 400);
             }
 
@@ -183,7 +183,7 @@ final class SendMessageController
                 $isInternal = true;
                 // Remove o prefixo para salvar no banco limpo (ou mantém, mas limpo é melhor)
                 $pureText = trim(str_replace('[NOTA INTERNA]', '', $text));
-                if (empty($pureText)) {
+                if ($pureText === '') {
                     return new JsonResponse(['success' => false, 'error' => 'Nota interna não pode ser vazia'], 400);
                 }
             }

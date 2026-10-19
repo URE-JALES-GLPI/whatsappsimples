@@ -79,7 +79,11 @@ try {
     // 2. DTO
     $messageDTO = IncomingMessageDTO::fromPayload($payload, $phoneNumber);
 
-    if (empty($messageDTO->getText()) && empty($messageDTO->getMediaUrl())) {
+    $dtoText = $messageDTO->getText();
+    $hasText = ($dtoText !== null && trim((string) $dtoText) !== '');
+    $hasMedia = !empty($messageDTO->getMediaUrl());
+
+    if (!$hasText && !$hasMedia) {
         echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto ou mídia']);
         exit;
     }
