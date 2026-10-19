@@ -532,6 +532,61 @@ final class ChatPageController extends AbstractController
                 max-width: 100%;
             }
 
+            .omni-bubble-text {
+                overflow-wrap: anywhere;
+                word-break: break-word;
+                word-wrap: break-word;
+                white-space: pre-wrap;
+                min-width: 0;
+                max-width: 100%;
+                position: relative;
+                transition: max-height 0.2s ease;
+            }
+
+            .omni-bubble-text.omni-clamped {
+                max-height: 125px; /* Limite de aproximadamente 6 linhas */
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: rgba(0,0,0,0.2) transparent;
+                padding-right: 4px;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar {
+                width: 4px;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar-track {
+                background: transparent;
+            }
+            .omni-bubble-text.omni-clamped::-webkit-scrollbar-thumb {
+                background: rgba(0,0,0,0.2);
+                border-radius: 4px;
+            }
+
+            .omni-read-more-btn {
+                display: inline-block;
+                color: #0284c7;
+                font-size: 0.78rem;
+                font-weight: 700;
+                cursor: pointer;
+                margin-top: 4px;
+                user-select: none;
+                transition: all 0.15s;
+                background: rgba(2, 132, 199, 0.08);
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            .omni-read-more-btn:hover {
+                background: rgba(2, 132, 199, 0.18);
+                color: #0369a1;
+            }
+            .omni-bubble.attendant .omni-read-more-btn {
+                color: #047857;
+                background: rgba(4, 120, 87, 0.1);
+            }
+            .omni-bubble.attendant .omni-read-more-btn:hover {
+                color: #065f46;
+                background: rgba(4, 120, 87, 0.2);
+            }
+
             .omni-bubble-sender {
                 font-size: 0.75rem;
                 font-weight: 700;
@@ -1613,7 +1668,7 @@ final class ChatPageController extends AbstractController
                                 <div class="omni-bubble-sender">
                                     <span>${m.sender_name || ''}</span>
                                 </div>
-                                <div class="omni-bubble-content">${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                                <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${m.message_text ? `<div class="omni-bubble-text">${formatMessageHtml(m.message_text)}</div>` : ''}</div>
                                 <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${m.sender_type === 'agent' ? ' ✓✓' : ''}</div>
                             </div>
                         </div>
@@ -1621,10 +1676,48 @@ final class ChatPageController extends AbstractController
                     box.insertAdjacentHTML('beforeend', msgHtml);
                 });
 
+                applyMessageClamping(box);
+
                 if (addedNew) {
                     box.scrollTop = box.scrollHeight;
                 }
             }
+
+            function applyMessageClamping(container) {
+                if (!container) return;
+                const textNodes = container.querySelectorAll('.omni-bubble-text:not([data-clamped-checked])');
+                textNodes.forEach(node => {
+                    node.setAttribute('data-clamped-checked', '1');
+                    // Altura equivalente a ~6 linhas (125px). Se ultrapassar 130px, ativa o limitador
+                    if (node.scrollHeight > 130) {
+                        node.classList.add('omni-clamped');
+                        const btn = document.createElement('div');
+                        btn.className = 'omni-read-more-btn';
+                        btn.innerHTML = '... Ler mais ▾';
+                        btn.onclick = function(e) {
+                            e.stopPropagation();
+                            toggleReadMore(this, node);
+                        };
+                        node.after(btn);
+                    }
+                });
+            }
+
+            window.toggleReadMore = function(btn, node) {
+                if (!node) {
+                    const bubble = btn.closest('.omni-bubble');
+                    if (bubble) node = bubble.querySelector('.omni-bubble-text');
+                }
+                if (!node) return;
+
+                if (node.classList.contains('omni-clamped')) {
+                    node.classList.remove('omni-clamped');
+                    btn.innerHTML = 'Mostrar menos ▴';
+                } else {
+                    node.classList.add('omni-clamped');
+                    btn.innerHTML = '... Ler mais ▾';
+                }
+            };
 
             let currentQuote = null;
             let currentEditingMsg = null;
@@ -2685,7 +2778,17 @@ final class ChatPageController extends AbstractController
                             bubble.setAttribute('data-msg-text', encodeURIComponent(savedDbText));
                             const contentEl = bubble.querySelector('.omni-bubble-content');
                             if (contentEl) {
-                                contentEl.innerHTML = formatMessageHtml(savedDbText);
+                                const textEl = contentEl.querySelector('.omni-bubble-text');
+                                if (textEl) {
+                                    textEl.innerHTML = formatMessageHtml(savedDbText);
+                                    textEl.removeAttribute('data-clamped-checked');
+                                    textEl.classList.remove('omni-clamped');
+                                } else {
+                                    contentEl.innerHTML = `<div class="omni-bubble-text">${formatMessageHtml(savedDbText)}</div>`;
+                                }
+                                const existingBtn = bubble.querySelector('.omni-read-more-btn');
+                                if (existingBtn) existingBtn.remove();
+                                applyMessageClamping(bubble);
                             }
                         }
                         savedDraftBeforeEdit = '';
