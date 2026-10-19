@@ -871,6 +871,15 @@ final class ChatPageController extends AbstractController
                         <div id="quote-preview-text" style="font-size: 0.8rem; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%;"></div>
                     </div>
 
+                    <!-- PREVIEW DE EDIÇÃO DE MENSAGEM -->
+                    <div id="edit-preview-container" style="display:none; background: #fffbeb; padding: 8px 16px; border-left: 4px solid #f59e0b; border-top: 1px solid #fed7aa; position: relative;">
+                        <span style="position: absolute; top: 6px; right: 14px; cursor: pointer; color: #b45309; font-weight: bold; font-size: 1.3rem; line-height: 1;" onclick="cancelEditMode()" title="Cancelar edição (Esc)">&times;</span>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: #b45309; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;">
+                            <span>✏️</span> <span>Editando mensagem enviada:</span>
+                        </div>
+                        <div id="edit-preview-original-text" style="font-size: 0.82rem; color: #78350f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88%; font-style: italic;"></div>
+                    </div>
+
                     <div class="omni-input-footer">
                         <!-- POP-OVER EMOJIS -->
                         <div class="omni-popover" id="emoji-popover">
@@ -1104,6 +1113,8 @@ final class ChatPageController extends AbstractController
                 
                 if (!keepChat) {
                     // [UX] Resetar o estado do chat ao mudar de aba
+                    cancelEditMode();
+                    clearQuotePreview();
                     activeChatId = 0;
                     activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';
@@ -1120,9 +1131,17 @@ final class ChatPageController extends AbstractController
                 loadChats();
             }
 
-            // [UX] Resetar chat ao apertar ESC
+            // [UX] Resetar chat ao apertar ESC (cancela edição/quote primeiro se ativo)
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
+                    if (currentEditingMsg) {
+                        cancelEditMode();
+                        return;
+                    }
+                    if (currentQuote) {
+                        clearQuotePreview();
+                        return;
+                    }
                     activeChatId = 0;
                     activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';
@@ -1286,6 +1305,8 @@ final class ChatPageController extends AbstractController
             }
 
             async function openChat(chatId, name, phone, isContactTab = false, technicianName = 'Sem Atendente', ownerId = 0) {
+                cancelEditMode();
+                clearQuotePreview();
                 if (activeChatId !== chatId || activePhoneNumber !== phone) {
                     document.getElementById('messages-box').innerHTML = '';
                 }
@@ -1548,8 +1569,11 @@ final class ChatPageController extends AbstractController
             }
 
             let currentQuote = null;
+            let currentEditingMsg = null;
+            let savedDraftBeforeEdit = '';
 
             function showQuotePreview(wuid, name, text) {
+                cancelEditMode();
                 currentQuote = { wuid: wuid, name: name, text: text };
                 document.getElementById('quote-preview-container').style.display = 'block';
                 document.getElementById('quote-preview-name').innerText = name;
@@ -1559,7 +1583,22 @@ final class ChatPageController extends AbstractController
 
             window.clearQuotePreview = function() {
                 currentQuote = null;
-                document.getElementById('quote-preview-container').style.display = 'none';
+                const container = document.getElementById('quote-preview-container');
+                if (container) container.style.display = 'none';
+                checkInputState();
+            };
+
+            window.cancelEditMode = function() {
+                if (!currentEditingMsg) return;
+                currentEditingMsg = null;
+                const preview = document.getElementById('edit-preview-container');
+                if (preview) preview.style.display = 'none';
+                const input = document.getElementById('message-input');
+                if (input) {
+                    input.value = savedDraftBeforeEdit || '';
+                    savedDraftBeforeEdit = '';
+                    autoResizeInput(input);
+                }
                 checkInputState();
             };
 
@@ -1764,13 +1803,24 @@ final class ChatPageController extends AbstractController
             });
 
             function handleKeyPress(e) {
+                if (e.key === 'Escape') {
+                    if (currentEditingMsg) {
+                        e.preventDefault();
+                        cancelEditMode();
+                        return;
+                    }
+                }
                 if (e.key === 'Enter') {
                     if (e.shiftKey) {
                         // Não faz nada, o comportamento padrão do navegador vai inserir a quebra de linha
                         return;
                     } else {
                         e.preventDefault();
-                        sendCurrentMessage();
+                        if (currentEditingMsg) {
+                            submitMessageEdit();
+                        } else {
+                            sendCurrentMessage();
+                        }
                     }
                 }
             }
@@ -1785,6 +1835,19 @@ final class ChatPageController extends AbstractController
             function checkInputState() {
                 const input = document.getElementById('message-input');
                 const btn = document.getElementById('send-btn');
+                
+                if (currentEditingMsg) {
+                    btn.innerHTML = '✔️';
+                    btn.title = 'Salvar alteração (Enter)';
+                    btn.style.backgroundColor = '#10b981';
+                    btn.style.color = '#ffffff';
+                    btn.onclick = submitMessageEdit;
+                    return;
+                }
+
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+
                 const hasText = input.value.trim().length > 0;
                 const hasFiles = stagedFiles.length > 0;
                 
@@ -2445,6 +2508,7 @@ final class ChatPageController extends AbstractController
             };
             
             window.replyMsg = function(id, btn) {
+                cancelEditMode();
                 const text = decodeURIComponent(btn.getAttribute('data-text') || '');
                 const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
                 if (!bubble) return;
@@ -2465,7 +2529,18 @@ final class ChatPageController extends AbstractController
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
 
-            window.editMsg = async function(id, btn) {
+            window.editMsg = function(id, btn) {
+                if (currentMsgMenu) {
+                    currentMsgMenu.remove();
+                    currentMsgMenu = null;
+                }
+
+                clearQuotePreview();
+
+                if (isInternalNoteMode) {
+                    toggleInternalNoteMode();
+                }
+
                 const fullText = decodeURIComponent(btn.getAttribute('data-text') || '');
                 let quoteHeader = '';
                 let editableText = fullText;
@@ -2483,40 +2558,91 @@ final class ChatPageController extends AbstractController
                     }
                 }
 
-                const newText = prompt('Editar mensagem:', editableText);
-                if (newText === null || newText.trim() === '' || newText.trim() === editableText.trim()) {
-                    if(currentMsgMenu) currentMsgMenu.remove();
+                const input = document.getElementById('message-input');
+                if (!currentEditingMsg) {
+                    savedDraftBeforeEdit = input.value;
+                }
+
+                currentEditingMsg = {
+                    id: id,
+                    quoteHeader: quoteHeader,
+                    originalText: editableText
+                };
+
+                const preview = document.getElementById('edit-preview-container');
+                const previewText = document.getElementById('edit-preview-original-text');
+                if (preview && previewText) {
+                    previewText.innerText = editableText;
+                    preview.style.display = 'block';
+                }
+
+                input.value = editableText;
+                autoResizeInput(input);
+                checkInputState();
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+            };
+
+            async function submitMessageEdit() {
+                if (!currentEditingMsg) return;
+
+                const input = document.getElementById('message-input');
+                const newText = input.value.trim();
+
+                if (newText === '') {
+                    alert('A mensagem não pode ficar vazia.');
+                    input.focus();
                     return;
                 }
 
-                const finalTextForDb = quoteHeader ? (quoteHeader + newText.trim()) : newText.trim();
+                if (newText === currentEditingMsg.originalText.trim()) {
+                    cancelEditMode();
+                    return;
+                }
+
+                const id = currentEditingMsg.id;
+                const quoteHeader = currentEditingMsg.quoteHeader;
+                const finalTextForDb = quoteHeader ? (quoteHeader + newText) : newText;
+
+                const btn = document.getElementById('send-btn');
+                const originalHtml = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '⏳';
 
                 const formData = new FormData();
                 formData.append('msg_id', id);
-                formData.append('text', newText.trim());
+                formData.append('text', newText);
                 formData.append('db_text', finalTextForDb);
 
-                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/edit-message.php`, {
-                    method: 'POST',
-                    body: formData
-                });
+                try {
+                    const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/edit-message.php`, {
+                        method: 'POST',
+                        body: formData
+                    });
 
-                if (res && res.success) {
-                    const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
-                    if (bubble) {
-                        const savedDbText = (res.db_text || finalTextForDb);
-                        bubble.setAttribute('data-msg-text', encodeURIComponent(savedDbText));
-                        const contentEl = bubble.querySelector('.omni-bubble-content');
-                        if (contentEl) {
-                            contentEl.innerHTML = formatMessageHtml(savedDbText);
+                    if (res && res.success) {
+                        const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
+                        if (bubble) {
+                            const savedDbText = (res.db_text || finalTextForDb);
+                            bubble.setAttribute('data-msg-text', encodeURIComponent(savedDbText));
+                            const contentEl = bubble.querySelector('.omni-bubble-content');
+                            if (contentEl) {
+                                contentEl.innerHTML = formatMessageHtml(savedDbText);
+                            }
                         }
+                        savedDraftBeforeEdit = '';
+                        cancelEditMode();
+                    } else {
+                        alert((res && res.error) ? res.error : 'Erro ao editar mensagem. Nota: O WhatsApp só permite editar mensagens enviadas nos últimos 15 minutos.');
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
                     }
-                } else {
-                    alert((res && res.error) ? res.error : 'Erro ao editar mensagem. Nota: O WhatsApp só permite editar mensagens enviadas nos últimos 15 minutos.');
+                } catch (err) {
+                    alert('Falha na comunicação ao tentar editar mensagem.');
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
                 }
-
-                if(currentMsgMenu) currentMsgMenu.remove();
-            };
+            }
             
             window.deleteMsg = async function(id) {
                 if(confirm('Tem certeza que deseja apagar esta mensagem para todos?')) {
