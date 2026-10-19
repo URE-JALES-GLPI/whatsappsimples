@@ -1534,7 +1534,7 @@ final class ChatPageController extends AbstractController
                                 <div class="omni-bubble-sender">
                                     <span>${m.sender_name || ''}</span>
                                 </div>
-                                <div>${mediaHtml}${formatMessageHtml(m.message_text)}</div>
+                                <div class="omni-bubble-content">${mediaHtml}${formatMessageHtml(m.message_text)}</div>
                                 <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${m.sender_type === 'agent' ? ' ✓✓' : ''}</div>
                             </div>
                         </div>
@@ -2454,12 +2454,36 @@ final class ChatPageController extends AbstractController
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
 
-            window.editMsg = function(id, btn) {
-                const text = decodeURIComponent(btn.getAttribute('data-text') || '');
-                const input = document.getElementById('message-input');
-                input.value = text;
-                input.focus();
-                alert('Em breve a Evolution API suportará edição direta!');
+            window.editMsg = async function(id, btn) {
+                const oldText = decodeURIComponent(btn.getAttribute('data-text') || '');
+                const newText = prompt('Editar mensagem:', oldText);
+                if (newText === null || newText.trim() === '' || newText.trim() === oldText.trim()) {
+                    if(currentMsgMenu) currentMsgMenu.remove();
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('msg_id', id);
+                formData.append('text', newText.trim());
+
+                const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/edit-message.php`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (res && res.success) {
+                    const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
+                    if (bubble) {
+                        bubble.setAttribute('data-msg-text', encodeURIComponent(newText.trim()));
+                        const contentEl = bubble.querySelector('.omni-bubble-content');
+                        if (contentEl) {
+                            contentEl.innerHTML = formatMessageHtml(newText.trim());
+                        }
+                    }
+                } else {
+                    alert((res && res.error) ? res.error : 'Erro ao editar mensagem. Nota: O WhatsApp só permite editar mensagens enviadas nos últimos 15 minutos.');
+                }
+
                 if(currentMsgMenu) currentMsgMenu.remove();
             };
             

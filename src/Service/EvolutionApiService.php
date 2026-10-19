@@ -121,6 +121,55 @@ class EvolutionApiService
         return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
+    public static function updateMessage(string $phoneNumber, string $messageId, string $newText): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance) || empty($messageId) || empty($phoneNumber)) {
+            return ['success' => false, 'error' => 'Configurações incompletas, número ou Message ID vazios'];
+        }
+
+        $endpoint = "{$baseUrl}/chat/updateMessage/{$instance}";
+        
+        $remoteJid = strpos($phoneNumber, '@') !== false ? $phoneNumber : $phoneNumber . '@s.whatsapp.net';
+        $numberToSend = self::formatNumberForSending($phoneNumber);
+        
+        $bodyData = [
+            'number' => $numberToSend,
+            'text'   => $newText,
+            'key'    => [
+                'remoteJid' => $remoteJid,
+                'fromMe'    => true,
+                'id'        => $messageId
+            ]
+        ];
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 30
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return ['success' => true];
+        }
+
+        self::log("ERRO_UPDATE_MENSAGEM", ['httpCode' => $httpCode, 'response' => $response]);
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
+    }
+
     /**
      * RESOLUÇÃO DO NÚMERO DO CONTATO A PARTIR DO PAYLOAD DA EVOLUTIONAPI
      *
