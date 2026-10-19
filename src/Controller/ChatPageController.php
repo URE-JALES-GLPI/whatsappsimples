@@ -2400,7 +2400,18 @@ final class ChatPageController extends AbstractController
             };
             
             window.copyMsgText = function(btn) {
-                const text = decodeURIComponent(btn.getAttribute('data-text') || '');
+                let text = decodeURIComponent(btn.getAttribute('data-text') || '');
+                if (text.startsWith('[QUOTE:{')) {
+                    let endPos = text.indexOf('}]\n');
+                    let endLen = 3;
+                    if (endPos === -1) {
+                        endPos = text.indexOf('}]\r\n');
+                        endLen = 4;
+                    }
+                    if (endPos !== -1) {
+                        text = text.substring(endPos + endLen);
+                    }
+                }
                 if (navigator.clipboard && window.isSecureContext) {
                     navigator.clipboard.writeText(text);
                 } else {
@@ -2455,16 +2466,35 @@ final class ChatPageController extends AbstractController
             };
 
             window.editMsg = async function(id, btn) {
-                const oldText = decodeURIComponent(btn.getAttribute('data-text') || '');
-                const newText = prompt('Editar mensagem:', oldText);
-                if (newText === null || newText.trim() === '' || newText.trim() === oldText.trim()) {
+                const fullText = decodeURIComponent(btn.getAttribute('data-text') || '');
+                let quoteHeader = '';
+                let editableText = fullText;
+
+                if (fullText.startsWith('[QUOTE:{')) {
+                    let endPos = fullText.indexOf('}]\n');
+                    let endLen = 3;
+                    if (endPos === -1) {
+                        endPos = fullText.indexOf('}]\r\n');
+                        endLen = 4;
+                    }
+                    if (endPos !== -1) {
+                        quoteHeader = fullText.substring(0, endPos + endLen);
+                        editableText = fullText.substring(endPos + endLen);
+                    }
+                }
+
+                const newText = prompt('Editar mensagem:', editableText);
+                if (newText === null || newText.trim() === '' || newText.trim() === editableText.trim()) {
                     if(currentMsgMenu) currentMsgMenu.remove();
                     return;
                 }
 
+                const finalTextForDb = quoteHeader ? (quoteHeader + newText.trim()) : newText.trim();
+
                 const formData = new FormData();
                 formData.append('msg_id', id);
                 formData.append('text', newText.trim());
+                formData.append('db_text', finalTextForDb);
 
                 const res = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/edit-message.php`, {
                     method: 'POST',
@@ -2474,10 +2504,11 @@ final class ChatPageController extends AbstractController
                 if (res && res.success) {
                     const bubble = document.querySelector(`.omni-bubble[data-msg-id="${id}"]`);
                     if (bubble) {
-                        bubble.setAttribute('data-msg-text', encodeURIComponent(newText.trim()));
+                        const savedDbText = (res.db_text || finalTextForDb);
+                        bubble.setAttribute('data-msg-text', encodeURIComponent(savedDbText));
                         const contentEl = bubble.querySelector('.omni-bubble-content');
                         if (contentEl) {
-                            contentEl.innerHTML = formatMessageHtml(newText.trim());
+                            contentEl.innerHTML = formatMessageHtml(savedDbText);
                         }
                     }
                 } else {

@@ -61,9 +61,29 @@ class EditMessageController
             }
         }
 
+        // Preserva o cabeçalho de citação (QUOTE), se houver
+        $existingText = $msg['message_text'] ?? '';
+        $quoteHeader = '';
+        if (str_starts_with($existingText, '[QUOTE:{')) {
+            $endPos = strpos($existingText, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($existingText, "}]\r\n");
+                $endLen = 4;
+            }
+            if ($endPos !== false) {
+                $quoteHeader = substr($existingText, 0, $endPos + $endLen);
+            }
+        }
+
+        $dbText = $request->request->get('db_text');
+        if (empty($dbText)) {
+            $dbText = $quoteHeader ? ($quoteHeader . $newText) : $newText;
+        }
+
         // Atualiza no banco local
         $DB->update('glpi_plugin_whatsappsimples_messages', [
-            'message_text' => $newText
+            'message_text' => $dbText
         ], ['id' => $msgId]);
 
         MercurePublisherService::notify('message_updated', [
@@ -71,6 +91,6 @@ class EditMessageController
             'phone_number' => $chat['phone_number']
         ]);
 
-        return new JsonResponse(['success' => true, 'new_text' => $newText]);
+        return new JsonResponse(['success' => true, 'new_text' => $newText, 'db_text' => $dbText]);
     }
 }
