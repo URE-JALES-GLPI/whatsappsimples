@@ -86,12 +86,12 @@ class IncomingMessageDTO
             // Tenta buscar da API usando o endpoint se o webhook não enviou
             $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
             if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
-                // Em vez de sleep(4) incondicional que trava workers do Apache por 4s:
-                // Retentativas progressivas (ex: 500ms -> 1000ms -> 1500ms).
-                // Se a mídia estiver pronta no 1º intervalo, libera o Apache imediatamente!
+                // Retentativas progressivas seguras (1.0s -> +1.5s [2.5s] -> +2.0s [4.5s total]).
+                // Cobre até 4.5s com 3 chances de captura (mais seguro que o único tiro do sleep(4) antigo).
+                // Se a mídia estiver pronta no 1º intervalo, libera o Apache em apenas 1s!
                 $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']))
-                    ? [500, 1000, 1500]
-                    : [200, 600];
+                    ? [1000, 1500, 2000]
+                    : [300, 800];
 
                 foreach ($delaysMs as $delayMs) {
                     usleep($delayMs * 1000);
