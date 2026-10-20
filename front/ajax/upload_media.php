@@ -30,10 +30,12 @@ if ($ext && !str_ends_with($mediaName, '.' . $ext)) {
     $realName = $mediaName . '.' . $ext;
 }
 
+require_once dirname(__DIR__, 2) . '/src/compat.php';
+
 // Usa sempre 127.0.0.1 para evitar problemas de IP/DNS
-$glpiBase  = 'http://127.0.0.1/glpi';
-$appToken  = 'Qy0ocv7BYvG363PY6O4CVSJvlHGAWI34t9Ex93BH';
-$userToken = 'RYRtYjeUqLMLzlm3DqhMYxDzC64j97DQz79Oxmq9';
+$glpiBase  = wa_env('GLPI_BASE_URL', 'http://127.0.0.1/glpi');
+$appToken  = wa_env('GLPI_APP_TOKEN', '');
+$userToken = wa_env('GLPI_USER_TOKEN', '');
 
 // Inicia sessao
 $ch = curl_init("$glpiBase/apirest.php/initSession");

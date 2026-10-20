@@ -1,0 +1,34 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# WhatsApp session data (Baileys / terminal)
+auth_info/
+whatsappterminal/auth_info/
+creds.json
+
+# User media / contact uploads (LGPD)
+media/
+GLPI_PLUGIN_DOC_DIR/
+
+# Logs
+*.log
+php-errors.log
+
+# Dumps & scratch files
+contacts_dump.json
+*.sql
+*.dump
+scratch/
+.system_generated/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.ai-memory.toml

@@ -99,3 +99,89 @@ if (!function_exists('wa_check_csrf')) {
         Session::checkCSRF($data, true);
     }
 }
+
+if (!function_exists('wa_load_env')) {
+    /**
+     * Carrega variáveis do arquivo .env da raiz do plugin, se existir.
+     */
+    function wa_load_env(?string $path = null): void
+    {
+        static $loaded = false;
+        if ($loaded && $path === null) {
+            return;
+        }
+        $envFile = $path ?? (dirname(__DIR__) . '/.env');
+        if (!file_exists($envFile) || !is_readable($envFile)) {
+            $loaded = true;
+            return;
+        }
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            $loaded = true;
+            return;
+        }
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#')) {
+                continue;
+            }
+            $parts = explode('=', $line, 2);
+            if (count($parts) === 2) {
+                $key = trim($parts[0]);
+                $val = trim($parts[1]);
+                if ((str_starts_with($val, '"') && str_ends_with($val, '"')) ||
+                    (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
+                    $val = substr($val, 1, -1);
+                }
+                if (!array_key_exists($key, $_SERVER) && !array_key_exists($key, $_ENV)) {
+                    putenv("{$key}={$val}");
+                    $_ENV[$key] = $val;
+                    $_SERVER[$key] = $val;
+                }
+            }
+        }
+        $loaded = true;
+    }
+}
+
+if (!function_exists('wa_env')) {
+    /**
+     * Obtém uma variável de ambiente, verificando:
+     * 1. getenv() / $_ENV (do arquivo .env ou ambiente do SO/Docker)
+     * 2. Configurações salvas no banco do GLPI (PluginWhatsappsimplesConfig)
+     * 3. Valor padrão ($default)
+     */
+    function wa_env(string $key, $default = null)
+    {
+        wa_load_env();
+        $val = getenv($key);
+        if ($val !== false && $val !== '') {
+            return $val;
+        }
+        if (isset($_ENV[$key]) && $_ENV[$key] !== '') {
+            return $_ENV[$key];
+        }
+        if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') {
+            return $_SERVER[$key];
+        }
+        if (class_exists('PluginWhatsappsimplesConfig') && method_exists('PluginWhatsappsimplesConfig', 'getConfig')) {
+            $dbMap = [
+                'EVOLUTION_SERVER_URL'    => 'server_url',
+                'EVOLUTION_API_KEY'       => 'api_token',
+                'EVOLUTION_INSTANCE_NAME' => 'instance_name',
+                'MERCURE_HUB_URL'         => 'mercure_hub_url',
+                'MERCURE_JWT_KEY'         => 'mercure_jwt_key',
+            ];
+            $dbKey = $dbMap[$key] ?? strtolower($key);
+            $dbVal = \PluginWhatsappsimplesConfig::getConfig($dbKey);
+            if ($dbVal !== null && $dbVal !== '') {
+                return $dbVal;
+            }
+        }
+        return $default;
+    }
+}
+
+// Auto-carregar variáveis locais
+wa_load_env();
+

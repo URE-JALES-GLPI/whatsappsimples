@@ -12,11 +12,11 @@ import fs from 'fs';
 import path from 'path';
 
 const PORT      = 3001;
-const API_TOKEN = 'glpi_whatsapp_token_2025';
+const API_TOKEN = process.env.WHATSAPP_API_TOKEN || 'glpi_whatsapp_token_2025';
 
-const GLPI_BASE       = 'http://10.180.152.110/glpi';
-const GLPI_APP_TOKEN  = 'Qy0ocv7BYvG363PY6O4CVSJvlHGAWI34t9Ex93BH';
-const GLPI_USER_TOKEN = 'RYRtYjeUqLMLzlm3DqhMYxDzC64j97DQz79Oxmq9';
+const GLPI_BASE       = process.env.GLPI_BASE_URL || 'http://localhost/glpi';
+const GLPI_APP_TOKEN  = process.env.GLPI_APP_TOKEN || '';
+const GLPI_USER_TOKEN = process.env.GLPI_USER_TOKEN || '';
 
 const SESSION_DIR = './auth_info';
 const MEDIA_DIR   = './media';

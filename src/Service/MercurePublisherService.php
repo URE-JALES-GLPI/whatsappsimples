@@ -4,12 +4,35 @@ namespace GlpiPlugin\Whatsappsimples\Service;
 
 class MercurePublisherService
 {
-    public const HUB_URL = 'http://10.180.152.29:3001/.well-known/mercure';
-    public const TOPIC   = 'chats_ure_jales';
+    public const DEFAULT_HUB_URL = 'http://10.180.152.29:3001/.well-known/mercure';
+    public const DEFAULT_TOPIC   = 'chats_ure_jales';
 
-    // Atenção: Aqui usamos o IP do servidor Docker onde o Mercure está rodando!
-    private string $mercureUrl = self::HUB_URL;
-    private string $jwtKey = 'UmaChaveSuperSecretaParaUreOmnichannel2026';
+    public const HUB_URL = self::DEFAULT_HUB_URL;
+    public const TOPIC   = self::DEFAULT_TOPIC;
+
+    private string $mercureUrl;
+    private string $jwtKey;
+
+    public function __construct(?string $url = null, ?string $jwtKey = null)
+    {
+        $this->mercureUrl = $url ?? self::getHubUrl();
+        $this->jwtKey = $jwtKey ?? self::getJwtKey();
+    }
+
+    public static function getHubUrl(): string
+    {
+        return function_exists('wa_env') ? wa_env('MERCURE_HUB_URL', self::DEFAULT_HUB_URL) : (getenv('MERCURE_HUB_URL') ?: self::DEFAULT_HUB_URL);
+    }
+
+    public static function getTopic(): string
+    {
+        return function_exists('wa_env') ? wa_env('MERCURE_TOPIC', self::DEFAULT_TOPIC) : (getenv('MERCURE_TOPIC') ?: self::DEFAULT_TOPIC);
+    }
+
+    public static function getJwtKey(): string
+    {
+        return function_exists('wa_env') ? wa_env('MERCURE_JWT_KEY', '') : (getenv('MERCURE_JWT_KEY') ?: '');
+    }
 
     /**
      * Dispara um evento de tempo real sem nunca quebrar o fluxo principal.
@@ -17,7 +40,7 @@ class MercurePublisherService
     public static function notify(string $action, array $extra = []): void
     {
         try {
-            (new self())->publish(self::TOPIC, array_merge(['action' => $action], $extra));
+            (new self())->publish(self::getTopic(), array_merge(['action' => $action], $extra));
         } catch (\Throwable $e) {
             // Mercure fora do ar nao pode impedir recebimento/envio de mensagens
         }
@@ -25,6 +48,10 @@ class MercurePublisherService
 
     public function publish(string $topic, array $payload): bool
     {
+        if (empty($this->jwtKey)) {
+            return false;
+        }
+
         $token = $this->generateJwt();
 
         $postData = http_build_query([

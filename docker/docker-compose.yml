@@ -11,14 +11,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SERVER_URL=http://localhost:8080
-      - AUTHENTICATION_API_KEY=ure_jales_evolution_token_2026
+      - SERVER_URL=${EVOLUTION_SERVER_URL:-http://localhost:8080}
+      - AUTHENTICATION_API_KEY=${EVOLUTION_API_KEY}
       # Banco de Dados
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://evolution:ure_jales_2026@evolution-postgres:5432/evolution_db?schema=evolution_api
+      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USER:-evolution}:${POSTGRES_PASSWORD}@evolution-postgres:5432/${POSTGRES_DB:-evolution_db}?schema=evolution_api
       # Cache Redis
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://evolution-redis:6379/6
+      - CACHE_REDIS_ENABLED=${CACHE_REDIS_ENABLED:-true}
+      - CACHE_REDIS_URI=${CACHE_REDIS_URI:-redis://evolution-redis:6379/6}
       - CACHE_REDIS_PREFIX_KEY=evolution
       - CONFIG_SESSION_PHONE_VERSION=2.3000.1030831524
       # Outras configuracoes V2
@@ -47,9 +47,9 @@ services:
     container_name: evolution-postgres
     restart: always
     environment:
-      - POSTGRES_DB=evolution_db
-      - POSTGRES_USER=evolution
-      - POSTGRES_PASSWORD=ure_jales_2026
+      - POSTGRES_DB=${POSTGRES_DB:-evolution_db}
+      - POSTGRES_USER=${POSTGRES_USER:-evolution}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - evolution_postgres:/var/lib/postgresql/data
     networks:

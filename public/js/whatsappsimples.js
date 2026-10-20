@@ -3,9 +3,9 @@
     const TOKEN  = window.WAPP_TOKEN;
     const headers = { 'Content-Type': 'application/json', 'x-api-token': TOKEN };
 
-    const GLPI_URL        = 'http://10.180.152.110';
-    const GLPI_APP_TOKEN  = 'Qy0ocv7BYvG363PY6O4CVSJvlHGAWI34t9Ex93BH';
-    const GLPI_USER_TOKEN = 'RYRtYjeUqLMLzlm3DqhMYxDzC64j97DQz79Oxmq9';
+    const GLPI_URL        = window.GLPI_URL || '';
+    const GLPI_APP_TOKEN  = window.GLPI_APP_TOKEN || '';
+    const GLPI_USER_TOKEN = window.GLPI_USER_TOKEN || '';
 
     let chats        = {};
     let current      = null;

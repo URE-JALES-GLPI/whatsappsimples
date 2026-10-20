@@ -1,6 +1,15 @@
 <?php
-$token = 'ure_jales_evolution_token_2026';
-$url = 'http://localhost:8080/message/sendText/atendimento';
+require_once __DIR__ . '/src/compat.php';
+
+$token    = wa_env('EVOLUTION_API_KEY', '');
+$server   = rtrim(wa_env('EVOLUTION_SERVER_URL', 'http://localhost:8080'), '/');
+$instance = wa_env('EVOLUTION_INSTANCE_NAME', 'atendimento');
+
+if (empty($token)) {
+    die("[!] EVOLUTION_API_KEY não configurada no .env nem no banco.\n");
+}
+
+$url = "{$server}/message/sendText/{$instance}";
 $headers = ['Content-Type: application/json', 'apikey: ' . $token];
 
 function testPayload($payload, $desc) {
