@@ -739,13 +739,13 @@ class EvolutionApiService
             ],
             'mediatype' => $mediaType,
             'fileName'  => $fileName,
-            'caption'   => $caption ?: '',
+            'caption'   => $caption !== '' ? $caption : '',
             'media'     => $pureBase64,
             'mimetype'  => $mimeType,
             'mediaMessage' => [
                 'mediatype' => $mediaType,
                 'fileName'  => $fileName,
-                'caption'   => $caption ?: '',
+                'caption'   => $caption !== '' ? $caption : '',
                 'media'     => $pureBase64,
                 'mimetype'  => $mimeType
             ]
@@ -779,7 +779,7 @@ class EvolutionApiService
 
         $now = date('Y-m-d H:i:s');
         $currentUserId = (int) \Session::getLoginUserID();
-        $messageText = "📎 Arquivo: {$fileName}" . ($dbCaption ? "\n{$dbCaption}" : "");
+        $messageText = "📎 Arquivo: {$fileName}" . ($dbCaption !== '' ? "\n{$dbCaption}" : "");
 
         if ($httpCode >= 200 && $httpCode < 300) {
             $responseData = json_decode($responseBody, true);

@@ -131,7 +131,7 @@ final class SendMessageController
                 }
             }
 
-            if (!empty($text) && !str_starts_with($text, '[NOTA INTERNA]')) {
+            if ($text !== '' && !str_starts_with($text, '[NOTA INTERNA]')) {
                 $text = "*{$attendantName}*\n\n" . $text;
             }
             

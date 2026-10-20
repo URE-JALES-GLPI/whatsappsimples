@@ -1623,11 +1623,42 @@ final class ChatPageController extends AbstractController
                     box.insertAdjacentHTML('afterbegin', '<div class="omni-divider-badge">Atendimento Iniciado</div>');
                 }
 
+                // Sincroniza exclusões: remove nós que não existem mais em data.messages
+                const returnedIds = new Set(data.messages.map(m => String(m.id)));
+                box.querySelectorAll('.omni-bubble[data-msg-id], .omni-system-badge[data-msg-id]').forEach(node => {
+                    const msgId = node.getAttribute('data-msg-id');
+                    if (msgId && !returnedIds.has(String(msgId))) {
+                        const row = node.closest('.omni-msg-row') || node;
+                        row.remove();
+                    }
+                });
+
                 let addedNew = false;
 
                 data.messages.forEach(m => {
                     const existingNode = box.querySelector(`[data-msg-id="${m.id}"]`);
-                    if (existingNode) return;
+                    if (existingNode) {
+                        // Sincroniza edições: se o texto mudou no banco, atualiza no DOM
+                        const currentText = decodeURIComponent(existingNode.getAttribute('data-msg-text') || '');
+                        const newText = m.message_text || '';
+                        if (currentText !== newText) {
+                            existingNode.setAttribute('data-msg-text', encodeURIComponent(newText));
+                            const textContainer = existingNode.querySelector('.omni-bubble-text');
+                            if (textContainer) {
+                                textContainer.innerHTML = formatMessageHtml(newText);
+                                textContainer.removeAttribute('data-clamped-checked');
+                            } else if (newText) {
+                                const contentDiv = existingNode.querySelector('.omni-bubble-content');
+                                if (contentDiv) {
+                                    const newTextDiv = document.createElement('div');
+                                    newTextDiv.className = 'omni-bubble-text';
+                                    newTextDiv.innerHTML = formatMessageHtml(newText);
+                                    contentDiv.appendChild(newTextDiv);
+                                }
+                            }
+                        }
+                        return;
+                    }
 
                     addedNew = true;
 

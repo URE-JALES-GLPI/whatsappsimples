@@ -25,20 +25,20 @@ class IncomingMessageDTO
             ?? $messageData['documentMessage']['caption'] 
             ?? '';
 
-        if (empty($text) && !empty($messageData['imageMessage'])) {
+        if ($text === '' && !empty($messageData['imageMessage'])) {
             $text = '📷 Imagem recebida';
-        } elseif (empty($text) && !empty($messageData['audioMessage'])) {
+        } elseif ($text === '' && !empty($messageData['audioMessage'])) {
             $text = '🎵 Áudio recebido';
-        } elseif (empty($text) && !empty($messageData['documentMessage'])) {
+        } elseif ($text === '' && !empty($messageData['documentMessage'])) {
             $text = '📄 Documento recebido';
-        } elseif (empty($text) && !empty($messageData['contactMessage'])) {
+        } elseif ($text === '' && !empty($messageData['contactMessage'])) {
             $vcardText = self::parseVcard($messageData['contactMessage']['vcard'] ?? '');
             if ($vcardText) {
                 $text = '[VCARD_SHARE:' . json_encode(['contacts' => [$vcardText]], JSON_UNESCAPED_UNICODE) . ']';
             } else {
                 $text = '👤 Contato recebido';
             }
-        } elseif (empty($text) && !empty($messageData['contactsArrayMessage']['contacts'])) {
+        } elseif ($text === '' && !empty($messageData['contactsArrayMessage']['contacts'])) {
             $contactsList = [];
             foreach ($messageData['contactsArrayMessage']['contacts'] as $c) {
                 $v = self::parseVcard($c['vcard'] ?? '');

@@ -21,7 +21,8 @@ class ChatLifecycleService
     public function openOrReopenChat(IncomingMessageDTO $message): array
     {
         $phoneNumber = $message->getRemoteJid();
-        $contactName = $message->getPushName();
+        // Em eventos fromMe (enviados pelo aparelho da empresa), o pushName é da própria URE; usa o telefone
+        $contactName = $message->isFromMe() ? $phoneNumber : ($message->getPushName() ?: $phoneNumber);
 
         // 1. Busca pelo número exato ou pelo LID já vinculado
         $chat = $this->repository->findActiveChatByPhoneOrLid($phoneNumber);

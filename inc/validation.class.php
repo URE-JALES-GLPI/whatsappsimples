@@ -21,18 +21,18 @@ class PluginWhatsappsimplesValidation
 
         $mobile = trim($user->fields['mobile'] ?? '');
         if (empty($mobile)) {
-            // Adiciona followup avisando que celular não está cadastrado
+            // Adiciona followup avisando que celular nÃ£o estÃ¡ cadastrado
             $followup = new ITILFollowup();
             $followup->add([
                 'itemtype'   => 'Ticket',
                 'items_id'   => $ticketId,
-                'content'    => '<b>[WhatsApp Simples]</b> Não foi possível notificar o validador <b>' . $user->getFriendlyName() . '</b> pois ele não possui celular cadastrado.',
+                'content'    => '<b>[WhatsApp Simples]</b> NÃ£o foi possÃ­vel notificar o validador <b>' . $user->getFriendlyName() . '</b> pois ele nÃ£o possui celular cadastrado.',
                 'is_private' => 1,
             ]);
             return;
         }
 
-        // Limpa o número
+        // Limpa o nÃºmero
         $mobile = preg_replace('/\D/', '', $mobile);
 
         // Monta a mensagem
@@ -40,10 +40,10 @@ class PluginWhatsappsimplesValidation
         $content = htmlspecialchars_decode(strip_tags($ticket->fields['content'] ?? ''));
         $content = mb_substr($content, 0, 300);
 
-        $message  = "? *Pedido de Validação — Ticket #{$ticketId}*\n\n";
-        $message .= "*Título:* {$title}\n\n";
-        $message .= "*Descrição:* {$content}\n\n";
-        $message .= "Responda com:\n*1* — Aprovar\n*2* — Recusar";
+        $message  = "ðŸ”” *Pedido de ValidaÃ§Ã£o - Ticket #{$ticketId}*\n\n";
+        $message .= "*TÃ­tulo:* {$title}\n\n";
+        $message .= "*DescriÃ§Ã£o:* {$content}\n\n";
+        $message .= "Responda com:\n*1* - Aprovar\n*2* - Recusar";
 
         // Envia via servidor Node
         $serverUrl = PluginWhatsappsimplesConfig::getConfig('server_url', 'http://localhost:3001');

@@ -22,6 +22,10 @@ class MessageDispatcherService
      */
     public function dispatchIncomingMessage(IncomingMessageDTO $message): bool
     {
+        if ($message->isFromMe()) {
+            usleep(1000000); // 1s para garantir que envios feitos pelo próprio GLPI já tenham concluído o INSERT local
+        }
+
         // 1. Idempotência: Se a mensagem já existe, ignora e retorna sucesso.
         if ($this->repository->messageExists($message->getMessageId())) {
             \Toolbox::logInFile('whatsappsimples', "MENSAGEM_DUPLICADA_IGNORADA ID: " . $message->getMessageId() . "\n");
