@@ -6,9 +6,7 @@
  */
 
 $glpiRoot = dirname(__DIR__, 3);
-if (!defined('GLPI_ROOT')) {
-    define('GLPI_ROOT', $glpiRoot);
-}
+chdir($glpiRoot);
 
 // 1. Carrega o autoloader do Composer (fornece Toolbox, Symfony e Kernel)
 if (file_exists($glpiRoot . '/vendor/autoload.php')) {
