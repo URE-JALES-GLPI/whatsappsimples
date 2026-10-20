@@ -31,9 +31,6 @@ function logWebhook(string $action, array $data = []): void
 }
 
 try {
-    // 0. Auto-Heal: Garante que as colunas do banco (ex: unread_count) existem antes de prosseguir
-    EvolutionApiService::ensureMessageColumns();
-
     $expectedToken = EvolutionApiService::getConfig('api_token') ?: (function_exists('wa_env') ? wa_env('EVOLUTION_API_KEY', '') : (getenv('EVOLUTION_API_KEY') ?: ''));
     $providedToken = $_SERVER['HTTP_APIKEY'] ?? $_SERVER['HTTP_X_API_KEY'] ?? $_GET['token'] ?? '';
 

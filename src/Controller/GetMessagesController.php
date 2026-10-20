@@ -15,15 +15,14 @@ final class GetMessagesController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
-        Session::checkRight('plugin_whatsappsimples', READ);
+        if (!Session::haveRight('plugin_whatsappsimples', READ)) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 403);
+        }
         global $DB;
 
         if (!$DB->tableExists('glpi_plugin_whatsappsimples_messages')) {
             return new JsonResponse(['messages' => []]);
         }
-
-        // Auto-heal: garante que colunas recém-criadas (ex: is_internal) existem antes do SELECT
-        \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::ensureMessageColumns();
 
         $chatId      = (int) $request->query->get('chat_id', 0);
         $phoneNumber = trim((string) $request->query->get('phone_number', ''));

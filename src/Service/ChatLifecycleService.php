@@ -161,13 +161,13 @@ class ChatLifecycleService
         $now = date('Y-m-d H:i:s');
 
         $chat = $DB->request([
-            'SELECT' => ['id', 'phone_number'],
+            'SELECT' => ['id', 'phone_number', 'status'],
             'FROM'   => 'glpi_plugin_whatsappsimples_chats',
             'WHERE'  => ['id' => $chatId],
             'LIMIT'  => 1
         ])->current();
 
-        if (!$chat) {
+        if (!$chat || $chat['status'] === 'closed') {
             return false;
         }
 
@@ -178,7 +178,10 @@ class ChatLifecycleService
             'users_id' => $newUserId,
             'status'   => $newStatus,
             'date_mod' => $now
-        ], ['phone_number' => $phoneToUpdate]);
+        ], [
+            'id'     => $chatId,
+            'status' => ['pending', 'in_progress']
+        ]);
 
         if ($ok !== false) {
             $fromName = 'Técnico';

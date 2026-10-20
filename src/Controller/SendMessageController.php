@@ -16,7 +16,9 @@ final class SendMessageController
     {
         try {
             Session::checkLoginUser();
-        Session::checkRight('plugin_whatsappsimples', READ);
+            if (!Session::haveRight('plugin_whatsappsimples', READ)) {
+                return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 403);
+            }
             global $DB;
 
             if (!$DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
@@ -191,7 +193,6 @@ final class SendMessageController
             if ($isInternal) {
                 // Não envia para a API. Apenas salva no banco de dados.
                 $messageId = 'internal_' . time() . '_' . rand(100, 999);
-                EvolutionApiService::ensureMessageColumns();
                 $DB->insert('glpi_plugin_whatsappsimples_messages', [
                     'chats_id'      => $chatId,
                     'users_id'      => $currentUserId,

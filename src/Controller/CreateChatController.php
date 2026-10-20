@@ -16,7 +16,9 @@ final class CreateChatController
     {
         try {
             Session::checkLoginUser();
-            Session::checkRight('plugin_whatsappsimples', READ);
+            if (!Session::haveRight('plugin_whatsappsimples', READ)) {
+                return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 403);
+            }
 
             global $DB;
 
@@ -41,11 +43,14 @@ final class CreateChatController
             $currentUserId = (int) Session::getLoginUserID();
             $now = date('Y-m-d H:i:s');
 
-            // Verifica se o chat já existe
+            // Verifica se já existe um atendimento ativo (pendente ou em andamento) para este número
             $existingChat = $DB->request([
                 'SELECT' => ['id', 'users_id', 'status'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats',
-                'WHERE'  => ['phone_number' => $cleanPhone],
+                'WHERE'  => [
+                    'phone_number' => $cleanPhone,
+                    'status'       => ['pending', 'in_progress']
+                ],
                 'LIMIT'  => 1
             ])->current();
 

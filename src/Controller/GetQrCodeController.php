@@ -15,6 +15,9 @@ final class GetQrCodeController
     public function __invoke(Request $request): Response
     {
         Session::checkLoginUser();
+        if (!Session::haveRight('config', UPDATE)) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 403);
+        }
         global $CFG_GLPI;
 
         $stateResult = EvolutionApiService::getConnectionState();

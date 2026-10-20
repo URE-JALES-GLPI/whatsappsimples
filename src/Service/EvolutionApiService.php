@@ -19,8 +19,6 @@ class EvolutionApiService
             }
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_url')) {
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_url` longtext DEFAULT NULL AFTER `message_text`");
-            } else {
-                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
             }
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'is_internal')) {
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `is_internal` tinyint(1) NOT NULL DEFAULT 0 AFTER `media_url`");
@@ -541,7 +539,6 @@ class EvolutionApiService
     public static function sendMessage(int $chatId, string $phoneNumber, string $text): array
     {
         global $DB;
-        self::ensureMessageColumns();
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
         $apiToken = self::getConfig('api_token');
@@ -683,7 +680,6 @@ class EvolutionApiService
     public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = ''): array
     {
         global $DB;
-        self::ensureMessageColumns();
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
         $apiToken = self::getConfig('api_token');

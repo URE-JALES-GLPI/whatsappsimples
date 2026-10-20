@@ -1,6 +1,10 @@
 <?php
 include ("../../../inc/includes.php");
 Session::checkLoginUser();
+if (!Session::haveRight('plugin_whatsappsimples', READ)) {
+    http_response_code(403);
+    die("Acesso negado");
+}
 session_write_close(); // Impede travamento do GLPI enquanto faz streaming de vídeo longo
 
 $file = $_GET['file'] ?? '';

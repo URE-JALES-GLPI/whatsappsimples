@@ -11,6 +11,11 @@ class EditMessageController
 {
     public function __invoke(Request $request): JsonResponse
     {
+        \Session::checkLoginUser();
+        if (!\Session::haveRight('plugin_whatsappsimples', READ)) {
+            return new JsonResponse(['success' => false, 'error' => 'Acesso negado'], 403);
+        }
+
         $currentUserId = (int) \Session::getLoginUserID();
         if ($currentUserId <= 0) {
             return new JsonResponse(['success' => false, 'error' => 'Acesso negado (não logado)'], 403);
@@ -45,6 +50,16 @@ class EditMessageController
 
         if (!$chat) {
             return new JsonResponse(['success' => false, 'error' => 'Chat não encontrado'], 404);
+        }
+
+        $canEdit = (
+            (int)($msg['users_id'] ?? 0) === $currentUserId ||
+            (int)($chat['users_id'] ?? 0) === $currentUserId ||
+            \Session::haveRight('config', UPDATE)
+        );
+
+        if (!$canEdit) {
+            return new JsonResponse(['success' => false, 'error' => 'Você só pode editar mensagens enviadas por você'], 403);
         }
 
         $wuid = $msg['message_id'];

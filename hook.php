@@ -45,6 +45,7 @@ function plugin_whatsappsimples_ensureTables(): void
         $query = "CREATE TABLE `glpi_plugin_whatsappsimples_chats` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `phone_number` varchar(50) NOT NULL,
+            `linked_lid` varchar(50) DEFAULT NULL,
             `contact_name` varchar(255) DEFAULT '',
             `users_id` int(11) NOT NULL DEFAULT 0,
             `status` varchar(20) NOT NULL DEFAULT 'pending',
@@ -55,12 +56,17 @@ function plugin_whatsappsimples_ensureTables(): void
             `date_mod` datetime DEFAULT NULL,
             PRIMARY KEY (`id`),
             KEY `phone_number` (`phone_number`),
+            KEY `linked_lid` (`linked_lid`),
             KEY `users_id` (`users_id`),
             KEY `status` (`status`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
         $DB->doQuery($query);
     } else {
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'linked_lid')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `linked_lid` varchar(50) DEFAULT NULL AFTER `phone_number`");
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD INDEX `linked_lid_idx` (`linked_lid`)");
+        }
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'date_closed')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `date_closed` datetime DEFAULT NULL AFTER `first_response_date`");
         }
@@ -79,6 +85,12 @@ function plugin_whatsappsimples_ensureTables(): void
             `sender_type` varchar(20) NOT NULL DEFAULT 'user',
             `message_text` text,
             `media_url` longtext DEFAULT NULL,
+            `is_internal` tinyint(1) NOT NULL DEFAULT 0,
+            `media_path` varchar(255) DEFAULT NULL,
+            `media_mime` varchar(100) DEFAULT NULL,
+            `media_size` bigint(20) DEFAULT 0,
+            `media_sha256` varchar(64) DEFAULT NULL,
+            `media_status` varchar(20) DEFAULT NULL,
             `date_creation` datetime NOT NULL,
             PRIMARY KEY (`id`),
             KEY `chats_id` (`chats_id`),
@@ -99,8 +111,6 @@ function plugin_whatsappsimples_ensureTables(): void
         }
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_url')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_url` longtext DEFAULT NULL AFTER `message_text`");
-        } else {
-            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` MODIFY COLUMN `media_url` longtext DEFAULT NULL");
         }
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_path')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_messages` ADD COLUMN `media_path` varchar(255) DEFAULT NULL AFTER `media_url`");

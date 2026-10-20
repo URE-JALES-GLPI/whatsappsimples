@@ -7,7 +7,7 @@ use Session;
 
 class Menu extends CommonGLPI
 {
-    public static string $rightname = 'tools';
+    public static string $rightname = 'plugin_whatsappsimples';
 
     public static function getMenuName(int $nb = 0): string
     {
@@ -21,7 +21,7 @@ class Menu extends CommonGLPI
 
     public static function canView(): bool
     {
-        return Session::getLoginUserID() > 0;
+        return (bool) Session::haveRight('plugin_whatsappsimples', READ);
     }
 
     public static function getMenuContent(): array
