@@ -6,10 +6,31 @@
  */
 
 $glpiRoot = dirname(__DIR__, 3);
-if (file_exists($glpiRoot . '/inc/includes.php')) {
+if (!defined('GLPI_ROOT')) {
+    define('GLPI_ROOT', $glpiRoot);
+}
+
+// 1. Carrega o autoloader do Composer (fornece Toolbox, Symfony e Kernel)
+if (file_exists($glpiRoot . '/vendor/autoload.php')) {
+    require_once $glpiRoot . '/vendor/autoload.php';
+}
+
+// 2. Inicializa o Kernel moderno do GLPI 11/12 se disponível
+if (class_exists(\Glpi\Kernel\Kernel::class)) {
+    $kernel = new \Glpi\Kernel\Kernel();
+    $kernel->boot();
+}
+
+// 3. Garante carregamento do $DB e compatibilidade retroativa
+global $DB;
+if (!$DB && file_exists($glpiRoot . '/inc/includes.php')) {
     include_once $glpiRoot . '/inc/includes.php';
-} else {
-    die("Erro: Arquivo includes.php do GLPI não encontrado em {$glpiRoot}\n");
+}
+
+if (!extension_loaded('redis') && !class_exists('\Redis')) {
+    fwrite(STDERR, "[" . date('Y-m-d H:i:s') . "] ERRO: A extensão PHP 'redis' não está instalada no PHP CLI.\n");
+    fwrite(STDERR, "Instale no servidor executando: apt update && apt install -y php-redis\n");
+    exit(1);
 }
 
 if (file_exists(dirname(__DIR__) . '/src/compat.php')) {
