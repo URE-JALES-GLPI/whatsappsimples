@@ -820,43 +820,104 @@ final class ChatPageController extends AbstractController
             }
 
             /* Custom Audio Player CSS */
-            .omni-custom-audio-player { color: #fff; }
-            .omni-custom-audio-player .omni-play-btn { color: #fff; }
-            .omni-custom-audio-player .omni-current-time { color: rgba(255,255,255,0.7); }
+            .omni-custom-audio-player {
+                color: #fff;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 2px 0;
+                width: 260px;
+                max-width: 100%;
+                box-sizing: border-box;
+            }
+            .omni-custom-audio-player .omni-play-btn {
+                cursor: pointer;
+                font-size: 1.25rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
+                line-height: 1;
+                user-select: none;
+                flex-shrink: 0;
+            }
+            .omni-custom-audio-player .omni-current-time {
+                font-size: 0.7rem;
+                font-weight: 600;
+                line-height: 1;
+            }
 
             .omni-bubble.contact .omni-custom-audio-player,
             .omni-bubble.contact .omni-custom-audio-player .omni-current-time,
             .omni-bubble.contact .omni-custom-audio-player .omni-play-btn {
                 color: #475569 !important;
             }
-            .omni-bubble.contact .omni-custom-audio-player .omni-audio-slider {
-                background: rgba(0,0,0,0.15) !important;
-            }
             .omni-bubble.contact .omni-custom-audio-player button {
                 background: #e2e8f0 !important;
                 color: #475569 !important;
             }
+            .omni-bubble.attendant .omni-custom-audio-player button {
+                background: rgba(0,0,0,0.2) !important;
+                color: #1e293b !important;
+            }
 
-            .omni-audio-slider::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                appearance: none;
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                background: #38bdf8;
+            .omni-audio-slider {
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                width: 100% !important;
+                height: 4px !important;
+                background: rgba(0, 0, 0, 0.15);
+                border-radius: 4px !important;
+                outline: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                cursor: pointer !important;
+                box-sizing: border-box !important;
+            }
+            .omni-audio-slider::-webkit-slider-runnable-track {
+                width: 100%;
+                height: 4px;
                 cursor: pointer;
+                border-radius: 4px;
+                border: none;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+            .omni-audio-slider::-webkit-slider-thumb {
+                -webkit-appearance: none !important;
+                appearance: none !important;
+                width: 12px !important;
+                height: 12px !important;
+                border-radius: 50% !important;
+                background: #0284c7 !important;
+                cursor: pointer !important;
+                margin-top: -4px !important;
+                border: 2px solid #ffffff !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+                box-sizing: border-box !important;
+            }
+            .omni-audio-slider::-moz-range-track {
+                width: 100%;
+                height: 4px;
+                cursor: pointer;
+                border-radius: 4px;
+                border: none;
+                background: transparent;
+                padding: 0;
+                margin: 0;
             }
             .omni-audio-slider::-moz-range-thumb {
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                background: #38bdf8;
-                cursor: pointer;
-                border: none;
-            }
-            .omni-bubble.attendant .omni-custom-audio-player button {
-                background: rgba(0,0,0,0.3) !important;
-                color: #fff !important;
+                width: 12px !important;
+                height: 12px !important;
+                border-radius: 50% !important;
+                background: #0284c7 !important;
+                cursor: pointer !important;
+                border: 2px solid #ffffff !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+                box-sizing: border-box !important;
             }
 
             .omni-msg-menu-btn {
@@ -1613,7 +1674,7 @@ final class ChatPageController extends AbstractController
                         } else if (m.media_url.startsWith('data:video/')) {
                             mediaHtml = `<video src="${m.media_url}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (m.media_url.startsWith('data:audio/')) {
-                            mediaHtml = buildAudioPlayerHtml(getAudioBlobUrl(m.media_url), 'data_' + m.id) + '<br>';
+                            mediaHtml = buildAudioPlayerHtml(getAudioBlobUrl(m.media_url), 'data_' + m.id);
                         } else {
                             let icon = '📦';
                             let fName = '';
@@ -1654,7 +1715,7 @@ final class ChatPageController extends AbstractController
                         } else if (filename.endsWith('.mp4')) {
                             mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
                         } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3') || filename.endsWith('.webm')) {
-                            mediaHtml = warningHtml + buildAudioPlayerHtml(fullUrl, 'doc_' + m.id) + '<br>';
+                            mediaHtml = warningHtml + buildAudioPlayerHtml(fullUrl, 'doc_' + m.id);
                         } else {
                             let icon = '📦';
                             let extLabel = 'DOC';
@@ -2489,18 +2550,18 @@ final class ChatPageController extends AbstractController
 
             function buildAudioPlayerHtml(url, uniqueId) {
                 return `
-                <div class="omni-custom-audio-player" style="display:flex; align-items:flex-start; gap:14px; background:transparent; padding: 6px 4px; width: 340px; max-width: 100%; margin-bottom: 2px;">
+                <div class="omni-custom-audio-player">
                     <audio id="audio-${uniqueId}" src="${url}" preload="metadata" ontimeupdate="updateAudioUI('${uniqueId}')" onloadedmetadata="initAudioUI('${uniqueId}')" onended="resetAudioUI('${uniqueId}')" style="display:none;"></audio>
                     
-                    <button onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:14px; padding:6px 12px; font-size:0.8rem; font-weight:700; cursor:pointer; min-width:48px; background:rgba(0,0,0,0.55); color:#fff; transition: opacity 0.2s; margin-top: 2px;">1,0x</button>
+                    <button type="button" onclick="toggleCustomPlaybackSpeed('${uniqueId}', this)" style="border:none; border-radius:10px; padding:0 6px; font-size:0.72rem; font-weight:700; cursor:pointer; min-width:34px; height:22px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;">1,0x</button>
                     
-                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')" style="cursor:pointer; font-size: 1.7rem; display:flex; align-items:center; justify-content:center; width: 28px; color: rgba(0,0,0,0.6); line-height: 1;">
+                    <div id="play-btn-${uniqueId}" class="omni-play-btn" onclick="togglePlayPause('${uniqueId}')">
                         ▶
                     </div>
                     
-                    <div style="flex:1; display:flex; flex-direction:column; justify-content:flex-start;">
-                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="width: 100%; height: 5px; cursor: pointer; accent-color: #0ea5e9; background: rgba(0,0,0,0.15); border-radius: 4px; margin: 0; margin-top: 12px;" />
-                        <div style="display:flex; justify-content:flex-start; font-size:0.75rem; font-weight: 600; color:rgba(0,0,0,0.55); margin-top:8px;">
+                    <div style="flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px;">
+                        <input type="range" id="slider-${uniqueId}" min="0" max="100" value="0" step="0.1" oninput="seekAudio('${uniqueId}', this.value)" class="omni-audio-slider" style="background:rgba(0,0,0,0.15);" />
+                        <div style="display:flex; justify-content:flex-start; line-height: 1;">
                             <span id="curr-time-${uniqueId}" class="omni-current-time">0:00</span>
                         </div>
                     </div>
@@ -2511,6 +2572,7 @@ final class ChatPageController extends AbstractController
             window.togglePlayPause = function(id) {
                 const audio = document.getElementById('audio-' + id);
                 const btn = document.getElementById('play-btn-' + id);
+                if (!audio || !btn) return;
                 if (audio.paused) {
                     audio.play();
                     btn.innerHTML = '⏸';
@@ -2525,17 +2587,26 @@ final class ChatPageController extends AbstractController
                 const slider = document.getElementById('slider-' + id);
                 const currTime = document.getElementById('curr-time-' + id);
                 
-                if (audio.duration) {
+                if (audio && audio.duration && isFinite(audio.duration)) {
                     const progress = (audio.currentTime / audio.duration) * 100;
-                    slider.value = progress;
-                    currTime.innerText = formatAudioTime(audio.currentTime);
+                    if (slider) {
+                        slider.value = progress;
+                        slider.style.background = `linear-gradient(to right, #0284c7 0%, #0284c7 ${progress}%, rgba(0,0,0,0.15) ${progress}%, rgba(0,0,0,0.15) 100%)`;
+                    }
+                    if (currTime) currTime.innerText = formatAudioTime(audio.currentTime);
                 }
             };
 
             window.initAudioUI = function(id) {
                 const audio = document.getElementById('audio-' + id);
-                if (audio.duration && isFinite(audio.duration)) {
-                    document.getElementById('curr-time-' + id).innerText = formatAudioTime(audio.duration);
+                const slider = document.getElementById('slider-' + id);
+                if (slider) {
+                    slider.value = 0;
+                    slider.style.background = 'rgba(0,0,0,0.15)';
+                }
+                if (audio && audio.duration && isFinite(audio.duration)) {
+                    const currTime = document.getElementById('curr-time-' + id);
+                    if (currTime) currTime.innerText = formatAudioTime(audio.duration);
                 }
             };
 
@@ -2544,18 +2615,25 @@ final class ChatPageController extends AbstractController
                 const slider = document.getElementById('slider-' + id);
                 const audio = document.getElementById('audio-' + id);
                 const currTime = document.getElementById('curr-time-' + id);
-                btn.innerHTML = '▶';
-                slider.value = 0;
-                if (audio.duration && isFinite(audio.duration)) {
-                    currTime.innerText = formatAudioTime(audio.duration);
+                if (btn) btn.innerHTML = '▶';
+                if (slider) {
+                    slider.value = 0;
+                    slider.style.background = 'rgba(0,0,0,0.15)';
+                }
+                if (audio && audio.duration && isFinite(audio.duration)) {
+                    if (currTime) currTime.innerText = formatAudioTime(audio.duration);
                 } else {
-                    currTime.innerText = '0:00';
+                    if (currTime) currTime.innerText = '0:00';
                 }
             };
 
             window.seekAudio = function(id, val) {
                 const audio = document.getElementById('audio-' + id);
-                if (audio.duration) {
+                const slider = document.getElementById('slider-' + id);
+                if (slider) {
+                    slider.style.background = `linear-gradient(to right, #0284c7 0%, #0284c7 ${val}%, rgba(0,0,0,0.15) ${val}%, rgba(0,0,0,0.15) 100%)`;
+                }
+                if (audio && audio.duration && isFinite(audio.duration)) {
                     audio.currentTime = (val / 100) * audio.duration;
                 }
             };
