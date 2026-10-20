@@ -86,16 +86,21 @@ class IncomingMessageDTO
             // Tenta buscar da API usando o endpoint se o webhook não enviou
             $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
             if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
-                // Aguarda 4 segundos para evitar que a API Evolution devolva a midia pela metade (Race Condition)
-                if (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage'])) {
-                    sleep(4);
-                }
-                $apiRes = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getBase64FromMediaMessage($messageId);
-                if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
-                    $extractedBase64 = $apiRes['base64'];
-                    
-                    // Como não veio do payload, tentamos extrair o mimetype de novo
-                    $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                // Em vez de sleep(4) incondicional que trava workers do Apache por 4s:
+                // Retentativas progressivas (ex: 500ms -> 1000ms -> 1500ms).
+                // Se a mídia estiver pronta no 1º intervalo, libera o Apache imediatamente!
+                $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']))
+                    ? [500, 1000, 1500]
+                    : [200, 600];
+
+                foreach ($delaysMs as $delayMs) {
+                    usleep($delayMs * 1000);
+                    $apiRes = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getBase64FromMediaMessage($messageId);
+                    if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
+                        $extractedBase64 = $apiRes['base64'];
+                        $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                        break;
+                    }
                 }
             }
         }
