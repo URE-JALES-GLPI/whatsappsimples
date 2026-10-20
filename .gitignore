@@ -18,6 +18,7 @@ GLPI_PLUGIN_DOC_DIR/
 # Logs
 *.log
 php-errors.log
+debug.txt
 
 # Dumps & scratch files
 contacts_dump.json
