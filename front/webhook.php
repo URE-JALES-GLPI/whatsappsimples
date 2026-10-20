@@ -65,7 +65,24 @@ try {
         exit;
     }
 
-    // 1. Extração via EvolutionApiService
+    // 1. Envia para a Fila Redis (Processamento Assíncrono instantâneo pelo Worker do systemd)
+    $redisHost = function_exists('wa_env') ? wa_env('REDIS_HOST', '10.180.152.29') : (getenv('REDIS_HOST') ?: '10.180.152.29');
+    $redisPort = (int) (function_exists('wa_env') ? wa_env('REDIS_PORT', 6380) : (getenv('REDIS_PORT') ?: 6380));
+
+    if (class_exists('\Redis')) {
+        try {
+            $redis = new \Redis();
+            if (@$redis->connect($redisHost, $redisPort, 1.0)) {
+                $redis->rPush('ure_mensagens_fila', json_encode($payload));
+                echo json_encode(['success' => true, 'message' => 'Enfileirado com sucesso']);
+                exit;
+            }
+        } catch (\Throwable $re) {
+            logWebhook("AVISO_REDIS_FALLBACK", ['error' => $re->getMessage()]);
+        }
+    }
+
+    // 2. Fallback de Contingência: Se o Redis estiver offline, processa de forma síncrona
     $phoneNumber = EvolutionApiService::resolvePhoneNumber($payload);
     
     if (empty($phoneNumber)) {
