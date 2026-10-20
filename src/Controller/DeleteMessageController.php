@@ -32,7 +32,7 @@ class DeleteMessageController
             return new JsonResponse(['success' => false, 'error' => 'Mensagem não encontrada'], 404);
         }
         
-        if ($msg['sender_type'] !== 'attendant') {
+        if ($msg['sender_type'] !== 'attendant' && $msg['sender_type'] !== 'agent') {
             return new JsonResponse(['success' => false, 'error' => 'Só é possível apagar mensagens enviadas por você'], 400);
         }
         

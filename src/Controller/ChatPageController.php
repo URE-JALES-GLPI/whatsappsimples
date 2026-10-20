@@ -601,6 +601,19 @@ final class ChatPageController extends AbstractController
                 float: right;
                 margin-top: 4px;
                 margin-left: 8px;
+                display: inline-flex;
+                align-items: center;
+                gap: 2px;
+            }
+
+            .omni-check {
+                font-size: 0.72rem;
+                color: #53bdeb;
+                font-weight: 700;
+                letter-spacing: -1px;
+                margin-left: 3px;
+                display: inline-block;
+                vertical-align: middle;
             }
 
             /* BOTTOM INPUT FOOTER */
@@ -1669,7 +1682,7 @@ final class ChatPageController extends AbstractController
                                     <span>${m.sender_name || ''}</span>
                                 </div>
                                 <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${m.message_text ? `<div class="omni-bubble-text">${formatMessageHtml(m.message_text)}</div>` : ''}</div>
-                                <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${m.sender_type === 'agent' ? ' ✓✓' : ''}</div>
+                                <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${(!m.is_internal && (m.sender_type === 'attendant' || m.sender_type === 'agent')) ? '<span class="omni-check">✓✓</span>' : ''}</div>
                             </div>
                         </div>
                     `;
