@@ -1401,7 +1401,7 @@ final class ChatPageController extends AbstractController
                             </div>
                             <div class="omni-card-info">
                                 <div class="omni-card-row1">
-                                    <div class="omni-card-name">${c.contact_name}</div>
+                                    <div class="omni-card-name">${escapeHtml(c.contact_name)}</div>
                                     <div style="display:flex; align-items:center; gap:6px;">
                                         ${(!isSelected && c.unread_count > 0) ? `<span style="background:#ef4444; color:#fff; font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:10px;">${c.unread_count}</span>` : ''}
                                         <div class="omni-card-time" title="${formatFullDateTime(c.date_mod)}">${formatCardTime(c.date_mod)}</div>
@@ -1679,7 +1679,7 @@ final class ChatPageController extends AbstractController
                             <div class="omni-bubble ${m.sender_type} ${m.is_internal ? 'omni-msg-internal' : ''}" data-msg-id="${m.id}" data-wuid="${m.message_id || ''}" data-sender-type="${m.sender_type}" data-msg-text="${encodeURIComponent(m.message_text || '')}" data-media-url="${encodeURIComponent(m.media_url || '')}" style="position:relative;">
                                 <div class="omni-msg-menu-btn" onclick="openMsgMenu(event, this)">⌄</div>
                                 <div class="omni-bubble-sender">
-                                    <span>${m.sender_name || ''}</span>
+                                    <span>${escapeHtml(m.sender_name || '')}</span>
                                 </div>
                                 <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${m.message_text ? `<div class="omni-bubble-text">${formatMessageHtml(m.message_text)}</div>` : ''}</div>
                                 <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${(!m.is_internal && (m.sender_type === 'attendant' || m.sender_type === 'agent')) ? '<span class="omni-check">✓✓</span>' : ''}</div>
