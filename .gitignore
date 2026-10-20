@@ -21,6 +21,7 @@ php-errors.log
 
 # Dumps & scratch files
 contacts_dump.json
+projeto_completo.txt
 *.sql
 *.dump
 scratch/
