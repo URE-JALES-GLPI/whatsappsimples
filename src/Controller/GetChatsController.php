@@ -43,7 +43,8 @@ final class GetChatsController
                         ]
                     ]
                 ],
-                'ORDER'  => 'c.date_mod DESC, c.id DESC'
+                'ORDER'  => 'c.date_mod DESC, c.id DESC',
+                'LIMIT'  => 500
             ]);
 
             $latestByPhone = [];
@@ -88,28 +89,45 @@ final class GetChatsController
                 ];
             }
 
-            // 2. Aplica filtro de exibição estrito por aba sem mesclar contatos
+            $counts = [
+                'queue'       => 0,
+                'mine'        => 0,
+                'mine_unread' => 0,
+                'all'         => count($latestByPhone),
+            ];
+
+            // 2. Aplica filtro de exibição e calcula contadores em uma única passagem
             foreach ($latestByPhone as $c) {
-                if ($tab === 'mine') {
-                    // Chats: Atendimentos ativos vinculados ao técnico logado
-                    if ($c['users_id'] === $currentUserId && $c['status'] !== 'closed') {
+                $isMine  = ($c['users_id'] === $currentUserId && $c['status'] !== 'closed');
+                $isQueue = ($c['users_id'] === 0 && $c['status'] === 'pending');
+
+                if ($isMine) {
+                    $counts['mine']++;
+                    if ($c['unread_count'] > 0) {
+                        $counts['mine_unread'] += $c['unread_count'];
+                    }
+                    if ($tab === 'mine') {
                         $chats[] = $c;
                     }
-                } elseif ($tab === 'queue') {
-                    // Fila: Apenas chamados não atribuídos (users_id == 0) e pendentes.
-                    if ($c['users_id'] === 0 && $c['status'] === 'pending') {
+                } elseif ($isQueue) {
+                    $counts['queue']++;
+                    if ($tab === 'queue') {
                         $chats[] = $c;
                     }
-                } elseif ($tab === 'all') {
-                    // Contatos: Todos os contatos e conversas cadastrados no sistema
+                }
+
+                if ($tab === 'all') {
                     $chats[] = $c;
                 }
             }
 
         } catch (\Throwable $e) {
-            return new JsonResponse(['chats' => [], 'error' => $e->getMessage()]);
+            return new JsonResponse(['chats' => [], 'counts' => ['queue' => 0, 'mine' => 0, 'all' => 0], 'error' => $e->getMessage()]);
         }
 
-        return new JsonResponse(['chats' => $chats]);
+        return new JsonResponse([
+            'chats'  => $chats,
+            'counts' => $counts,
+        ]);
     }
 }

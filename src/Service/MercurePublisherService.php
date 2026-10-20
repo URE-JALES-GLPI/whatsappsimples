@@ -24,6 +24,29 @@ class MercurePublisherService
         return function_exists('wa_env') ? wa_env('MERCURE_HUB_URL', self::DEFAULT_HUB_URL) : (getenv('MERCURE_HUB_URL') ?: self::DEFAULT_HUB_URL);
     }
 
+    public static function getPublicHubUrl(): string
+    {
+        if (function_exists('wa_env')) {
+            $custom = wa_env('MERCURE_PUBLIC_HUB_URL', '');
+            if (!empty($custom)) {
+                return $custom;
+            }
+        } elseif (!empty(getenv('MERCURE_PUBLIC_HUB_URL'))) {
+            return getenv('MERCURE_PUBLIC_HUB_URL');
+        }
+
+        // Se a requisição web estiver rodando via HTTPS, usa o caminho relativo do proxy reverso
+        // para prevenir bloqueio por Mixed Content no navegador
+        $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+
+        if ($isHttps) {
+            return '/mercure';
+        }
+
+        return self::getHubUrl();
+    }
+
     public static function getTopic(): string
     {
         return function_exists('wa_env') ? wa_env('MERCURE_TOPIC', self::DEFAULT_TOPIC) : (getenv('MERCURE_TOPIC') ?: self::DEFAULT_TOPIC);

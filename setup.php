@@ -11,12 +11,10 @@ require_once __DIR__ . '/src/compat.php';
 if (class_exists(\Glpi\Http\SessionManager::class)) {
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/webhook#');
     \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/front/webhook.php#');
-    \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/public/webhook.php#');
 }
 
 if (class_exists(\Glpi\Http\Firewall::class)) {
     \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
-    \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/public/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
 }
 
@@ -34,12 +32,10 @@ function plugin_init_whatsappsimples(): void
     if (class_exists(\Glpi\Http\SessionManager::class)) {
         \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/webhook#');
         \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/front/webhook.php#');
-        \Glpi\Http\SessionManager::registerPluginStatelessPath('whatsappsimples', '#^/public/webhook.php#');
     }
 
     if (class_exists(\Glpi\Http\Firewall::class)) {
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/front/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
-        \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/public/webhook.php#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
         \Glpi\Http\Firewall::addPluginStrategyForLegacyScripts('whatsappsimples', '#^/webhook#', \Glpi\Http\Firewall::STRATEGY_NO_CHECK);
     }
 

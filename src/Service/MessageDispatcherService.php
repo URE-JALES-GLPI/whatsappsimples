@@ -28,10 +28,7 @@ class MessageDispatcherService
             return true;
         }
 
-        // Se a mensagem foi enviada por nós (fromMe = true), podemos ignorar o fluxo de criação de chat (ou registrar como 'agent')
-        if ($message->isFromMe()) {
-            return true;
-        }
+        $isFromMe = $message->isFromMe();
 
         // 2. Resolve ou Cria o Chat via Lifecycle Service
         $chat = $this->lifecycleService->openOrReopenChat($message);
@@ -44,11 +41,15 @@ class MessageDispatcherService
         }
 
         // 3. Salva a mensagem no histórico do Chat
+        // Mensagens enviadas diretamente do aparelho celular da empresa (fromMe = true) são registradas como 'attendant'
+        $senderType = $isFromMe ? 'attendant' : 'contact';
+        $userId     = $isFromMe ? (int)($chat['users_id'] ?? 0) : 0;
+
         $messageData = [
             'chats_id'     => $chatId,
-            'users_id'     => 0, // Mensagem de contato não tem usuário associado
+            'users_id'     => $userId,
             'message_id'   => $message->getMessageId(),
-            'sender_type'  => 'contact',
+            'sender_type'  => $senderType,
             'message_text' => $message->getText(),
             'media_url'    => $message->getMediaUrl(),
         ];
@@ -64,8 +65,8 @@ class MessageDispatcherService
 
         $result = $this->repository->saveMessage($messageData);
         
-        // 4. Incrementa o contador de mensagens não lidas
-        if ($result > 0) {
+        // 4. Incrementa o contador de mensagens não lidas APENAS para mensagens recebidas do contato externo
+        if ($result > 0 && !$isFromMe) {
             $this->repository->incrementUnreadCount($chatId);
         }
         

@@ -1320,33 +1320,39 @@ final class ChatPageController extends AbstractController
                 }
             }
 
-            function setTabBadge(tab, chats) {
-                const el = document.getElementById(tab === 'queue' ? 'badge-queue' : 'badge-mine');
-                if (!el) return;
-                el.innerText = chats.length;
-                const hasPending = (tab === 'queue')
-                    ? chats.length > 0
-                    : chats.some(c => c.unread_count > 0 && c.id !== activeChatId);
-                el.classList.toggle('alert', hasPending);
-            }
+            function updateAllTabBadges(counts, currentChats) {
+                if (!counts) return;
 
-            async function refreshOtherTabBadges() {
-                // Mantem os contadores de Fila e Chats vivos mesmo estando em outra aba (ex: Contatos)
-                const others = ['queue', 'mine'].filter(t => t !== currentTab);
-                for (const t of others) {
-                    const d = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${t}`);
-                    if (d && Array.isArray(d.chats)) setTabBadge(t, d.chats);
+                const elQueue = document.getElementById('badge-queue');
+                if (elQueue) {
+                    const qCount = Number(counts.queue) || 0;
+                    elQueue.innerText = qCount;
+                    elQueue.classList.toggle('alert', qCount > 0);
+                }
+
+                const elMine = document.getElementById('badge-mine');
+                if (elMine) {
+                    const mCount = Number(counts.mine) || 0;
+                    elMine.innerText = mCount;
+                    // Alerta se houver mensagens pendentes de leitura
+                    let hasUnread = false;
+                    if (currentTab === 'mine' && Array.isArray(currentChats)) {
+                        hasUnread = currentChats.some(c => c.unread_count > 0 && c.id !== activeChatId);
+                    } else {
+                        hasUnread = (Number(counts.mine_unread) || 0) > 0;
+                    }
+                    elMine.classList.toggle('alert', hasUnread);
                 }
             }
 
             async function loadChats() {
                 const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/chats.php?tab=${currentTab}`);
+                if (!data) return;
                 allLoadedChats = data.chats || [];
 
-                if (currentTab === 'mine' || currentTab === 'queue') {
-                    setTabBadge(currentTab, allLoadedChats);
+                if (data.counts) {
+                    updateAllTabBadges(data.counts, allLoadedChats);
                 }
-                refreshOtherTabBadges();
 
                 renderChatList(allLoadedChats);
 
@@ -2853,8 +2859,14 @@ final class ChatPageController extends AbstractController
 
             function connectRealtime() {
                 try {
-                    const hubUrl = new URL('<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::HUB_URL ?>');
-                    hubUrl.searchParams.append('match', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::TOPIC ?>');
+                    const hubTarget = '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::getPublicHubUrl() ?>';
+                    const hubUrl = (hubTarget.startsWith('http://') || hubTarget.startsWith('https://'))
+                        ? new URL(hubTarget)
+                        : new URL(hubTarget, window.location.origin);
+
+                    hubUrl.searchParams.append('topic', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::getTopic() ?>');
+                    hubUrl.searchParams.append('match', '<?= \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::getTopic() ?>');
+
                     const es = new EventSource(hubUrl);
                     es.onopen = () => { sseConnected = true; };
                     es.onmessage = () => { scheduleRefresh(); };
