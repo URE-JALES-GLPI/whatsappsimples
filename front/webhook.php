@@ -35,13 +35,56 @@ try {
     $providedToken = $_SERVER['HTTP_APIKEY'] ?? $_SERVER['HTTP_X_API_KEY'] ?? $_GET['token'] ?? '';
 
     if (empty($providedToken) || !hash_equals($expectedToken, $providedToken)) {
+        logWebhook("ACESSO_NEGADO_TOKEN", [
+            'provided' => $providedToken ? substr($providedToken, 0, 4) . '***' : '(vazio)',
+            'expected_set' => !empty($expectedToken),
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? ''
+        ]);
         http_response_code(401);
         echo json_encode(['success' => false, 'error' => 'Acesso negado']);
         exit;
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        echo json_encode(['success' => true, 'message' => 'Webhook ativo']);
+        $redisStatus = ['connected' => false, 'worker_alive' => false, 'pending_messages' => 0, 'drained_messages' => 0];
+        $redisHost = function_exists('wa_env') ? wa_env('REDIS_HOST', '10.180.152.29') : (getenv('REDIS_HOST') ?: '10.180.152.29');
+        $redisPort = (int) (function_exists('wa_env') ? wa_env('REDIS_PORT', 6380) : (getenv('REDIS_PORT') ?: 6380));
+        if (class_exists('\Redis')) {
+            try {
+                $redis = new \Redis();
+                if (@$redis->connect($redisHost, $redisPort, 1.0)) {
+                    $redisStatus['connected'] = true;
+                    $redisStatus['worker_alive'] = (bool) $redis->get('ure_worker_heartbeat');
+                    $redisStatus['pending_messages'] = (int) $redis->lLen('ure_mensagens_fila');
+
+                    // Se não há worker ativo e há mensagens acumuladas, drena-as agora
+                    if (!$redisStatus['worker_alive'] && $redisStatus['pending_messages'] > 0) {
+                        $repository = new ChatRepository();
+                        $lifecycleService = new ChatLifecycleService($repository);
+                        $dispatcher = new MessageDispatcherService($repository, $lifecycleService);
+
+                        while ($stuckJson = $redis->lPop('ure_mensagens_fila')) {
+                            $stuckPayload = json_decode($stuckJson, true);
+                            if ($stuckPayload && is_array($stuckPayload)) {
+                                $stuckPhone = EvolutionApiService::resolvePhoneNumber($stuckPayload);
+                                if (!empty($stuckPhone)) {
+                                    $stuckDTO = IncomingMessageDTO::fromPayload($stuckPayload, $stuckPhone);
+                                    if ($stuckDTO->getText() !== '' || !empty($stuckDTO->getMediaUrl())) {
+                                        if ($dispatcher->dispatchIncomingMessage($stuckDTO)) {
+                                            $redisStatus['drained_messages']++;
+                                            \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('new_message', ['phone_number' => $stuckPhone]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                $redisStatus['error'] = $e->getMessage();
+            }
+        }
+        echo json_encode(['success' => true, 'message' => 'Webhook ativo', 'status' => $redisStatus]);
         exit;
     }
 
@@ -62,7 +105,7 @@ try {
         exit;
     }
 
-    // 1. Envia para a Fila Redis (Processamento Assíncrono instantâneo pelo Worker do systemd)
+    // 1. Envia para a Fila Redis APENAS se o Worker estiver ativo (comprovado via heartbeat)
     $redisHost = function_exists('wa_env') ? wa_env('REDIS_HOST', '10.180.152.29') : (getenv('REDIS_HOST') ?: '10.180.152.29');
     $redisPort = (int) (function_exists('wa_env') ? wa_env('REDIS_PORT', 6380) : (getenv('REDIS_PORT') ?: 6380));
 
@@ -70,9 +113,36 @@ try {
         try {
             $redis = new \Redis();
             if (@$redis->connect($redisHost, $redisPort, 1.0)) {
-                $redis->rPush('ure_mensagens_fila', json_encode($payload));
-                echo json_encode(['success' => true, 'message' => 'Enfileirado com sucesso']);
-                exit;
+                $workerAlive = (bool) $redis->get('ure_worker_heartbeat');
+                if ($workerAlive) {
+                    $redis->rPush('ure_mensagens_fila', json_encode($payload));
+                    logWebhook("ENFILEIRADO_REDIS", ['event' => $event]);
+                    echo json_encode(['success' => true, 'message' => 'Enfileirado com sucesso']);
+                    exit;
+                }
+
+                // Worker offline: resgata mensagens presas na fila antes de processar síncrono
+                $pendingCount = (int) $redis->lLen('ure_mensagens_fila');
+                if ($pendingCount > 0) {
+                    logWebhook("DRENANDO_FILA_SEM_WORKER", ['count' => $pendingCount]);
+                    $repository = new ChatRepository();
+                    $lifecycleService = new ChatLifecycleService($repository);
+                    $dispatcher = new MessageDispatcherService($repository, $lifecycleService);
+
+                    while ($stuckJson = $redis->lPop('ure_mensagens_fila')) {
+                        $stuckPayload = json_decode($stuckJson, true);
+                        if ($stuckPayload && is_array($stuckPayload)) {
+                            $stuckPhone = EvolutionApiService::resolvePhoneNumber($stuckPayload);
+                            if (!empty($stuckPhone)) {
+                                $stuckDTO = IncomingMessageDTO::fromPayload($stuckPayload, $stuckPhone);
+                                if ($stuckDTO->getText() !== '' || !empty($stuckDTO->getMediaUrl())) {
+                                    $dispatcher->dispatchIncomingMessage($stuckDTO);
+                                    \GlpiPlugin\Whatsappsimples\Service\MercurePublisherService::notify('new_message', ['phone_number' => $stuckPhone]);
+                                }
+                            }
+                        }
+                    }
+                }
             }
         } catch (\Throwable $re) {
             logWebhook("AVISO_REDIS_FALLBACK", ['error' => $re->getMessage()]);

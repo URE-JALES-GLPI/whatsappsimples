@@ -109,8 +109,11 @@ class RedisWorker
                     continue;
                 }
 
-                // Aguarda indefinidamente até chegar mensagem na fila (blPop com timeout 0)
-                $mensagem = $this->redis->blPop($this->queueName, 0);
+                // Publica heartbeat de liveness a cada ciclo (TTL de 20 segundos)
+                $this->redis->set('ure_worker_heartbeat', (string) time(), 20);
+
+                // Aguarda até chegar mensagem na fila (timeout de 5 segundos para renovar o heartbeat mesmo sem mensagens)
+                $mensagem = $this->redis->blPop($this->queueName, 5);
 
                 if ($mensagem && !empty($mensagem[1])) {
                     $rawMessage = $mensagem[1];
