@@ -2139,14 +2139,39 @@ final class ChatPageController extends AbstractController
                 if (!isRecording) {
                     try {
                         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        mediaRecorder = new MediaRecorder(stream);
+                        
+                        let recordOptions = undefined;
+                        let audioExt = 'webm';
+                        let audioMime = 'audio/webm';
+                        if (typeof MediaRecorder.isTypeSupported === 'function') {
+                            if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+                                recordOptions = { mimeType: 'audio/ogg;codecs=opus' };
+                                audioExt = 'ogg';
+                                audioMime = 'audio/ogg;codecs=opus';
+                            } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                                recordOptions = { mimeType: 'audio/webm;codecs=opus' };
+                                audioExt = 'webm';
+                                audioMime = 'audio/webm;codecs=opus';
+                            } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                                recordOptions = { mimeType: 'audio/webm' };
+                                audioExt = 'webm';
+                                audioMime = 'audio/webm';
+                            } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                                recordOptions = { mimeType: 'audio/mp4' };
+                                audioExt = 'mp4';
+                                audioMime = 'audio/mp4';
+                            }
+                        }
+
+                        mediaRecorder = recordOptions ? new MediaRecorder(stream, recordOptions) : new MediaRecorder(stream);
                         
                         mediaRecorder.ondataavailable = e => {
                             if (e.data.size > 0) audioChunks.push(e.data);
                         };
                         
                         mediaRecorder.onstop = async () => {
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            const actualMime = mediaRecorder.mimeType || audioMime;
+                            const audioBlob = new Blob(audioChunks, { type: actualMime });
                             audioChunks = [];
                             
                             clearInterval(recordTimer);
@@ -2159,7 +2184,8 @@ final class ChatPageController extends AbstractController
                             const formData = new FormData();
                             formData.append('chat_id', activeChatId || 0);
                             formData.append('phone_number', activePhoneNumber || '');
-                            formData.append('file', audioBlob, 'audio.webm');
+                            formData.append('is_ptt', '1');
+                            formData.append('file', audioBlob, 'audio.' + audioExt);
                             
                             btn.disabled = true;
                             const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/send.php`, {

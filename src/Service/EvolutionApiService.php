@@ -674,12 +674,195 @@ class EvolutionApiService
     }
 
     // ──────────────────────────────────────────────────
+    // ENVIO DE ÁUDIO / NOTA DE VOZ (PTT)
+    // ──────────────────────────────────────────────────
+
+    /**
+     * Envia mensagem de áudio / nota de voz (PTT) via endpoint nativo da EvolutionAPI.
+     * Utiliza o endpoint /message/sendWhatsAppAudio/{instance} com encoding=true para que a EvolutionAPI
+     * execute a transcodificação FFmpeg (webm/mp3 -> ogg opus) exigida pelo WhatsApp para entrega garantida.
+     */
+    public static function sendWhatsAppAudio(int $chatId, string $phoneNumber, string $base64Data, string $fileName = 'audio.ogg', string $caption = ''): array
+    {
+        global $DB;
+
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['success' => false, 'error' => 'Configurações da EvolutionAPI incompletas'];
+        }
+
+        // Se o número armazenado é um LID, tenta resolver
+        if (!self::isValidBrazilianNumber($phoneNumber)) {
+            $rawDigits = preg_replace('/[^0-9]/', '', str_replace(['@s.whatsapp.net', '@c.us', '@lid'], '', $phoneNumber));
+            $resolved = self::fetchRealJidFromApi($rawDigits);
+            if (!empty($resolved)) {
+                $DB->update('glpi_plugin_whatsappsimples_chats', ['phone_number' => $resolved], ['id' => $chatId]);
+                $phoneNumber = $resolved;
+            }
+        }
+
+        $numberToSend = self::formatNumberForSending($phoneNumber);
+
+        $mimeType = 'audio/ogg';
+        $pureBase64 = $base64Data;
+        if (preg_match('/^data:(.*?);base64,(.*)$/', $base64Data, $matches)) {
+            $mimeType = $matches[1];
+            $pureBase64 = $matches[2];
+        }
+
+        $dbCaption = $caption;
+        $quoteId = null;
+        if (str_starts_with($caption, '[QUOTE:{')) {
+            $endPos = strpos($caption, "}]\n");
+            $endLen = 3;
+            if ($endPos === false) {
+                $endPos = strpos($caption, "}]\r\n");
+                $endLen = 4;
+            }
+            if ($endPos !== false) {
+                $jsonStr = substr($caption, 7, $endPos - 7 + 1);
+                $quoteData = json_decode($jsonStr, true);
+                if ($quoteData && !empty($quoteData['wuid'])) {
+                    $quoteId = $quoteData['wuid'];
+                }
+                $caption = substr($caption, $endPos + $endLen);
+            }
+        }
+
+        $endpoint = "{$baseUrl}/message/sendWhatsAppAudio/{$instance}";
+        $bodyData = [
+            'number'   => $numberToSend,
+            'audio'    => $pureBase64,
+            'delay'    => 1200,
+            'encoding' => true,
+            'options'  => [
+                'delay'          => 1200,
+                'presence'       => 'recording',
+                'encoding'       => true,
+                'verifyContact'  => false,
+                'validateNumber' => false
+            ],
+            'audioMessage' => [
+                'audio' => $pureBase64
+            ]
+        ];
+
+        if (!empty($quoteId)) {
+            $quotedObj = [
+                'key' => [
+                    'id' => $quoteId
+                ]
+            ];
+            $bodyData['quoted'] = $quotedObj;
+            $bodyData['options']['quoted'] = $quotedObj;
+            $bodyData['options']['quotedMessageId'] = $quoteId;
+        }
+
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken,
+                'Expect:'
+            ],
+            CURLOPT_POSTFIELDS     => json_encode($bodyData),
+            CURLOPT_TIMEOUT        => 45
+        ]);
+
+        $responseBody = curl_exec($ch);
+        $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // Se a API rejeitou com Base64 puro (ex.: 400), tenta enviar com o prefixo Data URI
+        if (($httpCode < 200 || $httpCode >= 300) && !str_starts_with($bodyData['audio'], 'data:')) {
+            self::log("RETRY_AUDIO_DATA_URI", ['prev_code' => $httpCode, 'prev_resp' => $responseBody]);
+            $dataUri = 'data:' . $mimeType . ';base64,' . $pureBase64;
+            $bodyData['audio'] = $dataUri;
+            if (isset($bodyData['audioMessage']['audio'])) {
+                $bodyData['audioMessage']['audio'] = $dataUri;
+            }
+
+            $ch = curl_init($endpoint);
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken,
+                    'Expect:'
+                ],
+                CURLOPT_POSTFIELDS     => json_encode($bodyData),
+                CURLOPT_TIMEOUT        => 45
+            ]);
+            $responseBody = curl_exec($ch);
+            $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $currentUserId = (int) \Session::getLoginUserID();
+        $messageText = "📎 Arquivo: {$fileName}" . ($dbCaption !== '' ? "\n{$dbCaption}" : "");
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $responseData = json_decode($responseBody, true);
+            $messageId    = $responseData['key']['id'] ?? '';
+
+            $mediaDir = GLPI_PLUGIN_DOC_DIR . '/whatsappsimples/media/' . date('Y/m');
+            if (!is_dir($mediaDir)) {
+                @mkdir($mediaDir, 0775, true);
+            }
+
+            $safeFileName = preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $fileName);
+            $localHash = md5(uniqid(rand(), true)) . '_' . $safeFileName;
+            $localPath = $mediaDir . '/' . $localHash;
+
+            file_put_contents($localPath, base64_decode($pureBase64));
+
+            $dbMediaPath = date('Y/m') . '/' . $localHash;
+            $dbMediaUrl = 'doc_' . $dbMediaPath;
+
+            $messageData = [
+                'chats_id'      => $chatId,
+                'users_id'      => $currentUserId,
+                'message_id'    => $messageId,
+                'sender_type'   => 'attendant',
+                'message_text'  => $messageText,
+                'media_url'     => $dbMediaUrl,
+                'date_creation' => $now
+            ];
+
+            if ($DB->fieldExists('glpi_plugin_whatsappsimples_messages', 'media_path')) {
+                $messageData['media_path'] = $dbMediaPath;
+                $messageData['media_mime'] = $mimeType;
+            }
+
+            $DB->insert('glpi_plugin_whatsappsimples_messages', $messageData);
+            $DB->update('glpi_plugin_whatsappsimples_chats', ['date_mod' => $now], ['id' => $chatId]);
+
+            self::log("SEND_AUDIO_SUCCESS", ['message_id' => $messageId, 'number' => $numberToSend]);
+            return ['success' => true, 'message_id' => $messageId];
+        }
+
+        self::log("ERRO_ENVIO_AUDIO", ['http_code' => $httpCode, 'response' => $responseBody]);
+        return ['success' => false, 'error' => "A Evolution API rejeitou o áudio (HTTP {$httpCode}). Resposta: " . substr($responseBody, 0, 100)];
+    }
+
+    // ──────────────────────────────────────────────────
     // ENVIO DE MÍDIA
     // ──────────────────────────────────────────────────
 
-    public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = ''): array
+    public static function sendMedia(int $chatId, string $phoneNumber, string $mediaType, string $base64Data, string $fileName, string $caption = '', bool $isPtt = false): array
     {
         global $DB;
+
+        if ($mediaType === 'audio' || $isPtt || str_starts_with($mediaType, 'audio')) {
+            return self::sendWhatsAppAudio($chatId, $phoneNumber, $base64Data, $fileName, $caption);
+        }
 
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');
         $apiToken = self::getConfig('api_token');

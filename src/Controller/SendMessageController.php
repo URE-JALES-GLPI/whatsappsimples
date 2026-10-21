@@ -145,16 +145,24 @@ final class SendMessageController
                 $fileData  = file_get_contents($uploadedFile->getPathname());
                 $base64    = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
 
+                $ext = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+                $isPtt = (bool) $request->request->get('is_ptt');
+
                 $mediaType = 'document';
-                if (str_starts_with($mimeType, 'image/')) {
+                if ($isPtt || in_array($ext, ['ogg', 'mp3', 'wav', 'm4a', 'aac', 'opus']) || ($ext === 'webm' && (str_starts_with($mimeType, 'audio/') || str_starts_with($fileName, 'audio.')))) {
+                    $mediaType = 'audio';
+                    if (!str_starts_with($mimeType, 'audio/')) {
+                        $mimeType = 'audio/webm';
+                    }
+                } elseif (str_starts_with($mimeType, 'image/') || in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
                     $mediaType = 'image';
                 } elseif (str_starts_with($mimeType, 'audio/')) {
                     $mediaType = 'audio';
-                } elseif (str_starts_with($mimeType, 'video/')) {
+                } elseif (str_starts_with($mimeType, 'video/') || in_array($ext, ['mp4', 'mkv', 'avi', 'mov'])) {
                     $mediaType = 'video';
                 }
 
-                $result = EvolutionApiService::sendMedia($chatId, $phoneToUpdate, $mediaType, $base64, $fileName, $text);
+                $result = EvolutionApiService::sendMedia($chatId, $phoneToUpdate, $mediaType, $base64, $fileName, $text, $isPtt);
                 
                 // Apenas atribui ao usuário se estiver na Fila (users_id == 0). Senão, apenas atualiza date_mod.
                 if ((int)$chat['users_id'] === 0) {
