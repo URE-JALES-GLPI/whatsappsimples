@@ -24,18 +24,28 @@ final class GetChatsController
             return new JsonResponse(['chats' => []]);
         }
 
+        \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::ensureMessageColumns();
+
         $currentUserId = (int) Session::getLoginUserID();
         $tab = $request->query->get('tab', 'mine');
 
         $chats = [];
 
         try {
+            $selectFields = [
+                'c.id', 'c.phone_number', 'c.contact_name', 'c.users_id', 'c.status', 'c.date_mod', 'c.unread_count',
+                'u.realname', 'u.firstname'
+            ];
+            if ($DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'profile_picture_url')) {
+                $selectFields[] = 'c.profile_picture_url';
+            }
+            if ($DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'contact_status')) {
+                $selectFields[] = 'c.contact_status';
+            }
+
             // 1. Busca os registros mais recentes por numero de telefone e faz JOIN para trazer o nome do técnico
             $iterator = $DB->request([
-                'SELECT' => [
-                    'c.id', 'c.phone_number', 'c.contact_name', 'c.users_id', 'c.status', 'c.date_mod', 'c.unread_count',
-                    'u.realname', 'u.firstname'
-                ],
+                'SELECT' => $selectFields,
                 'FROM'   => 'glpi_plugin_whatsappsimples_chats AS c',
                 'LEFT JOIN' => [
                     'glpi_users AS u' => [
@@ -80,14 +90,16 @@ final class GetChatsController
                 }
 
                 $latestByPhone[$phone] = [
-                    'id'              => (int) $row['id'],
-                    'phone_number'    => $row['phone_number'],
-                    'contact_name'    => $displayName,
-                    'users_id'        => (int) $row['users_id'],
-                    'technician_name' => $technicianName,
-                    'status'          => $row['status'],
-                    'date_mod'        => $row['date_mod'],
-                    'unread_count'    => (int) ($row['unread_count'] ?? 0),
+                    'id'                  => (int) $row['id'],
+                    'phone_number'        => $row['phone_number'],
+                    'contact_name'        => $displayName,
+                    'users_id'            => (int) $row['users_id'],
+                    'technician_name'     => $technicianName,
+                    'status'              => $row['status'],
+                    'date_mod'            => $row['date_mod'],
+                    'unread_count'        => (int) ($row['unread_count'] ?? 0),
+                    'profile_picture_url' => $row['profile_picture_url'] ?? null,
+                    'contact_status'      => $row['contact_status'] ?? null,
                 ];
             }
 

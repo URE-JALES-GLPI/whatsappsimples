@@ -44,6 +44,12 @@ class EvolutionApiService
             if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'unread_count')) {
                 @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `unread_count` int(11) NOT NULL DEFAULT 0 AFTER `status`");
             }
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'profile_picture_url')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `profile_picture_url` text DEFAULT NULL AFTER `contact_name`");
+            }
+            if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'contact_status')) {
+                @$DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `contact_status` text DEFAULT NULL AFTER `profile_picture_url`");
+            }
         }
     }
 
@@ -326,6 +332,202 @@ class EvolutionApiService
 
         // Número não-brasileiro sem sufixo: adiciona @lid
         return $digits . '@lid';
+    }
+
+    // ──────────────────────────────────────────────────
+    // PERFIL E FOTO DO CONTATO (WHATSAPP)
+    // ──────────────────────────────────────────────────
+
+    /**
+     * Consulta o perfil do contato (Foto, Nome e Recado/Status) na Evolution API.
+     * Tenta os endpoints /chat/fetchProfile, /chat/fetchProfilePictureUrl e /chat/findChats.
+     * Se encontrar foto, baixa e armazena em cache local para nunca expirar.
+     */
+    public static function fetchProfile(string $phoneNumber): array
+    {
+        global $DB;
+        $baseUrl  = rtrim(self::getConfig('server_url') ?? '', '/');
+        $apiToken = self::getConfig('api_token') ?? '';
+        $instance = self::getConfig('instance_name') ?? '';
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance) || empty($phoneNumber)) {
+            return ['success' => false, 'error' => 'Configuração ou número ausente'];
+        }
+
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phoneNumber);
+        $numberToQuery = str_contains($phoneNumber, '@') ? $phoneNumber : $cleanPhone;
+
+        $name = null;
+        $pictureUrl = null;
+        $statusText = null;
+        $setAt = null;
+
+        // 1. Tentar /chat/fetchProfile/{instance}
+        $ch = curl_init("{$baseUrl}/chat/fetchProfile/{$instance}");
+        curl_setopt_array($ch, [
+            CURLOPT_POST           => true,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 6,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_POSTFIELDS     => json_encode(['number' => $numberToQuery])
+        ]);
+        $res = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($code >= 200 && $code < 300 && !empty($res)) {
+            $data = json_decode($res, true);
+            if (is_array($data)) {
+                $name = $data['name'] ?? null;
+                $pictureUrl = $data['picture'] ?? null;
+                if (!empty($data['status'])) {
+                    if (is_array($data['status'])) {
+                        $statusText = $data['status']['status'] ?? null;
+                        $setAt = $data['status']['setAt'] ?? null;
+                    } else {
+                        $statusText = (string) $data['status'];
+                    }
+                }
+            }
+        }
+
+        // 2. Se a foto for nula, tentar /chat/fetchProfilePictureUrl/{instance}
+        if (empty($pictureUrl)) {
+            $ch = curl_init("{$baseUrl}/chat/fetchProfilePictureUrl/{$instance}");
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken
+                ],
+                CURLOPT_POSTFIELDS     => json_encode(['number' => $numberToQuery])
+            ]);
+            $res = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($code >= 200 && $code < 300 && !empty($res)) {
+                $data = json_decode($res, true);
+                if (!empty($data['profilePictureUrl'])) {
+                    $pictureUrl = $data['profilePictureUrl'];
+                }
+            }
+        }
+
+        // 3. Se ainda for nula, consultar o banco interno do Evolution API via /chat/findChats
+        if (empty($pictureUrl)) {
+            $remoteJid = str_contains($phoneNumber, '@') ? $phoneNumber : "{$cleanPhone}@s.whatsapp.net";
+            $ch = curl_init("{$baseUrl}/chat/findChats/{$instance}");
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 6,
+                CURLOPT_HTTPHEADER     => [
+                    'Content-Type: application/json',
+                    'apikey: ' . $apiToken
+                ],
+                CURLOPT_POSTFIELDS     => json_encode(['where' => ['remoteJid' => $remoteJid]])
+            ]);
+            $res = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($code >= 200 && $code < 300 && !empty($res)) {
+                $chats = json_decode($res, true);
+                if (is_array($chats) && !empty($chats[0]['profilePicUrl'])) {
+                    $pictureUrl = $chats[0]['profilePicUrl'];
+                    if (empty($name) && !empty($chats[0]['pushName'])) {
+                        $name = $chats[0]['pushName'];
+                    }
+                }
+            }
+        }
+
+        // 4. Se obteve foto, faz download para o cache local
+        $localAvatarUrl = null;
+        if (!empty($pictureUrl)) {
+            $cached = self::cacheProfilePicture($phoneNumber, $pictureUrl);
+            if ($cached) {
+                $localAvatarUrl = $cached;
+            } else {
+                // Fallback para a URL do WhatsApp diretamente se o download falhou
+                $localAvatarUrl = $pictureUrl;
+            }
+        }
+
+        // 5. Persistir na base do GLPI se a tabela e colunas existirem
+        if (isset($DB) && is_object($DB) && $DB->tableExists('glpi_plugin_whatsappsimples_chats')) {
+            $updateData = [];
+            if ($localAvatarUrl) {
+                $updateData['profile_picture_url'] = $localAvatarUrl;
+            }
+            if ($statusText !== null) {
+                $updateData['contact_status'] = $statusText;
+            }
+            if (!empty($updateData)) {
+                $DB->update('glpi_plugin_whatsappsimples_chats', $updateData, ['phone_number' => $phoneNumber]);
+            }
+        }
+
+        return [
+            'success'     => true,
+            'name'        => $name,
+            'picture_url' => $localAvatarUrl,
+            'status'      => $statusText,
+            'set_at'      => $setAt
+        ];
+    }
+
+    /**
+     * Faz download da imagem da foto de perfil e salva na pasta de documentos do plugin.
+     * Retorna a URL pública relativa ou null em caso de falha.
+     */
+    public static function cacheProfilePicture(string $phoneNumber, string $pictureUrl): ?string
+    {
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phoneNumber);
+        if (empty($cleanPhone) || empty($pictureUrl)) {
+            return null;
+        }
+
+        $baseDir = defined('GLPI_PLUGIN_DOC_DIR') 
+            ? GLPI_PLUGIN_DOC_DIR . '/whatsappsimples/avatars' 
+            : (defined('GLPI_ROOT') ? GLPI_ROOT . '/files/_plugins/whatsappsimples/avatars' : '/var/www/html/glpi/files/_plugins/whatsappsimples/avatars');
+
+        if (!is_dir($baseDir)) {
+            @mkdir($baseDir, 0775, true);
+        }
+
+        $fileName = $cleanPhone . '.jpg';
+        $filePath = $baseDir . '/' . $fileName;
+
+        // Se o arquivo local já existe e tem menos de 24 horas, reutiliza
+        if (file_exists($filePath) && (time() - filemtime($filePath) < 86400) && filesize($filePath) > 300) {
+            return (function_exists('wa_web_dir') ? wa_web_dir('whatsappsimples') : '/plugins/whatsappsimples') . '/front/avatar.php?phone=' . $cleanPhone;
+        }
+
+        $ch = curl_init($pictureUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT        => 10,
+            CURLOPT_SSL_VERIFYPEER => false,
+            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        ]);
+        $data = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300 && !empty($data) && strlen($data) > 300) {
+            @file_put_contents($filePath, $data);
+            return (function_exists('wa_web_dir') ? wa_web_dir('whatsappsimples') : '/plugins/whatsappsimples') . '/front/avatar.php?phone=' . $cleanPhone;
+        }
+
+        return null;
     }
 
     // ──────────────────────────────────────────────────

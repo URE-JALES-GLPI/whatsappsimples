@@ -276,6 +276,16 @@ final class ChatPageController extends AbstractController
                 align-items: center;
                 justify-content: center;
                 text-transform: uppercase;
+                overflow: hidden;
+                position: relative;
+                user-select: none;
+            }
+            .omni-avatar img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 50%;
+                display: block;
             }
 
             .omni-avatar-icon {
@@ -362,6 +372,14 @@ final class ChatPageController extends AbstractController
                 gap: 12px;
                 min-width: 0;
                 overflow: hidden;
+                cursor: pointer;
+                padding: 4px 8px;
+                border-radius: 6px;
+                transition: background 0.15s;
+                user-select: none;
+            }
+            .omni-header-contact:hover {
+                background: #f1f5f9;
             }
 
             .omni-header-contact > div:last-child {
@@ -379,6 +397,241 @@ final class ChatPageController extends AbstractController
                 white-space: nowrap;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                color: #64748b;
+                transition: color 0.15s;
+            }
+            .omni-header-contact:hover #header-sub {
+                color: #0284c7;
+            }
+
+            /* CONTACT DRAWER (DADOS DO CONTATO - WHATSAPP STYLE) */
+            .omni-contact-drawer {
+                width: 380px;
+                min-width: 380px;
+                max-width: 380px;
+                background: #ffffff;
+                border-left: 1px solid #cbd5e1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                flex-shrink: 0;
+                animation: omniDrawerSlideIn 0.2s ease-out;
+                z-index: 20;
+            }
+            @keyframes omniDrawerSlideIn {
+                from { transform: translateX(100%); }
+                to { transform: translateX(0); }
+            }
+            .omni-drawer-header {
+                height: 54px;
+                background: #ffffff;
+                border-bottom: 1px solid #cbd5e1;
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                padding: 0 16px;
+                flex-shrink: 0;
+            }
+            .omni-drawer-close-btn {
+                font-size: 1.3rem;
+                font-weight: 700;
+                cursor: pointer;
+                color: #64748b;
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.15s;
+            }
+            .omni-drawer-close-btn:hover {
+                background: #f1f5f9;
+                color: #0f172a;
+            }
+            .omni-drawer-title {
+                font-size: 1rem;
+                font-weight: 700;
+                color: #0f172a;
+            }
+            .omni-drawer-body {
+                flex: 1;
+                overflow-y: auto;
+                background: #f8fafc;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                padding-bottom: 24px;
+            }
+            .omni-drawer-card {
+                background: #ffffff;
+                padding: 16px;
+                border-bottom: 1px solid #e2e8f0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            }
+            .omni-drawer-hero {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                padding-top: 24px;
+                padding-bottom: 20px;
+            }
+            .omni-drawer-avatar-wrap {
+                position: relative;
+                width: 160px;
+                height: 160px;
+                border-radius: 50%;
+                cursor: pointer;
+                overflow: hidden;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+                margin-bottom: 14px;
+            }
+            .omni-drawer-avatar-wrap img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 50%;
+                transition: transform 0.2s;
+            }
+            .omni-drawer-avatar-wrap:hover img {
+                transform: scale(1.05);
+            }
+            .omni-drawer-avatar-fallback {
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #0ea5e9, #0284c7);
+                color: #ffffff;
+                font-size: 3.5rem;
+                font-weight: 700;
+                user-select: none;
+            }
+            .omni-drawer-avatar-overlay {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(0,0,0,0.6);
+                color: #ffffff;
+                font-size: 0.72rem;
+                font-weight: 600;
+                padding: 4px 0;
+                opacity: 0;
+                transition: opacity 0.2s;
+                text-align: center;
+            }
+            .omni-drawer-avatar-wrap:hover .omni-drawer-avatar-overlay {
+                opacity: 1;
+            }
+            .omni-drawer-name {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: #0f172a;
+                word-break: break-word;
+            }
+            .omni-drawer-phone {
+                font-size: 0.9rem;
+                color: #64748b;
+                margin-top: 4px;
+            }
+            .omni-drawer-actions {
+                display: flex;
+                justify-content: center;
+                gap: 16px;
+                margin-top: 18px;
+                width: 100%;
+            }
+            .omni-drawer-action-btn {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: #0284c7;
+                font-size: 0.75rem;
+                font-weight: 600;
+                transition: transform 0.15s;
+            }
+            .omni-drawer-action-btn:hover {
+                transform: translateY(-2px);
+            }
+            .omni-drawer-action-circle {
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                background: #e0f2fe;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.15rem;
+                color: #0284c7;
+                transition: all 0.15s;
+            }
+            .omni-drawer-action-btn:hover .omni-drawer-action-circle {
+                background: #0284c7;
+                color: #ffffff;
+            }
+            .omni-drawer-section-title {
+                font-size: 0.82rem;
+                font-weight: 600;
+                color: #64748b;
+                margin-bottom: 8px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .omni-drawer-recado-text {
+                font-size: 0.92rem;
+                color: #1e293b;
+                word-break: break-word;
+                line-height: 1.4;
+            }
+            .omni-drawer-recado-date {
+                font-size: 0.75rem;
+                color: #94a3b8;
+                margin-top: 6px;
+            }
+            .omni-drawer-media-grid {
+                display: flex;
+                gap: 8px;
+                overflow-x: auto;
+                padding: 4px 0 8px 0;
+            }
+            .omni-drawer-media-grid::-webkit-scrollbar {
+                height: 6px;
+            }
+            .omni-drawer-media-grid::-webkit-scrollbar-thumb {
+                background: #cbd5e1;
+                border-radius: 3px;
+            }
+            .omni-drawer-media-thumb {
+                width: 76px;
+                height: 76px;
+                min-width: 76px;
+                border-radius: 6px;
+                overflow: hidden;
+                position: relative;
+                cursor: pointer;
+                background: #e2e8f0;
+                border: 1px solid #cbd5e1;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.15s;
+            }
+            .omni-drawer-media-thumb:hover {
+                transform: scale(1.05);
+            }
+            .omni-drawer-media-thumb img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
             }
 
             .omni-header-tags {
@@ -1024,11 +1277,11 @@ final class ChatPageController extends AbstractController
                 <!-- MAIN CHAT WINDOW -->
                 <div class="omni-main">
                     <div class="omni-chat-header" id="main-chat-header" style="display:none;">
-                        <div class="omni-header-contact">
+                        <div class="omni-header-contact" onclick="toggleContactDrawer()" title="Clique para mostrar os dados do contato">
                             <div class="omni-avatar" id="header-avatar">?</div>
                             <div>
                                 <div style="font-weight:700; font-size:0.95rem; color:#0f172a;" id="header-title">Contato</div>
-                                <div style="font-size:0.78rem; color:#64748b;" id="header-sub">Telefone</div>
+                                <div style="font-size:0.78rem; color:#64748b;" id="header-sub">clique para mostrar os dados do contato</div>
                             </div>
                         </div>
 
@@ -1127,6 +1380,88 @@ final class ChatPageController extends AbstractController
 
                         <textarea class="omni-message-input" id="message-input" placeholder="Digite uma mensagem (Shift + Enter quebra linha)..." onkeydown="handleKeyPress(event)" oninput="autoResizeInput(this); checkInputState();" disabled rows="1"></textarea>
                         <button class="omni-send-btn" id="send-btn" onclick="toggleAudioRecording()" disabled title="Gravar Áudio" style="transition: all 0.2s; min-width: 45px;">🎤</button>
+                    </div>
+                </div>
+
+                <!-- GAVETA LATERAL DIREITA: DADOS DO CONTATO (WHATSAPP WEB STYLE) -->
+                <div class="omni-contact-drawer" id="contact-drawer" style="display:none;">
+                    <div class="omni-drawer-header">
+                        <div class="omni-drawer-close-btn" onclick="closeContactDrawer()" title="Fechar dados do contato">✕</div>
+                        <div class="omni-drawer-title">Dados do contato</div>
+                    </div>
+                    <div class="omni-drawer-body">
+                        <!-- HERO CARD: FOTO GRANDE, NOME, TELEFONE E AÇÕES RÁPIDAS -->
+                        <div class="omni-drawer-card omni-drawer-hero">
+                            <div class="omni-drawer-avatar-wrap" onclick="openDrawerPhotoLightbox()" title="Clique para expandir a foto em tamanho real">
+                                <img id="drawer-avatar-img" src="" alt="Foto" style="display:none;">
+                                <div class="omni-drawer-avatar-fallback" id="drawer-avatar-fallback">?</div>
+                                <div class="omni-drawer-avatar-overlay">🔍 Expandir Foto</div>
+                            </div>
+                            <div class="omni-drawer-name" id="drawer-name">Contato</div>
+                            <div class="omni-drawer-phone" id="drawer-phone">+55 00 00000-0000</div>
+
+                            <div class="omni-drawer-actions">
+                                <button class="omni-drawer-action-btn" onclick="copyContactPhone()" title="Copiar telefone">
+                                    <div class="omni-drawer-action-circle">📋</div>
+                                    <span id="drawer-copy-btn-label">Copiar</span>
+                                </button>
+                                <button class="omni-drawer-action-btn" onclick="openGlpiTicketModal()" title="Abrir chamado no GLPI">
+                                    <div class="omni-drawer-action-circle">🎫</div>
+                                    <span>Chamado</span>
+                                </button>
+                                <button class="omni-drawer-action-btn" onclick="openTransferModal()" title="Transferir conversa">
+                                    <div class="omni-drawer-action-circle">🔄</div>
+                                    <span>Transferir</span>
+                                </button>
+                                <button class="omni-drawer-action-btn" onclick="triggerDrawerCloseChat()" title="Encerrar atendimento">
+                                    <div class="omni-drawer-action-circle" style="color:#ef4444; background:#fee2e2;">📵</div>
+                                    <span style="color:#ef4444;">Encerrar</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- RECADO / STATUS DO WHATSAPP -->
+                        <div class="omni-drawer-card">
+                            <div class="omni-drawer-section-title">
+                                <span>Recado</span>
+                            </div>
+                            <div class="omni-drawer-recado-text" id="drawer-recado">Disponível</div>
+                            <div class="omni-drawer-recado-date" id="drawer-recado-date" style="display:none;"></div>
+                        </div>
+
+                        <!-- MÍDIA, LINKS E DOCS (COMO NO PRINT DO WHATSAPP) -->
+                        <div class="omni-drawer-card">
+                            <div class="omni-drawer-section-title">
+                                <span style="display:flex; align-items:center; gap:8px;">
+                                    <span>📁</span> Mídia, links e docs
+                                </span>
+                                <span id="drawer-media-count" style="font-size:0.85rem; color:#64748b; font-weight:700;">0</span>
+                            </div>
+                            <div class="omni-drawer-media-grid" id="drawer-media-grid">
+                                <div style="font-size:0.82rem; color:#94a3b8; padding:8px 0;">Nenhuma mídia compartilhada</div>
+                            </div>
+                        </div>
+
+                        <!-- DADOS DO ATENDIMENTO / GLPI -->
+                        <div class="omni-drawer-card">
+                            <div class="omni-drawer-section-title">
+                                <span>Detalhes do Atendimento</span>
+                            </div>
+                            <div style="font-size:0.83rem; color:#475569; display:flex; flex-direction:column; gap:8px;">
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span style="color:#64748b;">Status:</span>
+                                    <span id="drawer-chat-status" style="font-weight:600; text-transform:uppercase;">-</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span style="color:#64748b;">Atendente:</span>
+                                    <span id="drawer-chat-tech" style="font-weight:600;">-</span>
+                                </div>
+                                <div style="display:flex; justify-content:space-between;">
+                                    <span style="color:#64748b;">Última Modificação:</span>
+                                    <span id="drawer-chat-start" style="font-weight:600;">-</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1302,6 +1637,7 @@ final class ChatPageController extends AbstractController
                     // [UX] Resetar o estado do chat ao mudar de aba
                     cancelEditMode();
                     clearQuotePreview();
+                    closeContactDrawer();
                     activeChatId = 0;
                     activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';
@@ -1318,9 +1654,19 @@ final class ChatPageController extends AbstractController
                 loadChats();
             }
 
-            // [UX] Resetar chat ao apertar ESC (cancela edição/quote primeiro se ativo)
+            // [UX] Resetar chat ao apertar ESC (cancela edição/quote/lightbox/drawer primeiro se ativo)
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
+                    const lightbox = document.getElementById('lightbox-modal');
+                    if (lightbox && lightbox.style.display === 'flex') {
+                        closeLightbox();
+                        return;
+                    }
+                    const drawer = document.getElementById('contact-drawer');
+                    if (drawer && drawer.style.display !== 'none') {
+                        closeContactDrawer();
+                        return;
+                    }
                     if (currentEditingMsg) {
                         cancelEditMode();
                         return;
@@ -1329,6 +1675,7 @@ final class ChatPageController extends AbstractController
                         clearQuotePreview();
                         return;
                     }
+                    closeContactDrawer();
                     activeChatId = 0;
                     activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';
@@ -1443,6 +1790,265 @@ final class ChatPageController extends AbstractController
                 renderChatList(filtered);
             }
 
+            let currentContactProfile = null;
+
+            function updateHeaderAvatar(name, phone, pictureUrl) {
+                const headerAvatar = document.getElementById('header-avatar');
+                if (!headerAvatar) return;
+                const initials = getInitials(name || phone);
+                const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
+                const src = pictureUrl || (cleanPhone ? `${rootDoc}/plugins/whatsappsimples/front/avatar.php?phone=${cleanPhone}` : '');
+
+                if (src) {
+                    headerAvatar.innerHTML = `
+                        <img src="${src}" alt="${initials}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" style="width:100%; height:100%; border-radius:50%; object-fit:cover; cursor:pointer;" onclick="event.stopPropagation(); openLightbox('${src}')" title="Clique para ver a foto">
+                        <span style="display:none; width:100%; height:100%; border-radius:50%; align-items:center; justify-content:center; background:#0284c7; color:#fff;">${initials}</span>
+                    `;
+                } else {
+                    headerAvatar.innerHTML = `<span style="display:flex; width:100%; height:100%; border-radius:50%; align-items:center; justify-content:center; background:#0284c7; color:#fff;">${initials}</span>`;
+                }
+            }
+
+            function toggleContactDrawer() {
+                const drawer = document.getElementById('contact-drawer');
+                if (!drawer) return;
+                if (drawer.style.display === 'none' || drawer.style.display === '') {
+                    openContactDrawer();
+                } else {
+                    closeContactDrawer();
+                }
+            }
+
+            function openContactDrawer() {
+                const drawer = document.getElementById('contact-drawer');
+                if (!drawer) return;
+                drawer.style.display = 'flex';
+                loadContactDrawerData(activePhoneNumber, activeChatId);
+            }
+
+            function closeContactDrawer() {
+                const drawer = document.getElementById('contact-drawer');
+                if (drawer) {
+                    drawer.style.display = 'none';
+                }
+            }
+
+            function openDrawerPhotoLightbox() {
+                const img = document.getElementById('drawer-avatar-img');
+                if (img && img.style.display !== 'none' && img.src) {
+                    openLightbox(img.src);
+                }
+            }
+
+            function copyContactPhone() {
+                if (!activePhoneNumber) return;
+                const clean = activePhoneNumber.replace(/[^0-9]/g, '');
+                const toCopy = clean.startsWith('55') ? `+${clean}` : activePhoneNumber;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(toCopy).then(() => {
+                        const label = document.getElementById('drawer-copy-btn-label');
+                        if (label) {
+                            const original = label.innerText;
+                            label.innerText = 'Copiado! ✓';
+                            label.style.color = '#22c55e';
+                            setTimeout(() => {
+                                label.innerText = original;
+                                label.style.color = '';
+                            }, 1800);
+                        }
+                    }).catch(e => {
+                        prompt('Copie o número:', toCopy);
+                    });
+                } else {
+                    prompt('Copie o número:', toCopy);
+                }
+            }
+
+            function openGlpiTicketModal() {
+                window.open(`${rootDoc}/front/ticket.form.php`, '_blank');
+            }
+
+            function triggerDrawerCloseChat() {
+                if (activeChatId > 0) {
+                    closeActiveChat(activeChatId);
+                }
+            }
+
+            function formatPhoneNumber(phone) {
+                if (!phone) return '';
+                if (phone.includes('@lid')) {
+                    return 'Número Privado (Meta LID)';
+                }
+                const digits = phone.replace(/[^0-9]/g, '');
+                if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+                    const ddd = digits.substring(2, 4);
+                    const num = digits.substring(4);
+                    if (num.length === 9) {
+                        return `+55 ${ddd} ${num.substring(0, 5)}-${num.substring(5)}`;
+                    } else if (num.length === 8) {
+                        return `+55 ${ddd} ${num.substring(0, 4)}-${num.substring(4)}`;
+                    }
+                }
+                return phone;
+            }
+
+            function renderDrawerMediaPreviewsFromCurrentChat() {
+                const grid = document.getElementById('drawer-media-grid');
+                const countEl = document.getElementById('drawer-media-count');
+                const box = document.getElementById('messages-box');
+                if (!grid || !box) return;
+
+                const mediaNodes = box.querySelectorAll('img[onclick*="openLightbox"], .omni-custom-audio-player, video');
+                if (countEl) countEl.innerText = mediaNodes.length;
+
+                if (mediaNodes.length === 0) {
+                    grid.innerHTML = '<div style="font-size:0.82rem; color:#94a3b8; padding:8px 0;">Nenhuma mídia compartilhada</div>';
+                    return;
+                }
+
+                let html = '';
+                mediaNodes.forEach(node => {
+                    if (node.tagName.toLowerCase() === 'img') {
+                        html += `
+                            <div class="omni-drawer-media-thumb" onclick="openLightbox('${node.src}')" title="Foto">
+                                <img src="${node.src}" alt="Foto">
+                            </div>
+                        `;
+                    } else if (node.tagName.toLowerCase() === 'video') {
+                        html += `
+                            <div class="omni-drawer-media-thumb" style="background:#0f172a; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;" onclick="window.open('${node.src}', '_blank')" title="Vídeo">
+                                <span style="font-size:1.4rem;">🎬</span>
+                                <span style="font-size:0.65rem; font-weight:600;">Vídeo</span>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="omni-drawer-media-thumb" style="background:#f1f5f9; color:#475569; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;" title="Áudio">
+                                <span style="font-size:1.4rem;">🎵</span>
+                                <span style="font-size:0.65rem; font-weight:600;">Áudio</span>
+                            </div>
+                        `;
+                    }
+                });
+                grid.innerHTML = html;
+            }
+
+            function renderDrawerMediaPreviews(previews, total) {
+                const grid = document.getElementById('drawer-media-grid');
+                const countEl = document.getElementById('drawer-media-count');
+                if (countEl) countEl.innerText = total || (previews ? previews.length : 0);
+                if (!grid) return;
+
+                if (!previews || previews.length === 0) {
+                    grid.innerHTML = '<div style="font-size:0.82rem; color:#94a3b8; padding:8px 0;">Nenhuma mídia compartilhada</div>';
+                    return;
+                }
+
+                grid.innerHTML = previews.map(m => {
+                    if (m.type === 'image') {
+                        return `
+                            <div class="omni-drawer-media-thumb" onclick="openLightbox('${m.url}')" title="${escapeHtml(m.caption || 'Foto')}">
+                                <img src="${m.url}" alt="Foto" loading="lazy">
+                            </div>
+                        `;
+                    } else if (m.type === 'video') {
+                        return `
+                            <div class="omni-drawer-media-thumb" style="background:#0f172a; color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;" onclick="window.open('${m.url}', '_blank')" title="Vídeo">
+                                <span style="font-size:1.4rem;">🎬</span>
+                                <span style="font-size:0.65rem; font-weight:600;">Vídeo</span>
+                            </div>
+                        `;
+                    } else if (m.type === 'audio') {
+                        return `
+                            <div class="omni-drawer-media-thumb" style="background:#f1f5f9; color:#475569; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;" title="Áudio">
+                                <span style="font-size:1.4rem;">🎵</span>
+                                <span style="font-size:0.65rem; font-weight:600;">Áudio</span>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="omni-drawer-media-thumb" style="background:#f1f5f9; color:#475569; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;" onclick="window.open('${m.url}', '_blank')" title="Documento">
+                                <span style="font-size:1.4rem;">📄</span>
+                                <span style="font-size:0.65rem; font-weight:600;">Doc</span>
+                            </div>
+                        `;
+                    }
+                }).join('');
+            }
+
+            async function loadContactDrawerData(phone, chatId) {
+                if (!phone && !chatId) return;
+                const drawer = document.getElementById('contact-drawer');
+                if (!drawer) return;
+
+                const chatObj = allLoadedChats.find(c => c.id === chatId || c.phone_number === phone);
+                const displayName = (chatObj && chatObj.contact_name) ? chatObj.contact_name : (phone || 'Contato');
+                const initials = getInitials(displayName);
+
+                document.getElementById('drawer-name').innerText = displayName;
+                document.getElementById('drawer-phone').innerText = formatPhoneNumber(phone);
+                document.getElementById('drawer-avatar-fallback').innerText = initials;
+                document.getElementById('drawer-avatar-fallback').style.display = 'flex';
+                document.getElementById('drawer-avatar-img').style.display = 'none';
+                document.getElementById('drawer-recado').innerText = (chatObj && chatObj.contact_status) ? chatObj.contact_status : 'Disponível';
+
+                const statusLabelMap = {
+                    'in_progress': '🟢 Em Atendimento',
+                    'pending': '🟡 Na Fila',
+                    'closed': '⚪ Encerrado'
+                };
+                const currentStatus = chatObj ? chatObj.status : 'in_progress';
+                document.getElementById('drawer-chat-status').innerText = statusLabelMap[currentStatus] || currentStatus;
+                document.getElementById('drawer-chat-tech').innerText = (chatObj && chatObj.technician_name) ? chatObj.technician_name : 'Sem Atendente';
+                document.getElementById('drawer-chat-start').innerText = (chatObj && chatObj.date_mod) ? formatCardTime(chatObj.date_mod) : '-';
+
+                renderDrawerMediaPreviewsFromCurrentChat();
+
+                // Busca dados atualizados da API em background
+                const data = await safeFetchJson(`${rootDoc}/plugins/whatsappsimples/ajax/contact-profile.php?phone_number=${encodeURIComponent(phone)}&chat_id=${chatId || 0}`);
+                if (!data || !data.success) return;
+
+                currentContactProfile = data;
+
+                if (data.name) {
+                    document.getElementById('drawer-name').innerText = data.name;
+                }
+                if (data.picture_url) {
+                    const img = document.getElementById('drawer-avatar-img');
+                    img.src = data.picture_url;
+                    img.onload = () => {
+                        img.style.display = 'block';
+                        document.getElementById('drawer-avatar-fallback').style.display = 'none';
+                    };
+                    img.onerror = () => {
+                        img.style.display = 'none';
+                        document.getElementById('drawer-avatar-fallback').style.display = 'flex';
+                    };
+                    updateHeaderAvatar(data.name || displayName, phone, data.picture_url);
+                } else {
+                    document.getElementById('drawer-avatar-img').style.display = 'none';
+                    document.getElementById('drawer-avatar-fallback').style.display = 'flex';
+                }
+
+                if (data.status) {
+                    document.getElementById('drawer-recado').innerText = data.status;
+                } else {
+                    document.getElementById('drawer-recado').innerText = 'Disponível';
+                }
+
+                if (data.set_at) {
+                    const dateEl = document.getElementById('drawer-recado-date');
+                    dateEl.style.display = 'block';
+                    dateEl.innerText = 'Definido em ' + formatFullDateTime(data.set_at);
+                } else {
+                    document.getElementById('drawer-recado-date').style.display = 'none';
+                }
+
+                if (data.media_previews && data.media_previews.length > 0) {
+                    renderDrawerMediaPreviews(data.media_previews, data.total_media);
+                }
+            }
+
             function renderChatList(chats) {
                 const listEl = document.getElementById('chat-list');
 
@@ -1460,10 +2066,16 @@ final class ChatPageController extends AbstractController
                         displayPhone = 'Número Privado (Meta)';
                     }
 
+                    const cleanPhone = (c.phone_number || '').replace(/[^0-9]/g, '');
+                    const avatarSrc = c.profile_picture_url || (cleanPhone ? `${rootDoc}/plugins/whatsappsimples/front/avatar.php?phone=${cleanPhone}` : '');
+
                     return `
                         <div class="omni-chat-card ${isSelected ? 'selected' : ''}" onclick="openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}', ${c.users_id})">
                             <div class="omni-avatar-wrap">
-                                <div class="omni-avatar">${initials}</div>
+                                <div class="omni-avatar" onclick="event.stopPropagation(); if ('${avatarSrc}') openLightbox('${avatarSrc}'); else openChat(${c.id}, '${escapeJs(c.contact_name)}', '${escapeJs(c.phone_number)}', ${isContactTabActive}, '${escapeJs(c.technician_name || 'Sem Atendente')}', ${c.users_id});" title="${avatarSrc ? 'Clique para expandir a foto' : ''}">
+                                    ${avatarSrc ? `<img src="${avatarSrc}" alt="${initials}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">` : ''}
+                                    <span style="${avatarSrc ? 'display:none;' : 'display:flex;'} width:100%; height:100%; align-items:center; justify-content:center;">${initials}</span>
+                                </div>
                                 <div class="omni-avatar-icon">💬</div>
                             </div>
                             <div class="omni-card-info">
@@ -1522,8 +2134,14 @@ final class ChatPageController extends AbstractController
                 }
                 
                 document.getElementById('header-title').innerText = name || displayPhone;
-                document.getElementById('header-sub').innerText = displayPhone;
-                document.getElementById('header-avatar').innerText = getInitials(name);
+                document.getElementById('header-sub').innerText = 'clique para mostrar os dados do contato';
+                
+                updateHeaderAvatar(name || displayPhone, phone, (chatObj ? chatObj.profile_picture_url : null));
+
+                const drawer = document.getElementById('contact-drawer');
+                if (drawer && drawer.style.display !== 'none') {
+                    loadContactDrawerData(phone, chatId);
+                }
 
                 let transferBtnHtml = '';
                 if (CAN_TRANSFER) {
@@ -1587,6 +2205,7 @@ final class ChatPageController extends AbstractController
                 document.getElementById('close-chat-modal').style.display = 'none';
 
                 if (data.success) {
+                    closeContactDrawer();
                     activeChatId = 0;
                     activePhoneNumber = '';
                     document.getElementById('main-chat-header').style.display = 'none';

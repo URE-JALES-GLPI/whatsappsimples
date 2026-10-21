@@ -73,6 +73,12 @@ function plugin_whatsappsimples_ensureTables(): void
         if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'unread_count')) {
             $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `unread_count` int(11) NOT NULL DEFAULT 0 AFTER `status`");
         }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'profile_picture_url')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `profile_picture_url` text DEFAULT NULL AFTER `contact_name`");
+        }
+        if (!$DB->fieldExists('glpi_plugin_whatsappsimples_chats', 'contact_status')) {
+            $DB->doQuery("ALTER TABLE `glpi_plugin_whatsappsimples_chats` ADD COLUMN `contact_status` text DEFAULT NULL AFTER `profile_picture_url`");
+        }
     }
 
     // 3. Tabela de Histórico de Mensagens (Messages)
