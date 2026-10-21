@@ -661,7 +661,7 @@ class EvolutionApiService
                 'enabled' => true,
                 'url' => $url,
                 'byEvents' => false,
-                'base64' => true,
+                'base64' => false,
                 'events' => ['MESSAGES_UPSERT']
             ]
         ];
@@ -699,6 +699,8 @@ class EvolutionApiService
             return ['success' => false, 'error' => 'Configurações incompletas ou Message ID vazio'];
         }
 
+        @ini_set('memory_limit', '512M');
+
         $endpoint = "{$baseUrl}/chat/getBase64FromMediaMessage/{$instance}";
         $payload = [
             'message' => [
@@ -718,7 +720,7 @@ class EvolutionApiService
                 'Content-Type: application/json',
                 'apikey: ' . $apiToken
             ],
-            CURLOPT_TIMEOUT        => 30
+            CURLOPT_TIMEOUT        => 90
         ]);
 
         $response = curl_exec($ch);

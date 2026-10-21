@@ -8,6 +8,8 @@
 $glpiRoot = dirname(__DIR__, 3);
 chdir($glpiRoot);
 
+@ini_set('memory_limit', '512M');
+
 // 1. Carrega o autoloader do Composer (fornece Toolbox, Symfony e Kernel)
 if (file_exists($glpiRoot . '/vendor/autoload.php')) {
     require_once $glpiRoot . '/vendor/autoload.php';

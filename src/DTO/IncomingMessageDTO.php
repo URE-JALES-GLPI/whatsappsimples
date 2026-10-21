@@ -29,8 +29,16 @@ class IncomingMessageDTO
             $text = '📷 Imagem recebida';
         } elseif ($text === '' && !empty($messageData['audioMessage'])) {
             $text = '🎵 Áudio recebido';
-        } elseif ($text === '' && !empty($messageData['documentMessage'])) {
-            $text = '📄 Documento recebido';
+        } elseif (!empty($messageData['documentMessage'])) {
+            $docName = $messageData['documentMessage']['fileName'] 
+                ?? $messageData['documentMessage']['title'] 
+                ?? '';
+            $caption = $text;
+            if (!empty($docName)) {
+                $text = "📎 Arquivo: {$docName}" . ($caption !== '' ? "\n" . $caption : '');
+            } elseif ($text === '') {
+                $text = '📄 Documento recebido';
+            }
         } elseif ($text === '' && !empty($messageData['contactMessage'])) {
             $vcardText = self::parseVcard($messageData['contactMessage']['vcard'] ?? '');
             if ($vcardText) {
@@ -62,8 +70,6 @@ class IncomingMessageDTO
             unset($messageData['audioMessage']['base64']);
             unset($messageData['videoMessage']['base64']);
         }
-        
-
 
         if (!empty($data['base64'])) {
             $extractedBase64 = $data['base64'];
@@ -79,17 +85,16 @@ class IncomingMessageDTO
             $mimetype = $messageData['audioMessage']['mimetype'] ?? 'audio/ogg';
         } elseif (!empty($messageData['documentMessage']['base64'])) {
             $extractedBase64 = $messageData['documentMessage']['base64'];
-            $mimetype = $messageData['documentMessage']['mimetype'] ?? 'application/pdf';
+            $mimetype = $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
         }
 
         if (empty($extractedBase64)) {
             // Tenta buscar da API usando o endpoint se o webhook não enviou
             $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
             if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
-                // Retentativas progressivas seguras (1.0s -> +1.5s [2.5s] -> +2.0s [4.5s total]).
-                // Cobre até 4.5s com 3 chances de captura (mais seguro que o único tiro do sleep(4) antigo).
-                // Se a mídia estiver pronta no 1º intervalo, libera o Apache em apenas 1s!
-                $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']))
+                // Retentativas progressivas seguras (1.0s -> +1.5s -> +2.0s).
+                // Mídias pesadas (vídeo, áudio, documentos grandes) recebem mais tempo de respiro.
+                $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']))
                     ? [1000, 1500, 2000]
                     : [300, 800];
 

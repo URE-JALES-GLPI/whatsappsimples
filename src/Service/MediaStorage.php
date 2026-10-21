@@ -30,10 +30,12 @@ class MediaStorage
             $fileSha256Expected = self::parseSha256($msg['fileSha256'] ?? '');
         } elseif (!empty($messageData['documentMessage'])) {
             $msg = $messageData['documentMessage'];
-            $mimetype = $msg['mimetype'] ?? 'application/pdf';
+            $mimetype = $msg['mimetype'] ?? 'application/octet-stream';
             $fileLengthExpected = self::parseLength($msg['fileLength'] ?? 0);
             $fileSha256Expected = self::parseSha256($msg['fileSha256'] ?? '');
         }
+
+        @ini_set('memory_limit', '512M');
 
         $base64Size = strlen($base64);
 
@@ -71,21 +73,57 @@ class MediaStorage
             }
         }
 
-        // Definir extensão
-        $ext = 'bin';
-        if (str_contains($mimetype, 'jpeg') || str_contains($mimetype, 'jpg')) $ext = 'jpg';
-        elseif (str_contains($mimetype, 'png')) $ext = 'png';
-        elseif (str_contains($mimetype, 'mp4')) $ext = 'mp4';
-        elseif (str_contains($mimetype, 'ogg')) $ext = 'ogg'; // ignora os codecs=opus do mimetype
-        elseif (str_contains($mimetype, 'mpeg')) $ext = 'mp3';
-        elseif (str_contains($mimetype, 'pdf')) $ext = 'pdf';
+        // 1. Extrai o nome do arquivo original se enviado no payload
+        $originalFileName = $messageData['documentMessage']['fileName'] 
+            ?? $messageData['documentMessage']['title'] 
+            ?? '';
+
+        $ext = '';
+        if (!empty($originalFileName)) {
+            $pathExt = strtolower(pathinfo($originalFileName, PATHINFO_EXTENSION));
+            if (!empty($pathExt) && strlen($pathExt) <= 6) {
+                $ext = preg_replace('/[^a-z0-9]/', '', $pathExt);
+            }
+        }
+
+        // 2. Fallback de extensão por MimeType
+        if (empty($ext)) {
+            $mimeLower = strtolower($mimetype);
+            if (str_contains($mimeLower, 'jpeg') || str_contains($mimeLower, 'jpg')) $ext = 'jpg';
+            elseif (str_contains($mimeLower, 'png')) $ext = 'png';
+            elseif (str_contains($mimeLower, 'webp')) $ext = 'webp';
+            elseif (str_contains($mimeLower, 'gif')) $ext = 'gif';
+            elseif (str_contains($mimeLower, 'mp4')) $ext = 'mp4';
+            elseif (str_contains($mimeLower, 'ogg')) $ext = 'ogg'; // ignora os codecs=opus do mimetype
+            elseif (str_contains($mimeLower, 'mpeg') || str_contains($mimeLower, 'mp3')) $ext = 'mp3';
+            elseif (str_contains($mimeLower, 'pdf')) $ext = 'pdf';
+            elseif (str_contains($mimeLower, 'wordprocessingml') || str_contains($mimeLower, 'msword')) $ext = 'docx';
+            elseif (str_contains($mimeLower, 'presentationml') || str_contains($mimeLower, 'powerpoint')) $ext = 'pptx';
+            elseif (str_contains($mimeLower, 'spreadsheetml') || str_contains($mimeLower, 'excel')) $ext = 'xlsx';
+            elseif (str_contains($mimeLower, 'zip')) $ext = 'zip';
+            elseif (str_contains($mimeLower, 'rar')) $ext = 'rar';
+            elseif (str_contains($mimeLower, '7z')) $ext = '7z';
+            elseif (str_contains($mimeLower, 'csv')) $ext = 'csv';
+            elseif (str_contains($mimeLower, 'text/plain')) $ext = 'txt';
+            else $ext = 'bin';
+        }
 
         $safeKeyId = preg_replace('/[^a-zA-Z0-9_-]/', '', $keyId);
         if (empty($safeKeyId)) {
             $safeKeyId = md5(uniqid());
         }
 
-        $filename = $safeKeyId . '.' . $ext;
+        $safeOriginal = '';
+        if (!empty($originalFileName)) {
+            $cleanBase = pathinfo($originalFileName, PATHINFO_FILENAME);
+            $cleanBase = preg_replace('/[^a-zA-Z0-9_-]/', '_', $cleanBase);
+            $cleanBase = substr(trim($cleanBase, '_'), 0, 40);
+            if (!empty($cleanBase)) {
+                $safeOriginal = '_' . $cleanBase;
+            }
+        }
+
+        $filename = $safeKeyId . $safeOriginal . '.' . $ext;
         $finalPath = $targetDir . '/' . $filename;
         $partPath = $finalPath . '.part';
 

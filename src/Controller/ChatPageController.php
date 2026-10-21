@@ -2318,6 +2318,63 @@ final class ChatPageController extends AbstractController
                         }
                     }
 
+                    function getDocCardHtml(docName, url, warningHtml, sizeBytes) {
+                        const lowerName = (docName || '').toLowerCase();
+                        let icon = '📄';
+                        let typeBadge = 'DOC';
+                        let badgeBg = '#64748b';
+
+                        if (lowerName.endsWith('.pdf')) {
+                            icon = '📄';
+                            typeBadge = 'PDF';
+                            badgeBg = '#ef4444';
+                        } else if (lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
+                            icon = '📝';
+                            typeBadge = 'WORD';
+                            badgeBg = '#2563eb';
+                        } else if (lowerName.endsWith('.ppt') || lowerName.endsWith('.pptx')) {
+                            icon = '📊';
+                            typeBadge = 'PPT';
+                            badgeBg = '#ea580c';
+                        } else if (lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.csv')) {
+                            icon = '📈';
+                            typeBadge = 'EXCEL';
+                            badgeBg = '#16a34a';
+                        } else if (lowerName.endsWith('.zip') || lowerName.endsWith('.rar') || lowerName.endsWith('.7z')) {
+                            icon = '🗜️';
+                            typeBadge = 'ZIP';
+                            badgeBg = '#8b5cf6';
+                        }
+
+                        let sizeStr = '';
+                        if (sizeBytes && sizeBytes > 0) {
+                            if (sizeBytes < 1024) sizeStr = sizeBytes + ' B';
+                            else if (sizeBytes < 1048576) sizeStr = (sizeBytes / 1024).toFixed(1) + ' KB';
+                            else sizeStr = (sizeBytes / 1048576).toFixed(1) + ' MB';
+                        }
+
+                        return `${warningHtml || ''}
+                        <div style="display:flex; flex-direction:column; gap:6px; padding:10px 14px; background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.08); border-radius:10px; margin-bottom:8px; max-width:320px; box-sizing:border-box;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <div style="font-size:2rem; line-height:1; flex-shrink:0;">${icon}</div>
+                                <div style="min-width:0; flex:1;">
+                                    <div style="font-weight:600; font-size:0.92rem; color:#1e293b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(docName)}">
+                                        ${escapeHtml(docName)}
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:6px; margin-top:2px;">
+                                        <span style="font-size:0.68rem; font-weight:700; padding:1px 5px; border-radius:4px; background:${badgeBg}; color:#ffffff; text-transform:uppercase;">${typeBadge}</span>
+                                        ${sizeStr ? `<span style="font-size:0.75rem; color:#64748b; font-weight:500;">${sizeStr}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="border-top:1px solid rgba(0,0,0,0.06); padding-top:6px; margin-top:2px; display:flex; justify-content:flex-end;">
+                                <a href="${url}" download="${escapeHtml(docName)}" target="_blank" rel="noopener noreferrer" style="text-decoration:none; color:#0284c7; font-size:0.82rem; font-weight:600; display:inline-flex; align-items:center; gap:4px;">
+                                    📥 Baixar Arquivo
+                                </a>
+                            </div>
+                        </div>`;
+                    }
+
                     if (m.media_url && m.media_url.startsWith('data:')) {
                         if (m.media_url.startsWith('data:image/')) {
                             mediaHtml = `<img src="${m.media_url}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
@@ -2326,30 +2383,19 @@ final class ChatPageController extends AbstractController
                         } else if (m.media_url.startsWith('data:audio/')) {
                             mediaHtml = buildAudioPlayerHtml(getAudioBlobUrl(m.media_url), 'data_' + m.id);
                         } else {
-                            let icon = '📦';
-                            let fName = '';
-                            if (m.message_text && m.message_text.includes('Arquivo: ')) {
-                                fName = m.message_text.split('Arquivo: ')[1].split('\n')[0].trim().toLowerCase();
-                            } else {
-                                let mimeMatch = m.media_url.match(/^data:(.*?);/);
-                                if (mimeMatch) fName = mimeMatch[1].replace('/', '.').toLowerCase();
+                            let docName = 'documento';
+                            let extraCaption = '';
+                            if (m.message_text) {
+                                const match = m.message_text.match(/📎\s*Arquivo:\s*([^\r\n]+)/);
+                                if (match) {
+                                    docName = match[1].trim();
+                                    const lines = m.message_text.split('\n');
+                                    lines.shift();
+                                    extraCaption = lines.join('\n').trim();
+                                }
                             }
-                            
-                            let extLabel = 'DOC';
-                            if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
-                            else if (fName.endsWith('.doc') || fName.endsWith('.docx')) { icon = '📝'; extLabel = 'WORD'; }
-                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv') || fName.includes('spreadsheet')) { icon = '📊'; extLabel = 'EXCEL'; }
-                            else if (fName.endsWith('.zip') || fName.endsWith('.rar')) { icon = '🗜️'; extLabel = 'ZIP'; }
-
-                            mediaHtml = `<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:1.5rem;">${icon}</span>
-                                    <div>
-                                        <div style="font-weight:bold; font-size:0.9rem;">Documento ${extLabel}</div>
-                                        <a href="${m.media_url}" download="arquivo" style="text-decoration:none; color:#0284c7; font-size:0.8rem; font-weight:600;">📥 Baixar Arquivo</a>
-                                    </div>
-                                </div>
-                            </div><br>`;
+                            mediaHtml = getDocCardHtml(docName, m.media_url, '', m.media_size);
+                            m.displayCaption = extraCaption;
                         }
                     } else if (m.media_url && m.media_url.startsWith('doc_')) {
                         const filename = m.media_url.substring(4);
@@ -2367,29 +2413,34 @@ final class ChatPageController extends AbstractController
                         } else if (filename.endsWith('.ogg') || filename.endsWith('.m4a') || filename.endsWith('.mp3') || filename.endsWith('.webm')) {
                             mediaHtml = warningHtml + buildAudioPlayerHtml(fullUrl, 'doc_' + m.id);
                         } else {
-                            let icon = '📦';
-                            let extLabel = 'DOC';
-                            let fName = filename.toLowerCase();
-                            if (m.message_text && m.message_text.includes('Arquivo: ')) {
-                                fName = m.message_text.toLowerCase();
+                            let docName = '';
+                            let extraCaption = '';
+                            if (m.message_text) {
+                                const match = m.message_text.match(/📎\s*Arquivo:\s*([^\r\n]+)/);
+                                if (match) {
+                                    docName = match[1].trim();
+                                    const lines = m.message_text.split('\n');
+                                    lines.shift();
+                                    extraCaption = lines.join('\n').trim();
+                                }
                             }
-                            
-                            if (fName.endsWith('.pdf')) { icon = '📄'; extLabel = 'PDF'; }
-                            else if (fName.endsWith('.doc') || fName.endsWith('.docx')) { icon = '📝'; extLabel = 'WORD'; }
-                            else if (fName.endsWith('.xls') || fName.endsWith('.xlsx') || fName.endsWith('.csv') || fName.includes('spreadsheet')) { icon = '📊'; extLabel = 'EXCEL'; }
-                            else if (fName.endsWith('.zip') || fName.endsWith('.rar')) { icon = '🗜️'; extLabel = 'ZIP'; }
-                            
-                            mediaHtml = `${warningHtml}<div style="display:inline-block; padding:8px 12px; background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); border-radius:6px; margin-bottom: 8px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:1.5rem;">${icon}</span>
-                                    <div>
-                                        <div style="font-weight:bold; font-size:0.9rem;">Documento ${extLabel}</div>
-                                        <a href="${fullUrl}" download="arquivo" style="text-decoration:none; color:#0284c7; font-size:0.8rem; font-weight:600;">📥 Baixar Arquivo</a>
-                                    </div>
-                                </div>
-                            </div><br>`;
+                            if (!docName) {
+                                const cleanBase = filename.split('/').pop();
+                                const parts = cleanBase.split('_');
+                                if (parts.length > 1) {
+                                    parts.shift();
+                                    docName = parts.join('_');
+                                } else {
+                                    docName = cleanBase;
+                                }
+                            }
+
+                            mediaHtml = getDocCardHtml(docName, fullUrl, warningHtml, m.media_size);
+                            m.displayCaption = extraCaption;
                         }
                     }
+
+                    const bubbleText = (m.displayCaption !== undefined) ? m.displayCaption : (m.message_text || '');
 
                     const msgHtml = `
                         <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; max-width: 100%; min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; box-sizing: border-box; border-radius: 4px;">
@@ -2398,7 +2449,7 @@ final class ChatPageController extends AbstractController
                                 <div class="omni-bubble-sender">
                                     <span>${escapeHtml(m.sender_name || '')}</span>
                                 </div>
-                                <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${m.message_text ? `<div class="omni-bubble-text">${formatMessageHtml(m.message_text)}</div>` : ''}</div>
+                                <div class="omni-bubble-content">${mediaHtml ? `<div class="omni-bubble-media" style="margin-bottom:4px;">${mediaHtml}</div>` : ''}${bubbleText ? `<div class="omni-bubble-text">${formatMessageHtml(bubbleText)}</div>` : ''}</div>
                                 <div class="omni-bubble-time" title="${formatFullDateTime(m.date_creation)}">${formatTime(m.date_creation)}${(!m.is_internal && (m.sender_type === 'attendant' || m.sender_type === 'agent')) ? '<span class="omni-check">✓✓</span>' : ''}</div>
                             </div>
                         </div>

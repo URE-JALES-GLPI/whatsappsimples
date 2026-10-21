@@ -45,6 +45,9 @@ try {
         exit;
     }
 
+    @ini_set('memory_limit', '512M');
+    @set_time_limit(120);
+
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $redisStatus = ['connected' => false, 'worker_alive' => false, 'pending_messages' => 0, 'drained_messages' => 0];
         $redisHost = function_exists('wa_env') ? wa_env('REDIS_HOST', '10.180.152.29') : (getenv('REDIS_HOST') ?: '10.180.152.29');

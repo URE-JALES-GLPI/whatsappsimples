@@ -75,7 +75,7 @@ final class GetMessagesController
             }
 
             $iterator = $DB->request([
-                'SELECT' => ['id', 'chats_id', 'users_id', 'message_id', 'sender_type', 'message_text', 'media_url', 'is_internal', 'date_creation', 'media_status'],
+                'SELECT' => ['id', 'chats_id', 'users_id', 'message_id', 'sender_type', 'message_text', 'media_url', 'media_size', 'media_mime', 'is_internal', 'date_creation', 'media_status'],
                 'FROM'   => 'glpi_plugin_whatsappsimples_messages',
                 'WHERE'  => ['chats_id' => $chatsIds],
                 'ORDER'  => 'id ASC'
@@ -121,6 +121,9 @@ final class GetMessagesController
                     'sender_name'   => $senderName,
                     'message_text'  => $row['message_text'],
                     'media_url'     => $row['media_url'],
+                    'media_size'    => (int) ($row['media_size'] ?? 0),
+                    'media_mime'    => $row['media_mime'] ?? '',
+                    'media_status'  => $row['media_status'] ?? '',
                     'is_internal'   => (int) ($row['is_internal'] ?? 0),
                     'date_creation' => $row['date_creation'],
                 ];

@@ -13,17 +13,19 @@ $id = $_GET['id'] ?? 0;
 global $DB;
 $filePath = '';
 $mime = 'application/octet-stream';
+$msgText = '';
 
 if ($id > 0) {
     // Fase 2: Recebe ID da mensagem e busca no banco
     $res = $DB->request([
-        'SELECT' => ['media_path', 'media_mime'],
+        'SELECT' => ['media_path', 'media_mime', 'message_text'],
         'FROM'   => 'glpi_plugin_whatsappsimples_messages',
         'WHERE'  => ['id' => $id]
     ]);
     if ($row = $res->current()) {
         $file = $row['media_path'];
         $mime = $row['media_mime'] ?: $mime;
+        $msgText = $row['message_text'] ?? '';
     }
 }
 
@@ -55,34 +57,62 @@ $filesize = filesize($filePath);
 $offset = 0;
 $length = $filesize;
 
-$ext = pathinfo($file, PATHINFO_EXTENSION);
-if (!$ext) {
+$ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+if (!$ext || $ext === 'bin') {
     $map = [
         'application/pdf' => 'pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
         'application/msword' => 'doc',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 'pptx',
+        'application/vnd.ms-powerpoint' => 'ppt',
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
         'application/vnd.ms-excel' => 'xls',
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
         'audio/mp4' => 'm4a',
         'audio/ogg' => 'ogg',
+        'audio/mpeg' => 'mp3',
         'video/mp4' => 'mp4',
         'text/csv' => 'csv',
         'text/plain' => 'txt',
         'application/zip' => 'zip',
+        'application/x-rar-compressed' => 'rar',
+        'application/x-7z-compressed' => '7z',
         'application/octet-stream' => 'bin'
     ];
     $ext = $map[$mime] ?? 'bin';
 }
 
-$filename = "documento." . $ext;
+// Determinar o nome real original do arquivo para o download
+$originalFileName = '';
+if (!empty($msgText) && preg_match('/📎\s*Arquivo:\s*([^\r\n]+)/u', $msgText, $matches)) {
+    $originalFileName = trim($matches[1]);
+}
+
+if (empty($originalFileName)) {
+    $baseName = basename($file);
+    // Remove o ID hash inicial se houver (ex: 3EB0XXXX_Nome_Real.docx -> Nome_Real.docx)
+    if (preg_match('/^[a-zA-Z0-9_-]{10,}_(.*)$/', $baseName, $m)) {
+        $originalFileName = $m[1];
+    } else {
+        $originalFileName = "documento." . $ext;
+    }
+}
+
+// Garante que o nome tenha extensão adequada
+if (!pathinfo($originalFileName, PATHINFO_EXTENSION) && !empty($ext) && $ext !== 'bin') {
+    $originalFileName .= '.' . $ext;
+}
+
+$asciiFilename = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $originalFileName);
 $disposition = (strpos($mime, 'image/') === 0 || strpos($mime, 'video/') === 0 || strpos($mime, 'audio/') === 0) ? 'inline' : 'attachment';
 
 header("Content-Type: $mime");
 header("Accept-Ranges: bytes");
 header("X-Content-Type-Options: nosniff");
-header("Content-Disposition: $disposition; filename=\"$filename\"");
+header("Content-Disposition: $disposition; filename=\"$asciiFilename\"; filename*=UTF-8''" . rawurlencode($originalFileName));
 
 if (isset($_SERVER['HTTP_RANGE'])) {
     if (preg_match('/bytes=(\d+)-(\d+)?/', $_SERVER['HTTP_RANGE'], $matches)) {
