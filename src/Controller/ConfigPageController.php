@@ -147,7 +147,7 @@ final class ConfigPageController extends AbstractController
                     if (data.state === 'open') {
                         const whData = data.webhook_find || {};
                         const whUrl = whData.url || data.webhook_url || 'Não informado';
-                        const whBase64 = (whData.base64 === true || whData.base64 === 'true');
+                        const whBase64 = (whData.webhook_base64 === true || whData.webhook_base64 === 'true' || whData.base64 === true || whData.base64 === 'true');
                         const phpPost = data.php_limits?.post_max_size || '8M';
                         const phpUpload = data.php_limits?.upload_max_filesize || '2M';
                         
