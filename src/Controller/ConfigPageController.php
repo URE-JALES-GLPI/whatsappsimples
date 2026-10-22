@@ -147,9 +147,18 @@ final class ConfigPageController extends AbstractController
                     if (data.state === 'open') {
                         const whData = data.webhook_find || {};
                         const whUrl = whData.url || data.webhook_url || 'Não informado';
-                        const whBase64 = (whData.webhook_base64 === true || whData.webhook_base64 === 'true' || whData.base64 === true || whData.base64 === 'true');
+                        const whBase64 = (
+                            whData.webhookBase64 === true || whData.webhookBase64 === 'true' ||
+                            whData.webhook_base64 === true || whData.webhook_base64 === 'true' ||
+                            whData.base64 === true || whData.base64 === 'true' ||
+                            whData.webhook?.base64 === true || whData.webhook?.webhookBase64 === true || whData.webhook?.webhook_base64 === true
+                        );
                         const phpPost = data.php_limits?.post_max_size || '8M';
                         const phpUpload = data.php_limits?.upload_max_filesize || '2M';
+                        const debugJson = JSON.stringify({
+                            webhook_find: data.webhook_find,
+                            webhook_result: data.webhook_result
+                        }, null, 2);
                         
                         let phpWarning = '';
                         const postMb = parseInt(phpPost);
@@ -171,6 +180,10 @@ final class ConfigPageController extends AbstractController
                                 <div><strong>⚙️ Limites PHP do Servidor:</strong> post_max_size = <strong>${phpPost}</strong> | upload_max_filesize = <strong>${phpUpload}</strong></div>
                             </div>
                             ${phpWarning}
+                            <details style="margin-top:12px; font-size:0.75rem; color:#64748b; text-align:left; width:100%;">
+                                <summary style="cursor:pointer; font-weight:600; padding:4px 0;">🔍 Detalhes Técnicos da Resposta da Evolution API</summary>
+                                <pre style="margin-top:6px; padding:8px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:6px; overflow-x:auto; font-size:0.72rem; color:#334155; max-height:160px;">${debugJson}</pre>
+                            </details>
                         `;
                     } else if (data.base64) {
                         box.innerHTML = `

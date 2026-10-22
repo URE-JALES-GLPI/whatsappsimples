@@ -660,7 +660,9 @@ class EvolutionApiService
             'enabled' => true,
             'url' => $url,
             'webhook_by_events' => false,
+            'webhookByEvents' => false,
             'webhook_base64' => true,
+            'webhookBase64' => true,
             'base64' => true,
             'events' => [
                 'MESSAGES_UPSERT',
@@ -674,7 +676,10 @@ class EvolutionApiService
                 'enabled' => true,
                 'url' => $url,
                 'byEvents' => false,
+                'webhookByEvents' => false,
+                'webhook_by_events' => false,
                 'webhook_base64' => true,
+                'webhookBase64' => true,
                 'base64' => true,
                 'events' => [
                     'MESSAGES_UPSERT',
