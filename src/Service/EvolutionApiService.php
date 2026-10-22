@@ -657,11 +657,23 @@ class EvolutionApiService
 
         $endpoint = "{$baseUrl}/webhook/set/{$instance}";
         $payload = [
+            'enabled' => true,
+            'url' => $url,
+            'webhook_by_events' => false,
+            'base64' => true,
+            'events' => [
+                'MESSAGES_UPSERT',
+                'MESSAGES_UPDATE',
+                'MESSAGES_DELETE',
+                'SEND_MESSAGE',
+                'CONNECTION_UPDATE'
+            ],
+            // Compatibilidade retroativa com v1 / sub-objeto
             'webhook' => [
                 'enabled' => true,
                 'url' => $url,
                 'byEvents' => false,
-                'base64' => false,
+                'base64' => true,
                 'events' => ['MESSAGES_UPSERT']
             ]
         ];
@@ -675,12 +687,18 @@ class EvolutionApiService
                 'Content-Type: application/json',
                 'apikey: ' . $apiToken
             ],
-            CURLOPT_TIMEOUT        => 10
+            CURLOPT_TIMEOUT        => 15
         ]);
 
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        self::log("SET_WEBHOOK_RESULTADO", [
+            'url'      => $url,
+            'httpCode' => $httpCode,
+            'response' => $response
+        ]);
 
         if ($httpCode >= 200 && $httpCode < 300) {
             return ['success' => true, 'data' => json_decode($response, true)];

@@ -170,6 +170,7 @@ try {
     $hasMedia = !empty($messageDTO->getMediaUrl());
 
     if (!$hasText && !$hasMedia) {
+        logWebhook("SEM_CONTEUDO", ['dto_text' => $dtoText, 'media_url' => $messageDTO->getMediaUrl(), 'payload_msg' => $payload['data']['message'] ?? []]);
         echo json_encode(['success' => true, 'message' => 'Sem conteúdo de texto ou mídia']);
         exit;
     }

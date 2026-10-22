@@ -18,6 +18,24 @@ class IncomingMessageDTO
 
         // Extração do conteúdo da mensagem
         $messageData = $data['message'] ?? [];
+
+        // Desempacotar wrappers comuns do WhatsApp Web / Baileys (documentWithCaptionMessage, ephemeralMessage, viewOnceMessage, etc.)
+        while (!empty($messageData)) {
+            if (!empty($messageData['documentWithCaptionMessage']['message'])) {
+                $messageData = $messageData['documentWithCaptionMessage']['message'];
+            } elseif (!empty($messageData['ephemeralMessage']['message'])) {
+                $messageData = $messageData['ephemeralMessage']['message'];
+            } elseif (!empty($messageData['viewOnceMessage']['message'])) {
+                $messageData = $messageData['viewOnceMessage']['message'];
+            } elseif (!empty($messageData['viewOnceMessageV2']['message'])) {
+                $messageData = $messageData['viewOnceMessageV2']['message'];
+            } elseif (!empty($messageData['viewOnceMessageV2Extension']['message'])) {
+                $messageData = $messageData['viewOnceMessageV2Extension']['message'];
+            } else {
+                break;
+            }
+        }
+
         $text = $messageData['conversation'] 
             ?? $messageData['extendedTextMessage']['text'] 
             ?? $messageData['imageMessage']['caption'] 
@@ -27,6 +45,8 @@ class IncomingMessageDTO
 
         if ($text === '' && !empty($messageData['imageMessage'])) {
             $text = '📷 Imagem recebida';
+        } elseif ($text === '' && !empty($messageData['stickerMessage'])) {
+            $text = '👾 Figurinha recebida';
         } elseif ($text === '' && !empty($messageData['audioMessage'])) {
             $text = '🎵 Áudio recebido';
         } elseif (!empty($messageData['documentMessage'])) {
@@ -73,10 +93,18 @@ class IncomingMessageDTO
 
         if (!empty($data['base64'])) {
             $extractedBase64 = $data['base64'];
-            $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+            $mimetype = $messageData['imageMessage']['mimetype'] 
+                ?? $messageData['videoMessage']['mimetype'] 
+                ?? $messageData['audioMessage']['mimetype'] 
+                ?? $messageData['documentMessage']['mimetype'] 
+                ?? $messageData['stickerMessage']['mimetype'] 
+                ?? 'application/octet-stream';
         } elseif (!empty($messageData['imageMessage']['base64'])) {
             $extractedBase64 = $messageData['imageMessage']['base64'];
             $mimetype = $messageData['imageMessage']['mimetype'] ?? 'image/jpeg';
+        } elseif (!empty($messageData['stickerMessage']['base64'])) {
+            $extractedBase64 = $messageData['stickerMessage']['base64'];
+            $mimetype = $messageData['stickerMessage']['mimetype'] ?? 'image/webp';
         } elseif (!empty($messageData['videoMessage']['base64'])) {
             $extractedBase64 = $messageData['videoMessage']['base64'];
             $mimetype = $messageData['videoMessage']['mimetype'] ?? 'video/mp4';
@@ -90,20 +118,28 @@ class IncomingMessageDTO
 
         if (empty($extractedBase64)) {
             // Tenta buscar da API usando o endpoint se o webhook não enviou
-            $hasMedia = !empty($messageData['imageMessage']) || !empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']);
+            $hasMedia = !empty($messageData['imageMessage']) 
+                || !empty($messageData['videoMessage']) 
+                || !empty($messageData['audioMessage']) 
+                || !empty($messageData['documentMessage'])
+                || !empty($messageData['stickerMessage']);
+
             if ($hasMedia && class_exists('\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService')) {
-                // Retentativas progressivas seguras (1.0s -> +1.5s -> +2.0s).
-                // Mídias pesadas (vídeo, áudio, documentos grandes) recebem mais tempo de respiro.
-                $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']) || !empty($messageData['documentMessage']))
-                    ? [1000, 1500, 2000]
-                    : [300, 800];
+                $delaysMs = (!empty($messageData['videoMessage']) || !empty($messageData['audioMessage']))
+                    ? [500, 1000]
+                    : [500];
 
                 foreach ($delaysMs as $delayMs) {
                     usleep($delayMs * 1000);
                     $apiRes = \GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getBase64FromMediaMessage($messageId);
                     if (!empty($apiRes['success']) && !empty($apiRes['base64'])) {
                         $extractedBase64 = $apiRes['base64'];
-                        $mimetype = $messageData['imageMessage']['mimetype'] ?? $messageData['videoMessage']['mimetype'] ?? $messageData['audioMessage']['mimetype'] ?? $messageData['documentMessage']['mimetype'] ?? 'application/octet-stream';
+                        $mimetype = $messageData['imageMessage']['mimetype'] 
+                            ?? $messageData['videoMessage']['mimetype'] 
+                            ?? $messageData['audioMessage']['mimetype'] 
+                            ?? $messageData['documentMessage']['mimetype'] 
+                            ?? $messageData['stickerMessage']['mimetype'] 
+                            ?? 'application/octet-stream';
                         break;
                     }
                 }
@@ -123,7 +159,7 @@ class IncomingMessageDTO
             }
             
             // Limpa o texto padrao de placeholder pra nao poluir a tela se não houver legenda de verdade
-            if (in_array($text, ['📷 Imagem recebida', '🎵 Áudio recebido', '📄 Documento recebido'])) {
+            if (in_array($text, ['📷 Imagem recebida', '🎵 Áudio recebido', '📄 Documento recebido', '👾 Figurinha recebida'])) {
                 $text = ''; 
             }
         }

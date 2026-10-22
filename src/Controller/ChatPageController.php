@@ -2406,7 +2406,9 @@ final class ChatPageController extends AbstractController
                             warningHtml = `<div style="color: #ef4444; font-size: 0.75rem; font-weight: bold; margin-bottom: 4px;">⚠️ Mídia Incompleta (Cortada na Origem)</div>`;
                         }
 
-                        if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
+                        if (filename.endsWith('.webp')) {
+                            mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 160px; max-height: 160px; margin-bottom: 8px;" alt="Figurinha" /><br>`;
+                        } else if (filename.endsWith('.jpg') || filename.endsWith('.png') || filename.endsWith('.jpeg')) {
                             mediaHtml = `${warningHtml}<img src="${fullUrl}" style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px; cursor: zoom-in;" alt="Imagem" onclick="openLightbox(this.src)" /><br>`;
                         } else if (filename.endsWith('.mp4')) {
                             mediaHtml = `${warningHtml}<video src="${fullUrl}" controls preload="metadata" playsinline style="max-width: 100%; max-height: 250px; border-radius: 8px; margin-bottom: 8px;"></video><br>`;
@@ -2440,7 +2442,12 @@ final class ChatPageController extends AbstractController
                         }
                     }
 
-                    const bubbleText = (m.displayCaption !== undefined) ? m.displayCaption : (m.message_text || '');
+                    let bubbleText = (m.displayCaption !== undefined) ? m.displayCaption : (m.message_text || '');
+                    if (mediaHtml && bubbleText.startsWith('📎 Arquivo:')) {
+                        const lines = bubbleText.split('\n');
+                        lines.shift();
+                        bubbleText = lines.join('\n').trim();
+                    }
 
                     const msgHtml = `
                         <div class="omni-msg-row" data-wuid="${m.message_id || ''}" style="width: 100%; max-width: 100%; min-width: 0; display: flex; flex-direction: column; padding: 2px 4px; box-sizing: border-box; border-radius: 4px;">

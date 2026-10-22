@@ -8,6 +8,23 @@ class MediaStorage
     {
         $logFile = GLPI_LOG_DIR . '/whatsappsimples-media.log';
 
+        // Desempacotar wrappers comuns do WhatsApp Web / Baileys se presentes
+        while (!empty($messageData)) {
+            if (!empty($messageData['documentWithCaptionMessage']['message'])) {
+                $messageData = $messageData['documentWithCaptionMessage']['message'];
+            } elseif (!empty($messageData['ephemeralMessage']['message'])) {
+                $messageData = $messageData['ephemeralMessage']['message'];
+            } elseif (!empty($messageData['viewOnceMessage']['message'])) {
+                $messageData = $messageData['viewOnceMessage']['message'];
+            } elseif (!empty($messageData['viewOnceMessageV2']['message'])) {
+                $messageData = $messageData['viewOnceMessageV2']['message'];
+            } elseif (!empty($messageData['viewOnceMessageV2Extension']['message'])) {
+                $messageData = $messageData['viewOnceMessageV2Extension']['message'];
+            } else {
+                break;
+            }
+        }
+
         // Determinar mimetype e dados esperados do payload original
         $mimetype = 'application/octet-stream';
         $fileLengthExpected = 0;
@@ -26,6 +43,11 @@ class MediaStorage
         } elseif (!empty($messageData['imageMessage'])) {
             $msg = $messageData['imageMessage'];
             $mimetype = $msg['mimetype'] ?? 'image/jpeg';
+            $fileLengthExpected = self::parseLength($msg['fileLength'] ?? 0);
+            $fileSha256Expected = self::parseSha256($msg['fileSha256'] ?? '');
+        } elseif (!empty($messageData['stickerMessage'])) {
+            $msg = $messageData['stickerMessage'];
+            $mimetype = $msg['mimetype'] ?? 'image/webp';
             $fileLengthExpected = self::parseLength($msg['fileLength'] ?? 0);
             $fileSha256Expected = self::parseSha256($msg['fileSha256'] ?? '');
         } elseif (!empty($messageData['documentMessage'])) {
