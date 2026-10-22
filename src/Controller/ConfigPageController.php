@@ -126,7 +126,7 @@ final class ConfigPageController extends AbstractController
 
         <script>
             const rootDoc = (typeof CFG_GLPI !== 'undefined' && CFG_GLPI.root_doc) ? CFG_GLPI.root_doc : '';
-            const webhookFullUrl = window.location.origin + rootDoc + '/plugins/whatsappsimples/webhook?token=<?= urlencode(\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getConfig('api_token') ?: (function_exists('wa_env') ? wa_env('EVOLUTION_API_KEY', '') : '')) ?>';
+            const webhookFullUrl = window.location.origin + rootDoc + '/plugins/whatsappsimples/front/webhook.php?token=<?= urlencode(\GlpiPlugin\Whatsappsimples\Service\EvolutionApiService::getConfig('api_token') ?: (function_exists('wa_env') ? wa_env('EVOLUTION_API_KEY', '') : '')) ?>';
 
             document.getElementById('webhook-url-input').value = webhookFullUrl;
 
@@ -145,9 +145,32 @@ final class ConfigPageController extends AbstractController
                     const data = await res.json();
 
                     if (data.state === 'open') {
+                        const whData = data.webhook_find || {};
+                        const whUrl = whData.url || data.webhook_url || 'Não informado';
+                        const whBase64 = (whData.base64 === true || whData.base64 === 'true');
+                        const phpPost = data.php_limits?.post_max_size || '8M';
+                        const phpUpload = data.php_limits?.upload_max_filesize || '2M';
+                        
+                        let phpWarning = '';
+                        const postMb = parseInt(phpPost);
+                        if (postMb < 64) {
+                            phpWarning = `
+                                <div style="margin-top:12px; padding:10px 14px; background:#fffbeb; border:1px solid #fef3c7; border-radius:8px; color:#b45309; font-size:0.82rem; text-align:left;">
+                                    ⚠️ <strong>Atenção:</strong> O limite de POST do Apache/PHP no servidor está em <strong>${phpPost}</strong>. Arquivos pesados (como apresentações PPTX de 13MB e PDFs de 29MB) serão descartados pelo Apache antes de chegar ao GLPI. Recomendamos definir <code>post_max_size = 128M</code> e <code>upload_max_filesize = 128M</code> no arquivo <code>php.ini</code> do Apache/PHP-FPM.
+                                </div>
+                            `;
+                        }
+
                         box.innerHTML = `
                             <div class="wa-status-badge open">🟢 WhatsApp Conectado com Sucesso!</div>
-                            <p style="margin-top:12px; color:#475569; font-size:0.9rem;">Sua instância está pronta para enviar e receber mensagens no GLPI.</p>
+                            <p style="margin-top:8px; color:#475569; font-size:0.9rem;">Sua instância está ativa e comunicando normalmente.</p>
+                            
+                            <div style="margin-top:14px; padding:12px 14px; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; text-align:left; font-size:0.84rem; display:flex; flex-direction:column; gap:6px; width:100%; box-sizing:border-box;">
+                                <div><strong>🔗 Webhook Ativo na Evolution:</strong> <code style="word-break:break-all; color:#0369a1;">${whUrl}</code></div>
+                                <div><strong>📦 Envio Base64 (Arquivos e Mídias):</strong> ${whBase64 ? '<span style="color:#16a34a; font-weight:700;">✅ Ativado</span>' : '<span style="color:#dc2626; font-weight:700;">⚠️ Desativado na Evolution</span>'}</div>
+                                <div><strong>⚙️ Limites PHP do Servidor:</strong> post_max_size = <strong>${phpPost}</strong> | upload_max_filesize = <strong>${phpUpload}</strong></div>
+                            </div>
+                            ${phpWarning}
                         `;
                     } else if (data.base64) {
                         box.innerHTML = `

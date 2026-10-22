@@ -90,13 +90,44 @@ class WebhookController
             }
 
             $content = $request->getContent();
+            $contentLen = strlen($content);
+            $headerLen = (int) ($request->server->get('CONTENT_LENGTH') ?? 0);
+
+            if ($headerLen > 0 && $contentLen === 0) {
+                self::logDebug("ERRO_POST_MAX_SIZE_EXCEDIDO", [
+                    'content_length_header' => $headerLen,
+                    'php_post_max_size'     => ini_get('post_max_size'),
+                    'msg'                   => 'Corpo da requisição foi descartado pelo PHP antes de chegar ao webhook. Aumente post_max_size e upload_max_filesize no php.ini do Apache/PHP-FPM.'
+                ]);
+                return new JsonResponse([
+                    'success' => false,
+                    'error'   => "Payload too large. Server post_max_size is " . ini_get('post_max_size') . ", but request size is {$headerLen} bytes."
+                ], 413);
+            }
+
             $payload = json_decode($content, true);
 
             if (!$payload || !is_array($payload)) {
+                self::logDebug("JSON_INVALIDO", [
+                    'content_length' => $contentLen,
+                    'json_error'     => json_last_error_msg(),
+                    'snippet'        => substr($content, 0, 200)
+                ]);
                 return new JsonResponse(['success' => false, 'error' => 'JSON inválido'], 400);
             }
 
-            self::logDebug("PAYLOAD_RECEBIDO", ['event' => $payload['event'] ?? '']);
+            $logSummary = $payload;
+            if (!empty($logSummary['data']['base64'])) {
+                $logSummary['data']['base64'] = '[BASE64_OMITIDO_LEN_' . strlen($logSummary['data']['base64']) . '_BYTES]';
+            }
+            if (!empty($logSummary['base64'])) {
+                $logSummary['base64'] = '[BASE64_OMITIDO_LEN_' . strlen($logSummary['base64']) . '_BYTES]';
+            }
+            self::logDebug("PAYLOAD_RECEBIDO", [
+                'event'   => $payload['event'] ?? '',
+                'size'    => $contentLen,
+                'summary' => $logSummary
+            ]);
 
             $event = strtolower($payload['event'] ?? '');
             if ($event !== 'messages.upsert' && $event !== 'messages_upsert') {

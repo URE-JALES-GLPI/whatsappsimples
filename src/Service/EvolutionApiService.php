@@ -707,6 +707,40 @@ class EvolutionApiService
         return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
     }
 
+    public static function findWebhook(): array
+    {
+        $baseUrl  = rtrim(self::getConfig('server_url'), '/');
+        $apiToken = self::getConfig('api_token');
+        $instance = self::getConfig('instance_name');
+
+        if (empty($baseUrl) || empty($apiToken) || empty($instance)) {
+            return ['success' => false, 'error' => 'Configurações incompletas'];
+        }
+
+        $endpoint = "{$baseUrl}/webhook/find/{$instance}";
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPGET        => true,
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'apikey: ' . $apiToken
+            ],
+            CURLOPT_TIMEOUT        => 10
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            $data = json_decode($response, true);
+            return ['success' => true, 'data' => $data];
+        }
+
+        return ['success' => false, 'error' => "HTTP {$httpCode}: {$response}"];
+    }
+
     public static function getBase64FromMediaMessage(string $messageId): array
     {
         $baseUrl  = rtrim(self::getConfig('server_url'), '/');

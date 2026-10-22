@@ -26,16 +26,25 @@ final class GetQrCodeController
             // Se o WhatsApp está conectado, garante que o Webhook do GLPI está registrado na EvolutionAPI
             $scheme = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https' : 'http';
             $host   = $_SERVER['HTTP_HOST'] ?? '10.180.152.27';
-            $root   = $CFG_GLPI['root_doc'] ?? '/glpi';
+            $root   = isset($CFG_GLPI['root_doc']) ? rtrim($CFG_GLPI['root_doc'], '/') : '';
             $token  = urlencode(EvolutionApiService::getConfig('api_token') ?: (function_exists('wa_env') ? wa_env('EVOLUTION_API_KEY', '') : (getenv('EVOLUTION_API_KEY') ?: '')));
             $webhookUrl = "{$scheme}://{$host}{$root}/plugins/whatsappsimples/front/webhook.php?token={$token}";
 
-            EvolutionApiService::setWebhook($webhookUrl);
+            $whRes = EvolutionApiService::setWebhook($webhookUrl);
+            $whFind = EvolutionApiService::findWebhook();
 
             return new JsonResponse([
-                'success' => true,
-                'state'   => 'open',
-                'message' => 'WhatsApp Conectado com Sucesso!'
+                'success'        => true,
+                'state'          => 'open',
+                'message'        => 'WhatsApp Conectado com Sucesso!',
+                'webhook_url'    => $webhookUrl,
+                'webhook_result' => $whRes,
+                'webhook_find'   => $whFind['data'] ?? null,
+                'php_limits'     => [
+                    'post_max_size'       => ini_get('post_max_size'),
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'memory_limit'        => ini_get('memory_limit')
+                ]
             ]);
         }
 

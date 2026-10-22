@@ -31,6 +31,10 @@ class IncomingMessageDTO
                 $messageData = $messageData['viewOnceMessageV2']['message'];
             } elseif (!empty($messageData['viewOnceMessageV2Extension']['message'])) {
                 $messageData = $messageData['viewOnceMessageV2Extension']['message'];
+            } elseif (!empty($messageData['templateMessage']['hydratedTemplate'])) {
+                $messageData = $messageData['templateMessage']['hydratedTemplate'];
+            } elseif (!empty($messageData['templateMessage']['hydratedFourRowTemplate'])) {
+                $messageData = $messageData['templateMessage']['hydratedFourRowTemplate'];
             } else {
                 break;
             }
@@ -87,12 +91,14 @@ class IncomingMessageDTO
         // Isso forçará o sistema a entrar no "fallback" e baixar o arquivo completo pela rota dedicada getBase64FromMediaMessage.
         if (!empty($messageData['audioMessage']) || !empty($messageData['videoMessage'])) {
             unset($data['base64']);
+            unset($payload['base64']);
             unset($messageData['audioMessage']['base64']);
             unset($messageData['videoMessage']['base64']);
         }
 
-        if (!empty($data['base64'])) {
-            $extractedBase64 = $data['base64'];
+        $candidateBase64 = $data['base64'] ?? $payload['base64'] ?? '';
+        if (!empty($candidateBase64)) {
+            $extractedBase64 = $candidateBase64;
             $mimetype = $messageData['imageMessage']['mimetype'] 
                 ?? $messageData['videoMessage']['mimetype'] 
                 ?? $messageData['audioMessage']['mimetype'] 

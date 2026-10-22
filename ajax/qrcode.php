@@ -24,13 +24,20 @@ try {
         $webhookUrl = "{$scheme}://{$host}{$root}/plugins/whatsappsimples/front/webhook.php?token={$token}";
 
         $whRes = EvolutionApiService::setWebhook($webhookUrl);
+        $whFind = EvolutionApiService::findWebhook();
 
         return new JsonResponse([
             'success'        => true,
             'state'          => 'open',
             'message'        => 'WhatsApp Conectado com Sucesso!',
             'webhook_url'    => $webhookUrl,
-            'webhook_result' => $whRes
+            'webhook_result' => $whRes,
+            'webhook_find'   => $whFind['data'] ?? null,
+            'php_limits'     => [
+                'post_max_size'       => ini_get('post_max_size'),
+                'upload_max_filesize' => ini_get('upload_max_filesize'),
+                'memory_limit'        => ini_get('memory_limit')
+            ]
         ]);
     }
 
